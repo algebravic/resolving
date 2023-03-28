@@ -14,7 +14,7 @@ We are particularly interested in the metric dimension of the
 hypercube $Q_n$ whose vertices are $\mathbb{F}_2^n$, and edges are
 $(u,v)$ such that $u + v$ has weight 1.  Thus the distance metric $d$
 is the *Hamming distance*.
-
+** Using MAXSAT
 One can approach this problem using ILP (integer linear programming)
 or MAXSAT (maximum satisfiability).
 
@@ -27,7 +27,7 @@ $u \ne v \in  V(G)$
  we have $S \cap P_{u,v} \ne \emptyset$.  That is, $S$ contains
 at least one element of each $P_{u,v}$.  In other terminology, $S$ is
 a *hitting set* for the set system $\{P_{u,v} : u \ne v \in V(G) \}$.
-
+** Questions
 This brings up a number of practical questions:
 
 1) Given a subset $S$ which is not a resolving set, efficiently
