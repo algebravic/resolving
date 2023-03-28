@@ -19,11 +19,12 @@ One can approach this problem using ILP (integer linear programming)
 or MAXSAT (maximum satisfiability).
 
 For each pair $(u,v) \in V(G)$ with $u \ne v$ define the set
-$P_{u,v} := \{w \in V(G) : d(v,w) != d(u,w)\}$.  We'll call this set the *pair
+$P_{u,v} := \{w \in V(G) : d(v,w) \ne d(u,w)\}$.  We'll call this set the *pair
 resolver*.
 
-Clearly a set $S$ is resolving if and only if for each $u \ne v \in
-V(G)$ we have $S \cap P_{u,v} \ne \emptyset$.  That is, $S$ contains
+Clearly a set $S$ is resolving if and only if for each
+$u \ne v \in  V(G)$
+ we have $S \cap P_{u,v} \ne \emptyset$.  That is, $S$ contains
 at least one element of each $P_{u,v}$.  In other terminology, $S$ is
 a *hitting set* for the set system $\{P_{u,v} : u \ne v \in V(G) \}$.
 
@@ -55,10 +56,16 @@ Maximum is hard to deal with.  Use the fact that average is a lower
 bound to the maximum.  Suppose that $A_{i,j}$ is the $i$-th bit of the
 $j$-th word in $S$.  Suppose that $x$ is the unknown centroid.
 
-Form $\sum_j \sum_i (x_i - A_{i,j})^2 = \sum_i \sum_j (x_i + A_{i,j} -
-2 x_i A_{i,j}) = \sum_{i,j} A_{i,j} + |S| \text{wt}(x) - 2 \sum_i (\sum_j
-A_{i,j}) x_i = \sum_{i,j} A_{i,j} - 2\sum_i (\sum_j (A_{i,j} - 1/2) -
-x_i)$.
+Form
+\begin{displaymath}
+\begin{split}
+\sum_j \sum_i (x_i - A_{i,j})^2 & = \sum_i \sum_j (x_i + A_{i,j} -
+2 x_i A_{i,j}) \\
+ & = \sum_{i,j} A_{i,j} + |S| \text{wt}(x) - 2 \sum_i (\sum_j
+A_{i,j}) x_i \\
+& = \sum_{i,j} A_{i,j} - 2\sum_i (\sum_j (A_{i,j} - 1/2) - x_i).
+\end{split}
+\end{displaymath}
 
 ** Stabilizer by the hyperoctahedral group
 The hyperoctahedral group is the group of automorphisms of $Q_n$.
