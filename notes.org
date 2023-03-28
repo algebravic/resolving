@@ -1,0 +1,71 @@
+#+Title: Metric Dimension
+
+* <2023-03-23 Thu> Introduction
+Let $G$ denote a finite graph (directed or undirected). If $u,v \in
+V(G)$ are two vertices of $G$ define $d(u,v)$ as being the length of
+the shortest path from $u$ to $v$, and $+\infty$ if there is no such
+path.  A *resolving set* for $G$ is a subset $S \subseteq V(G)$ such
+that for each $u \ne v \in V(G)$ there is a $w \in S$ such that
+$d(u,w) \ne d(v,w)$.  Clearly resolving sets exist, since $S = V(G)$
+is one such.  The minimum cardinality of a resolving set is called the
+*metric dimension* of $G$.
+
+We are particularly interested in the metric dimension of the
+hypercube $Q_n$ whose vertices are $\mathbb{F}_2^n$, and edges are
+$(u,v)$ such that $u + v$ has weight 1.  Thus the distance metric $d$
+is the *Hamming distance*.
+
+One can approach this problem using ILP (integer linear programming)
+or MAXSAT (maximum satisfiability).
+
+For each pair $(u,v) \in V(G)$ with $u \ne v$ define the set
+$P_{u,v} := \{w \in V(G) : d(v,w) != d(u,w)\}$.  We'll call this set the *pair
+resolver*.
+
+Clearly a set $S$ is resolving if and only if for each $u \ne v \in
+V(G)$ we have $S \cap P_{u,v} \ne \emptyset$.  That is, $S$ contains
+at least one element of each $P_{u,v}$.  In other terminology, $S$ is
+a *hitting set* for the set system $\{P_{u,v} : u \ne v \in V(G) \}$.
+
+This brings up a number of practical questions:
+
+1) Given a subset $S$ which is not a resolving set, efficiently
+   produce a pair $(u,v)$ such that $d(w,u) = d(w,v)$ for all $w \in
+   S$.  Can we do this without explicitly listing all resolving pairs?
+2) Note that if $\sigma \in \text{Aut}(G)$ and $S$ is resolving then
+   so is $\sigma(S)$.  This is true because $d(u,v) = d(\sigma u,
+   \sigma v)$ for all $u,v \in V(G)$.
+
+Possible approach: One only need to characterize the set of pairs
+which have the same Hamming weight.
+
+One might be able to do this inductively: Given a subset $S$, split it
+into two subsets $S_0$ and $S_1$, distinguished by the first
+coordinate, and denote by $\pi: \mathbb{F}_2^n \rightarrow
+\mathbb{F}_2^{n-1}$ the projection onto the last $n-1$ coordinates.
+A pair $(u,v)$ will be resolved by $S$ if and only if
+a) $u_1 = v_1$ and $(\pi(u), \pi(v))$ is distinguished by $\pi(S)$.
+b) $u_1 \ne v_1$ and $\pi(u)$ and $\pi(v)$ ...
+
+An auxilliary question: Given a subset $S \subseteq \mathbb{F}_2^n$,
+find an element $u \in \mathbb{F}_2^n$, such that $\max_{v \in S}
+d(u,v)$ is minimized.  Call such a $u$ a *centroid* for $S$.
+
+Maximum is hard to deal with.  Use the fact that average is a lower
+bound to the maximum.  Suppose that $A_{i,j}$ is the $i$-th bit of the
+$j$-th word in $S$.  Suppose that $x$ is the unknown centroid.
+
+Form $\sum_j \sum_i (x_i - A_{i,j})^2 = \sum_i \sum_j (x_i + A_{i,j} -
+2 x_i A_{i,j}) = \sum_{i,j} A_{i,j} + |S| \text{wt}(x) - 2 \sum_i (\sum_j
+A_{i,j}) x_i = \sum_{i,j} A_{i,j} - 2\sum_i (\sum_j (A_{i,j} - 1/2) -
+x_i)$.
+
+** Stabilizer by the hyperoctahedral group
+The hyperoctahedral group is the group of automorphisms of $Q_n$.
+More concretely, each automorphism is a pair $(\sigma, a)$ where
+$\sigma \in S_n$, and $a \in \mathbb{F}_2^n$.  This acts as
+$x \mapsto y$, where $y_i = x_{\sigma(i)} + a_i$.  What is the
+stabilizer of an element?  We must have $x_i + a_i = x_{\sigma(i)}$.
+This means that for each $\sigma$ there is a unique $a$ which makes
+this true.  So each element has a stabilizer of order $n!$.  This
+makes sense since the group is transitive.  What about subsets?

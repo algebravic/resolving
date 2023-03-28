@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "resolving"
+version = "0.1.0"
+description = ""
+authors = ["Victor S. Miller <victorsmiller@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+numpy = "^1.24.2"
+networkx = "^3.0"
+python-sat = "^0.1.8.dev2"
+pypblib = "^0.0.4"
+more-itertools = "^9.1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,52 @@
+cd ..
+
+The default interactive shell is now zsh.
+To update your account to use zsh, please run `chsh -s /bin/zsh`.
+For more details, please visit https://support.apple.com/kb/HT208050.
+bash-3.2$ bash-3.2$ poetry run python
+Python 3.10.0 (default, Oct 26 2021, 15:46:51) [Clang 13.0.0 (clang-1300.0.29.3)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from resolving.resolve import resolve_hypercube_maxsat
+>>> resolve_hypercube_maxsat(7, verbose=10, solver='cd15', symm=4)
+c formula: 128 vars, 15398 hard, 128 soft
+c cost: 1; core sz: 1; soft sz: 127
+c cost: 2; core sz: 32; soft sz: 96
+c cost: 3; core sz: 17; soft sz: 81
+c cost: 4; core sz: 17; soft sz: 67
+c cost: 5; core sz: 3; soft sz: 68
+c cost: 6; core sz: 4; soft sz: 69
+Time = 0.046649999999999636
+{(0, 1, 1, 0, 0, 0, 0), (1, 0, 0, 0, 0, 0, 0), (0, 1, 1, 0, 1, 0, 0), (1, 1, 0, 0, 0, 1, 0), (1, 1, 0, 1, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0)}
+>>> resolve_hypercube_maxsat(8, verbose=10, solver='cd15', symm=4)
+c formula: 256 vars, 184307 hard, 256 soft
+c cost: 1; core sz: 1; soft sz: 255
+c cost: 2; core sz: 84; soft sz: 172
+c cost: 3; core sz: 42; soft sz: 132
+c cost: 4; core sz: 38; soft sz: 97
+c cost: 5; core sz: 4; soft sz: 97
+c cost: 6; core sz: 4; soft sz: 98
+Time = 0.872681
+{(1, 0, 1, 0, 0, 1, 0, 1), (1, 1, 1, 1, 0, 0, 0, 0), (0, 0, 1, 1, 1, 1, 0, 0), (1, 1, 0, 0, 1, 0, 0, 1), (1, 0, 0, 0, 1, 1, 1, 0), (0, 0, 0, 0, 0, 0, 0, 0)}
+>>> resolve_hypercube_maxsat(9, verbose=10, solver='cd15', symm=4)
+c formula: 512 vars, 380757 hard, 512 soft
+c cost: 1; core sz: 1; soft sz: 511
+c cost: 2; core sz: 128; soft sz: 384
+c cost: 3; core sz: 68; soft sz: 318
+c cost: 4; core sz: 61; soft sz: 260
+c cost: 5; core sz: 4; soft sz: 260
+c cost: 6; core sz: 4; soft sz: 261
+c cost: 7; core sz: 5; soft sz: 262
+Time = 26.127350999999976
+{(0, 0, 0, 1, 1, 0, 1, 0, 1), (1, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 1, 1, 0, 1, 0, 0, 1), (0, 0, 1, 0, 1, 0, 1, 1, 0), (0, 1, 0, 0, 1, 1, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 1, 1, 1, 0, 0, 0, 0, 0)}
+>>> resolve_hypercube_maxsat(10, verbose=10, solver='cd15', symm=4)
+c formula: 1024 vars, 4278372 hard, 1024 soft
+c cost: 1; core sz: 1; soft sz: 1023
+c cost: 2; core sz: 326; soft sz: 698
+c cost: 3; core sz: 226; soft sz: 474
+c cost: 4; core sz: 87; soft sz: 390
+c cost: 5; core sz: 4; soft sz: 390
+c cost: 6; core sz: 4; soft sz: 391
+c cost: 7; core sz: 5; soft sz: 392
+Time = 762.2104210000001
+{(0, 1, 0, 1, 1, 0, 1, 0, 0, 1), (1, 1, 1, 1, 0, 0, 0, 0, 0, 0), (0, 0, 0, 1, 1, 1, 0, 1, 0, 1), (1, 1, 1, 0, 1, 1, 0, 0, 0, 0), (0, 0, 0, 1, 1, 0, 1, 1, 1, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (1, 0, 0, 0, 0, 1, 1, 1, 0, 1)}
+>>> 
