@@ -16,25 +16,25 @@ from typing import List, Tuple, Iterable, Dict
 from itertools import product, chain
 from more_itertools import bucket
 import numpy as np
-from pysat.formula import IDPool
 
-def partitions(num: int, parts: List[int]) -> Iterable[List[int]]:
+VECTOR = Tuple[int, ...]
+
+
+def partitions(num: int, parts: List[int]) -> Iterable[Tuple[int]]:
     """
     Generate partitions of num into parts.
     """
-    if len(parts) == 0:
-        if num == 0:
-            yield []
-        return
-    first = parts[0]
-    for val in range(min(num, first) + 1):
-        yield from ([val] + _ for _ in partitions(num - val, parts[1:]))
+    if num == sum(parts):
+        yield len(parts) * (1,)
+    elif num <= sum(parts):
+        for val in range(min(num, parts[0]) + 1):
+            yield from ((val,) + _ for _ in partitions(num - val, parts[1:]))
 
 def find_sectors(mat: np.ndarray) -> List[List[int]]:
     """
     Find the sectors of an array
     """
-    mval, nval = mat.shape
+    _, nval = mat.shape
     dist = bucket(range(nval), key=lambda _: tuple(mat[:, _]))
     return [list(dist[_]) for _ in list(dist)]
 
@@ -51,7 +51,7 @@ def old_find_sectors(mat: np.ndarray) -> List[List[int]]:
         dct[key].append(ind)
     return list(dct.values())
 
-def generate_row(mat: np.ndarray) -> Iterable[Tuple[int, ...]]:
+def generate_row(mat: np.ndarray) -> Iterable[VECTOR]:
     """
     Generate an additional row subject to the above restrictions.
     """
@@ -74,7 +74,7 @@ def generate_row(mat: np.ndarray) -> Iterable[Tuple[int, ...]]:
             if trow not in forbidden:
                 yield trow
 
-def weight_range(num: int, low: int, high: int) -> Iterable[Tuple[int, ...]]:
+def weight_range(num: int, low: int, high: int) -> Iterable[VECTOR]:
     """
     A generator for all 0/1 vectors of length n, whose weight in in [l,h]
     """
@@ -85,42 +85,63 @@ def weight_range(num: int, low: int, high: int) -> Iterable[Tuple[int, ...]]:
         return
     if num == 0:
         return
-    
     for elt in weight_range(num - 1, low, high):
         yield (0,) + elt
     for elt in weight_range(num - 1, max(0, low - 1), high - 1):
         yield (1,) + elt
-                
-def symmetry_breakers_sub(mat: np.ndarray, depth: int,
-                          pool: IDPool) -> Iterable[List[int]]:
+
+def symmetry_breakers_sub(mat: np.ndarray, depth: int) -> Iterable[
+        Tuple[List[VECTOR], List[VECTOR]]]:
+
     """
     Generate all symmetry breakers of depth.
+
+    Input:
+    mat: an m by n 0/1 array.  Its rows are the included tuples in
+    the resolving set.
+    depth: a nonnegative int indicating how many more rows should be
+    generated
+
+    Ouput:
+    An iterable of clauses.  These clauses are of two kinds
+    1) Conditional on the inclusion of the elements of mat, the
+    allowed next elements, one reperesentative per symmetry class
+    which preserves the original matrix under column permutations
+    2) Conditional on the inclusion of the elements of mat,
+    forbid those elements of smaller weight than the last.
     """
     mval , num = mat.shape
     # The first row is all 0's.  It's required.
-    ante = [- pool.id(('x', tuple(mat[_]))) for _ in range(1, mval)]
+    ante = list(map(tuple, mat.tolist()))
     # The list of candidates
     cand = list(generate_row(mat))
-    yield ante + list(map(lambda _: pool.id(('x', _)), cand))
+    yield (ante, cand)
     if depth > 0:
-        yield from chain(*(symmetry_breakers_sub(np.concatenate([mat, np.array(elt).reshape((1, -1))], axis = 0),
-                                                 depth - 1,
-                                                 pool)
+        yield from chain(*(symmetry_breakers_sub(
+            np.concatenate(
+                [mat, np.array(elt).reshape((1, -1))], axis = 0),
+                                                 depth - 1)
                             for elt in cand))
-    # forbid all elements or larger weight from the last
+    # forbid all elements of smaller weight from the last
     if mval > 1:
-        forbidden = {tuple(mat[_])
-                     for _ in range(mval - 1)}
+        forbidden = set(map(tuple, mat.tolist()))
         bot = mat[-2].sum()
         top = mat[-1].sum() - 1
+        yield from ((ante + [elt], []) for elt in weight_range(num, bot, top)
+                    if elt not in forbidden)
 
-        for elt in weight_range(num, bot, top):
-            if elt not in forbidden:
-                yield ante + [-pool.id(('x', elt))]
+def symmetry_breakers(num, depth: int) -> Iterable[
+        Tuple[List[VECTOR], List[VECTOR]]]:
 
-def symmetry_breakers(num, depth: int, pool:IDPool) -> Iterable[List[int]]:
-    yield [pool.id(('x', num * (0,)))]
+    """
+    Yield symmetry breaking clauses for hypercube metric dimension
+    Result will be an iterable of a pair of lists.  Each list's
+    elements will be a 0/1 tuple of length n.  The first list will
+    be negative literals, the second list the positive.
+    """
+    # all 0's always present
+    yield ([], [num * (0,)])
+    # elements of greater weight than n/2 are forbidden
     for elt in weight_range(num, num // 2 + 1, num):
-        yield [-pool.id(('x', elt))]
-    yield from symmetry_breakers_sub(np.zeros((1, num), dtype=np.int8), depth, pool)
-    
+        yield ([elt], [])
+    yield from symmetry_breakers_sub(np.zeros((1, num), dtype=np.int8), depth)
