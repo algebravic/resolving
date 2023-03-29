@@ -105,7 +105,7 @@ def symmetry_breakers_sub(mat: np.ndarray, depth: int) -> Iterable[
     Ouput:
     An iterable of clauses.  These clauses are of two kinds
     1) Conditional on the inclusion of the elements of mat, the
-    allowed next elements, one reperesentative per symmetry class
+    allowed next elements, one representative per symmetry class
     which preserves the original matrix under column permutations
     2) Conditional on the inclusion of the elements of mat,
     forbid those elements of smaller weight than the last.

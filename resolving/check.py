@@ -36,30 +36,56 @@ import numpy as np
 from .generate import VECTOR
 IDENT = None | Tuple[str, int]
 
+
+def _validate_lits(lits: List[int]) -> bool:
+    """
+    Validate that lits has the right form.
+    """
+
+    return (isinstance(lits, list)
+            and all((isinstance(_, int) for _ in lits))
+            and all((_ != 0 for _ in lits)))
+
+
 def resolvable_model(potential: np.ndarray,
-                     encode: str = 'pairwise') -> Tuple[CNF, IDPool]:
+                     encode: str = 'totalizer') -> Tuple[CNF, IDPool]:
     """
     Check if a subset is resolvable
+
+    Sanity check:
+
+    We want sum_i epsilon[i] x[i] = 0
+    We want sum_i x[i]^epsilon[i] = #{i, epsilon[i] < 0}
+    Let s[i] = +/- 1
+    sum_i s[i] * (1 - 2 * x[i]) = sum_i s[i] - 2 * sum_i s[i] * x[i]
+    sum_i s[i] * (1 - 2 * y[i]) = sum_i s[i] - 2 * sum_i s[i] * y[i]
+    Difference is 2 * sum_i s[i] * (y[i] - x[i])
     """
 
     mval, nval = potential.shape
-    pmat = 1 - 2 * potential
+    pmat = (1 - 2 * potential).tolist()
     cnf = CNF()
     pool = IDPool()
+    encoding = getattr(EncType, encode, EncType.totalizer)
+    xvars = [pool.id(('x', _)) for _ in range(nval)]
+    yvars = [pool.id(('y', _)) for _ in range(nval)]
+    # Exclusion: both can't be 1 simultaneously
+    cnf.extend([[- _[0], - _[1]] for _ in zip(xvars, yvars)])
 
-    encoding = getattr(EncType, encode, EncType.pairwise)
-    # Exclusion
-    for ind in range(nval):
-        cnf.append([- pool.id(('x', ind)), - pool.id(('y', ind))])
     # Forbid 0
-    cnf.append(chain(*((pool.id(('x', _)), pool.id(('y', _)))
-                       for _ in range(nval))))
+    cnf.append(xvars + yvars)
+
     for ind in range(mval):
-        lits = list(chain(*((pmat[ind, _] * pool.id(('x', _)),
-                             - pmat[ind, _] * pool.id(('y', _)))
-                             for _ in range(nval))))
+        signs = pmat[ind]
+        # Exactly half of these lits must be true
+        lits = ([_[0] * _[1] for _ in zip(signs, xvars)]
+                + [ - _[0] * _[1] for _ in zip(signs, yvars)])
+
+        if not _validate_lits(lits):
+            print(f"lits = {lits}")
+
         cnf.extend(CardEnc.equals(lits = lits,
-                                  bound = potential[ind].sum(),
+                                  bound = nval,
                                   encoding = encoding,
                                   vpool = pool))
     return cnf, pool
@@ -71,11 +97,12 @@ def _getvec(val: List[IDENT], dim: int, stem: str) -> VECTOR:
     value = [_[1] for _ in val if isinstance(_, tuple) and _[0] == stem]
     vec = np.zeros(dim, dtype=np.int8)
     vec[value] = 1
-    return tuple(value)
+    return tuple(vec)
+
 
 def check_resolvable(points: List[VECTOR],
                      solver = 'cd15',
-                     encode = 'pairwise') -> Tuple[VECTOR, VECTOR] | None:
+                     encode = 'totalizer') -> Tuple[VECTOR, VECTOR] | None:
     """
     Check if a set of vectors is a resolving set.
     If it is, return None, otherwise a countexample.
@@ -88,6 +115,25 @@ def check_resolvable(points: List[VECTOR],
         status = solve.solve()
         if status:
             positive = [pool.obj(_) for _ in solve.get_model() if _ > 0]
-            return _getvec(positive, nval, 'x'), _getvec(positive, nval, 'y')
+            xvec = _getvec(positive, nval, 'x')
+            xdist = (np.array(xvec).reshape((1, -1)) ^ points).sum(axis=1)
+            yvec =  _getvec(positive, nval, 'y')
+            ydist = (np.array(yvec).reshape((1, -1)) ^ points).sum(axis=1)
+            # print((xdist == ydist).all())
+            return xvec, yvec
         else:
             return None
+
+def random_check(num: int, target: int, times = 100) -> bool:
+    """
+    Generate a bunch of random sets of a given size.
+    If any succeeds return True
+    """
+
+    for ind in range(times):
+        tst = np.random.randint(0, 2, size = (target, num), dtype=np.int8)
+        res = check_resolvable(tst)
+        if res is None:
+            print(f"There were {ind + 1} trials")
+            return True
+    return False
