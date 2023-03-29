@@ -76,3 +76,17 @@ stabilizer of an element?  We must have $x_i + a_i = x_{\sigma(i)}$.
 This means that for each $\sigma$ there is a unique $a$ which makes
 this true.  So each element has a stabilizer of order $n!$.  This
 makes sense since the group is transitive.  What about subsets?
+* Extended formulations
+Here's the question: can we describe the hitting set problem more
+economically?  More specifically can we specify the collection of
+resolving sets more compactly with auxilliary variables?
+
+So, to be more precise, Let $\mathcal{F}$ be a CNF formula in the set
+of variables $V$.  We can think of it as specify a subset of $2^V$.  A
+hitting set of this would be another subset $\mathcal{H}$ such that
+for every $S \in \mathcal{F}$ there is a $T \in \mathcal{H}$ such that
+$T \cap S \ne \emptyset$. 
+
+
+
+

@@ -13,8 +13,10 @@ from pysat.examples.hitman import Hitman
 from .metric import MetricDimension
 from .generate import symmetry_breakers
 
+VECTOR = Tuple[int, ...]
+CLAUSE = List[int]
 
-def resolving_model(gph: nx.Graph) -> Tuple[WCNF, IDPool, List[Hashable]]:
+def resolving_model(gph: nx.Graph) -> Tuple[WCNF, IDPool]:
     """
     Create a MAXSAT model for the minimal resolving set.
     """
@@ -32,18 +34,18 @@ def resolving_model(gph: nx.Graph) -> Tuple[WCNF, IDPool, List[Hashable]]:
     return cnf, pool
 
 def _process(pool: IDPool,
-             clause: Tuple[List[Tuple[int, ...]],
-                           List[Tuple[int, ...]]]) -> List[List[int]]:
+             negpos: Tuple[List[VECTOR], List[VECTOR]]) -> List[CLAUSE]:
     """
     Make clause out of negative, positive
     """
-    return ([-pool.id(('x', ind)) for ind in clause[0]]
-            + [pool.id(('x', ind)) for ind in clause[1]])
+    neg, pos = negpos
+    return ([-pool.id(('x', ind)) for ind in neg]
+            + [pool.id(('x', ind)) for ind in pos])
 
 def resolve_hypercube_maxsat(num: int,
                              symm: int = 1,
                              stratified: bool = False,
-                             **kwds) -> Set[Tuple[int, ...]]:
+                             **kwds) -> Set[VECTOR]:
     """
     Minimal resolving set for the hypercube.
     """

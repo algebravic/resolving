@@ -38,6 +38,14 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "PySMT"
+version = "0.9.5"
+description = "A solver-agnostic library for SMT Formulae manipulation and solving"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "python-sat"
 version = "0.1.8.dev2"
 description = "A Python library for prototyping with SAT oracles"
@@ -63,7 +71,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "20fd1df1ddfec6ce8d11b7c939ae895fed9410ec74c9a5a6176acdcb7adf732d"
+content-hash = "061af202940b29911b951f5fe2918ec8ec7fb262c82afc1eb035d22777365f8d"
 
 [metadata.files]
 more-itertools = [
@@ -131,6 +139,10 @@ pypblib = [
     {file = "pypblib-0.0.4-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:833dcecb4f152f989056e3ebb33860335d5365035f7127fbb0797ea5ff689b83"},
     {file = "pypblib-0.0.4-cp39-cp39-win_amd64.whl", hash = "sha256:e2c74d8219caef6a107380e979019ea6e80f9334d1d0b042cc62bec9af53a43b"},
     {file = "pypblib-0.0.4.tar.gz", hash = "sha256:71dd930bf177ca38d6eeb473702d05df07e11f20382db0c766465297eaf49062"},
+]
+PySMT = [
+    {file = "PySMT-0.9.5-py2.py3-none-any.whl", hash = "sha256:0f95e6baa1f5672b414bda050d7b9f1f2d4e8cbfd48c7c0dc019b00b6c975a68"},
+    {file = "PySMT-0.9.5.tar.gz", hash = "sha256:0c796a6d4e4c8b25ade9eca48b9876ce3a147f4e0c0b851469511f55b9a0ec47"},
 ]
 python-sat = [
     {file = "python-sat-0.1.8.dev2.tar.gz", hash = "sha256:2455aee3ddeee6b0ccef023f23d69bca7fe39c0f717fea7769a2a70edbf46909"},
