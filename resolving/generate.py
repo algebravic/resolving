@@ -90,8 +90,10 @@ def weight_range(num: int, low: int, high: int) -> Iterable[VECTOR]:
     for elt in weight_range(num - 1, max(0, low - 1), high - 1):
         yield (1,) + elt
 
-def symmetry_breakers_sub(mat: np.ndarray, depth: int) -> Iterable[
-        Tuple[List[VECTOR], List[VECTOR]]]:
+def symmetry_breakers_sub(mat: np.ndarray, depth: int,
+                          forbid: bool = True,
+                          trace: int = 0) -> Iterable[
+                              Tuple[List[VECTOR], List[VECTOR]]]:
 
     """
     Generate all symmetry breakers of depth.
@@ -118,19 +120,31 @@ def symmetry_breakers_sub(mat: np.ndarray, depth: int) -> Iterable[
     yield (ante, cand)
     if depth > 0:
         yield from chain(*(symmetry_breakers_sub(
-            np.concatenate(
-                [mat, np.array(elt).reshape((1, -1))], axis = 0),
-                                                 depth - 1)
-                            for elt in cand))
+            np.concatenate([mat, np.array(elt).reshape((1, -1))], axis = 0),
+            depth - 1, forbid=forbid, trace=trace)
+                           for elt in cand))
     # forbid all elements of smaller weight from the last
-    if mval > 1:
-        forbidden = set(map(tuple, mat.tolist()))
+    if forbid and mval > 1:
         bot = mat[-2].sum()
-        top = mat[-1].sum() - 1
-        yield from ((ante + [elt], []) for elt in weight_range(num, bot, top)
-                    if elt not in forbidden)
+        botval = tuple(mat[-2])
+        top = mat[-1].sum()
+        topval = tuple(mat[-1])
+        if trace > 0:
+            print(f"weight_range({num}, {bot}, {top})")
+        yield from ((ante + [elt], []) for elt in weight_range(num, bot + 1, top - 1))
+        if bot < top:
+            yield from ((ante + [elt], []) for elt in weight_range(num, bot, bot)
+                        if elt > botval)
 
-def symmetry_breakers(num, depth: int) -> Iterable[
+            yield from ((ante + [elt], []) for elt in weight_range(num, top, top)
+                    if elt < topval)
+        else:
+            yield from ((ante + [elt], []) for elt in weight_range(num, bot, bot)
+                        if botval < elt < topval)
+
+def symmetry_breakers(num, depth: int,
+                      forbid: bool = True,
+                      trace: int = 0) -> Iterable[
         Tuple[List[VECTOR], List[VECTOR]]]:
 
     """
@@ -144,4 +158,5 @@ def symmetry_breakers(num, depth: int) -> Iterable[
     # elements of greater weight than n/2 are forbidden
     for elt in weight_range(num, num // 2 + 1, num):
         yield ([elt], [])
-    yield from symmetry_breakers_sub(np.zeros((1, num), dtype=np.int8), depth)
+    yield from symmetry_breakers_sub(np.zeros((1, num), dtype=np.int8),
+                                     depth, forbid = forbid, trace=trace)

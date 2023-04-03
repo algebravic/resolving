@@ -44,6 +44,8 @@ def _process(pool: IDPool,
 
 def resolve_hypercube_maxsat(num: int,
                              symm: int = 1,
+                             forbid: bool = True,
+                             trace: int = 0,
                              stratified: bool = False,
                              **kwds) -> Set[VECTOR]:
     """
@@ -54,7 +56,10 @@ def resolve_hypercube_maxsat(num: int,
     cnf, pool = resolving_model(gph)
     # for clause in symmetry_breaking_clauses(num, symm, pool):
 
-    cnf.extend(map(partial(_process, pool), symmetry_breakers(num, symm)))
+    cnf.extend(map(partial(_process, pool), symmetry_breakers(num,
+                                                              symm,
+                                                              forbid=forbid,
+                                                              trace=trace)))
 
     maxsat_solver = RC2Stratified if stratified else RC2
     solver = maxsat_solver(cnf, **kwds)
