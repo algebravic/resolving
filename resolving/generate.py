@@ -90,6 +90,26 @@ def weight_range(num: int, low: int, high: int) -> Iterable[VECTOR]:
     for elt in weight_range(num - 1, max(0, low - 1), high - 1):
         yield (1,) + elt
 
+def hybrid_range(op1: VECTOR, op2: VECTOR) -> Iterable[VECTOR]:
+    """
+    Generate all element x, op1 < x < op2, where the total order
+    is the hybrid order: x <= y if and only if either wt(x) < wt(y)
+    or wt(x) = wt(y) and x <= y in lexicographic order.
+    """
+    bot = sum(op1)
+    top = sum(op2)
+    num = len(op1)
+
+    yield from (elt for elt in weight_range(num, bot + 1, top - 1))
+    if bot == top:
+        yield from (elt for elt in weight_range(num, bot, bot)
+                    if op1 < elt < op2)
+    else:
+        yield from (elt for elt in weight_range(num, bot, bot)
+                    if op1 < elt)
+        yield from (elt for elt in weight_range(num, top, top)
+                    if elt < op2)
+        
 def symmetry_breakers_sub(mat: np.ndarray, depth: int,
                           forbid: bool = True,
                           trace: int = 0) -> Iterable[
@@ -112,12 +132,12 @@ def symmetry_breakers_sub(mat: np.ndarray, depth: int,
     2) Conditional on the inclusion of the elements of mat,
     forbid those elements of smaller weight than the last.
     """
-    mval , num = mat.shape
+    mval , _ = mat.shape
     # The first row is all 0's.  It's required.
     ante = list(map(tuple, mat.tolist()))
     # The list of candidates
     cand = list(generate_row(mat))
-    yield (ante, cand)
+    yield ante, cand
     if depth > 0:
         yield from chain(*(symmetry_breakers_sub(
             np.concatenate([mat, np.array(elt).reshape((1, -1))], axis = 0),
@@ -125,22 +145,8 @@ def symmetry_breakers_sub(mat: np.ndarray, depth: int,
                            for elt in cand))
     # forbid all elements of smaller weight from the last
     if forbid and mval > 1:
-        bot = mat[-2].sum()
-        botval = tuple(mat[-2])
-        top = mat[-1].sum()
-        topval = tuple(mat[-1])
-        if trace > 0:
-            print(f"weight_range({num}, {bot}, {top})")
-        yield from ((ante + [elt], []) for elt in weight_range(num, bot + 1, top - 1))
-        if bot < top:
-            yield from ((ante + [elt], []) for elt in weight_range(num, bot, bot)
-                        if elt > botval)
-
-            yield from ((ante + [elt], []) for elt in weight_range(num, top, top)
-                    if elt < topval)
-        else:
-            yield from ((ante + [elt], []) for elt in weight_range(num, bot, bot)
-                        if botval < elt < topval)
+        yield from ((ante + [elt], []) for elt in hybrid_range(tuple(mat[-2]),
+                                                               tuple(mat[-1])))
 
 def symmetry_breakers(num, depth: int,
                       forbid: bool = True,
