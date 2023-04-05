@@ -129,12 +129,16 @@ clauses reprsenting this will be
 $(x_1 \wedge \dots \wedge x_m \Rightarrow x)$ for all $x \in S_{x_1,
 \dots, x_m}$.
 
-If $X$ is a graph, then the *metric automorphism* group of $X$ is the
-subgroup of the permutations, $\sigma$, of the vertices, such that for
-all $x,y \in V(X)$, $d(x,y) \mapsto d(\sigma x, y)$ is a permutation
-of distances.  That is, if $d(x,y) \ne d(x,z)$ then $d(\sigma x,y) \ne
-d(\sigma x,z)$ and if $d(x,y) = d(x,z)$ then $d(\sigma x, y) =
-d(\sigma x, z)$.  It is clear that if $\sigma$ is an automorphism of
+Define: Let $G$ be a finite graph.  If $x,y \in V(G)$ the *resolving
+set* of $(x,y)$, $R_{x,y} = \{ z \in V(G) : d(z,x) \ne d(z,y)\}$ is
+the set of vertices which are at distinct distances from $x$ and $y$.
+
+Define: An equivalence relation on the vertex set $V(G)$.  Say that
+$x \sim y$ if, for all $z,w \in V(G)$ we have $d(x,z) = d(x,w)$ if and
+only if $d(y,z) = d(y,w)$.  It is now clear that every resolving set
+consists of a union of equivalence classes under this relation.
+ 
+It is clear that if $\sigma$ is an automorphism of
 $X$ then it is also a metric automorphism (i.e. $\sigma$ preserves
 adjacency), but that might be other metric automorphisms.  A
 particular example of a metric automorphism which is not a graph
