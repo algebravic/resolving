@@ -124,7 +124,7 @@ def symmetry_breakers_sub(mat: np.ndarray, depth: int,
     depth: a nonnegative int indicating how many more rows should be
     generated
 
-    Ouput:
+    Output:
     An iterable of clauses.  These clauses are of two kinds
     1) Conditional on the inclusion of the elements of mat, the
     allowed next elements, one representative per symmetry class
@@ -137,6 +137,8 @@ def symmetry_breakers_sub(mat: np.ndarray, depth: int,
     ante = list(map(tuple, mat.tolist()))
     # The list of candidates
     cand = list(generate_row(mat))
+    if trace > 0:
+        print(f"There were {len(cand)} candidates at depth {mval}")
     yield ante, cand
     if depth > 0:
         yield from chain(*(symmetry_breakers_sub(
