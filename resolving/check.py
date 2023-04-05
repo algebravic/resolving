@@ -116,9 +116,9 @@ def check_resolvable(points: List[VECTOR],
         if status:
             positive = [pool.obj(_) for _ in solve.get_model() if _ > 0]
             xvec = _getvec(positive, nval, 'x')
-            xdist = (np.array(xvec).reshape((1, -1)) ^ points).sum(axis=1)
-            yvec =  _getvec(positive, nval, 'y')
-            ydist = (np.array(yvec).reshape((1, -1)) ^ points).sum(axis=1)
+            yvec = _getvec(positive, nval, 'y')
+            # xdist = (np.array(xvec).reshape((1, -1)) ^ points).sum(axis=1)
+            # ydist = (np.array(yvec).reshape((1, -1)) ^ points).sum(axis=1)
             # print((xdist == ydist).all())
             return xvec, yvec
         else:
