@@ -8,6 +8,8 @@ from functools import partial
 import numpy as np
 import networkx as nx
 from pysat.formula import CNF, WCNF, IDPool
+from pysat.card import CardEnc, EncType
+from pysat.solvers import Solver
 from pysat.examples.rc2 import RC2, RC2Stratified
 from pysat.examples.hitman import Hitman
 from .metric import MetricDimension
@@ -16,22 +18,18 @@ from .generate import symmetry_breakers
 VECTOR = Tuple[int, ...]
 CLAUSE = List[int]
 
-def resolving_model(gph: nx.Graph) -> Tuple[WCNF, IDPool]:
+def resolving_model(gph: nx.Graph, cnf: CNF | WCNF) -> IDPool:
     """
     Create a MAXSAT model for the minimal resolving set.
     """
     pool = IDPool()
-    cnf = WCNF()
 
     met = MetricDimension(gph)
 
     for elt in met.resolving_set():
         cnf.append([pool.id(('x', _)) for _ in elt])
 
-    for elt in gph.nodes:
-        cnf.append([-pool.id(('x', elt))], weight = 1)
-
-    return cnf, pool
+    return pool
 
 def _process(pool: IDPool,
              negpos: Tuple[List[VECTOR], List[VECTOR]]) -> List[CLAUSE]:
@@ -42,31 +40,91 @@ def _process(pool: IDPool,
     return ([-pool.id(('x', ind)) for ind in neg]
             + [pool.id(('x', ind)) for ind in pos])
 
+def solve_maxsat(cnf: WCNF,
+                 stratified: bool = False, **kwds) -> List[int] | None:
+    """
+    Solve with a maxsat solver
+    """
+    maxsat_solver = RC2Stratified if stratified else RC2
+    max_solver = maxsat_solver(cnf, **kwds)
+    soln = max_solver.compute()
+    print("Time = {}".format(max_solver.oracle_time()))
+    return soln
+
+def solve_sat(cnf: CNF, solver_name: str) -> List[int] | None:
+    """
+    Solve with a sat solver
+    """
+    with Solver(name = solver_name,
+                bootstrap_with = cnf, use_timer = True) as solve:
+        status = solve.solve()
+        print("Time = {}".format(solve.time()))
+        return solve.get_model() if status else None
+
+def setup_hypercube(cnf: CNF | WCNF,
+                    num: int,
+                    symm: int = 1,
+                    forbid: bool = True,
+                    trace: int = 0) -> Tuple[IDPool, nx.Graph]:
+    """
+    Setup the problem
+    """
+    gph = nx.hypercube_graph(num)
+    pool = resolving_model(gph, cnf)
+    cnf.extend(map(partial(_process, pool), symmetry_breakers(num,
+                                                              symm,
+                                                              forbid=forbid,
+                                                              trace=trace)))
+    return pool, gph
+
+def get_answer(soln: List[int] | None,
+               pool: IDPool) -> List[VECTOR] | None:
+    """
+    Get the answer.
+    """
+    if soln is None:
+        return None
+
+    pos = [pool.obj(_) for _ in soln if _ > 0]
+    return {_[1] for _ in pos if _ is not None and _[0] == 'x'}
+
 def resolve_hypercube_maxsat(num: int,
                              symm: int = 1,
                              forbid: bool = True,
                              trace: int = 0,
                              stratified: bool = False,
-                             **kwds) -> Set[VECTOR]:
+                             **kwds) -> Set[VECTOR] | None:
+    """
+    Use maxsat to find the minimal resolving set for the hypecube.
+    """
+    cnf = WCNF()
+    pool, gph = setup_hypercube(cnf, num, symm = symm, forbid = forbid, trace = trace)
+    print("Solving with MaxSat")
+    for elt in gph.nodes:
+        cnf.append([-pool.id(('x', elt))], weight = 1)
+    return get_answer(solve_maxsat(cnf, stratified = stratified, **kwds), pool)
+    
+def resolve_hypercube_sat(num: int,
+                          bound: int,
+                          symm: int,
+                          forbid: bool = True,
+                          encode: str = 'totalizer',
+                          **kwds) -> Set[VECTOR] | None:
     """
     Minimal resolving set for the hypercube.
     """
 
-    gph = nx.hypercube_graph(num)
-    cnf, pool = resolving_model(gph)
     # for clause in symmetry_breaking_clauses(num, symm, pool):
 
-    cnf.extend(map(partial(_process, pool), symmetry_breakers(num,
-                                                              symm,
-                                                              forbid=forbid,
-                                                              trace=trace)))
+    cnf = CNF()
+    pool, gph = setup_hypercube(cnf, num, symm = symm, forbid = forbid)
 
-    maxsat_solver = RC2Stratified if stratified else RC2
-    solver = maxsat_solver(cnf, **kwds)
-    soln = solver.compute()
-    print("Time = {}".format(solver.oracle_time()))
-    pos = [pool.obj(_) for _ in soln if _ > 0]
-    return {_[1] for _ in pos if _ is not None and _[0] == 'x'}
+    cnf.extend(CardEnc.atmost(lits = [pool.id(('x', _)) for _ in gph.nodes],
+                              bound = bound,
+                              encoding = getattr(EncType, encode,
+                                                 EncType.totalizer),
+                              vpool = pool))
+    return get_answer(solve_sat(cnf, solver_name = kwds.get('solver', 'cd15')), pool)
 
 def resolve_hypercube_hitman(num: int, **kwds) -> Set[int]:
     """
