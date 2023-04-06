@@ -15,6 +15,7 @@ from pysat.examples.hitman import Hitman
 from pysat.examples.optux import OptUx
 from .metric import MetricDimension
 from .generate import symmetry_breakers
+from .timeit import Timer
 
 VECTOR = Tuple[int, ...]
 CLAUSE = List[int]
@@ -99,7 +100,9 @@ def resolve_hypercube_maxsat(num: int,
     Use maxsat to find the minimal resolving set for the hypecube.
     """
     cnf = WCNF()
-    pool, gph = setup_hypercube(cnf, num, symm = symm, forbid = forbid, trace = trace)
+    with Timer('setup'):
+        pool, gph = setup_hypercube(cnf, num, symm = symm,
+                                    forbid = forbid, trace = trace)
     for elt in gph.nodes:
         cnf.append([-pool.id(('x', elt))], weight = 1)
     return get_answer(solve_maxsat(cnf, stratified = stratified, **kwds), pool)
@@ -118,7 +121,8 @@ def resolve_hypercube_sat(num: int,
     # for clause in symmetry_breaking_clauses(num, symm, pool):
 
     cnf = CNF()
-    pool, gph = setup_hypercube(cnf, num, symm = symm, forbid = forbid)
+    with Timer('setup') as timed:
+        pool, gph = setup_hypercube(cnf, num, symm = symm, forbid = forbid)
 
     cnf.extend(CardEnc.atmost(lits = [pool.id(('x', _)) for _ in gph.nodes],
                               bound = bound,
