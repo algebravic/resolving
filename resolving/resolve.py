@@ -12,6 +12,7 @@ from pysat.card import CardEnc, EncType
 from pysat.solvers import Solver
 from pysat.examples.rc2 import RC2, RC2Stratified
 from pysat.examples.hitman import Hitman
+from pysat.examples.optux import OptUx
 from .metric import MetricDimension
 from .generate import symmetry_breakers
 
@@ -55,11 +56,11 @@ def solve_sat(cnf: CNF, solver_name: str) -> List[int] | None:
     """
     Solve with a sat solver
     """
-    with Solver(name = solver_name,
-                bootstrap_with = cnf, use_timer = True) as solve:
-        status = solve.solve()
-        print("Time = {}".format(solve.time()))
-        return solve.get_model() if status else None
+    solve = Solver(name = solver_name,
+                   bootstrap_with = cnf, use_timer = True)
+    status = solve.solve()
+    print("Time = {}".format(solve.time()))
+    return solve, solve.get_model() if status else None
 
 def setup_hypercube(cnf: CNF | WCNF,
                     num: int,
@@ -99,7 +100,6 @@ def resolve_hypercube_maxsat(num: int,
     """
     cnf = WCNF()
     pool, gph = setup_hypercube(cnf, num, symm = symm, forbid = forbid, trace = trace)
-    print("Solving with MaxSat")
     for elt in gph.nodes:
         cnf.append([-pool.id(('x', elt))], weight = 1)
     return get_answer(solve_maxsat(cnf, stratified = stratified, **kwds), pool)
@@ -109,6 +109,7 @@ def resolve_hypercube_sat(num: int,
                           symm: int,
                           forbid: bool = True,
                           encode: str = 'totalizer',
+                          core: bool = False,
                           **kwds) -> Set[VECTOR] | None:
     """
     Minimal resolving set for the hypercube.
@@ -124,7 +125,19 @@ def resolve_hypercube_sat(num: int,
                               encoding = getattr(EncType, encode,
                                                  EncType.totalizer),
                               vpool = pool))
-    return get_answer(solve_sat(cnf, solver_name = kwds.get('solver', 'cd15')), pool)
+    solve, model = solve_sat(cnf, solver_name = kwds.get('solver', 'cd15'))
+    soln = get_answer(model, pool)
+    if soln is None:
+        print(f"core = {core}")
+        print(f"status = {solve.get_status()}")
+        if core:
+            mcore = solve.get_core()
+            print(f"core = {type(mcore)}")
+            return mcore
+        return None
+
+    return soln
+    
 
 def resolve_hypercube_hitman(num: int, **kwds) -> Set[int]:
     """
