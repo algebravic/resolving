@@ -146,6 +146,104 @@ automorphism occurs with the hypercube $Q^n$.  If $e$ is the all 1's
 vector then $d(e \oplus x, y) = n - d(x,y)$. So the metric
 automorphism group of $Q^n$ has order $2^{2n} n!$
 
+* Some Proofs
+
+Lemma: We have $R_{u,v} = u + R_{0,u+v}$.
+Proof: By definition, $d(x,a) = \wt(x + a)$.  Thus, if $d(x,u) \ne
+d(x,v)$, we have $\wt(x+u) \ne \wt(x+v)$.  But $\wt(x+u) = d(x+u,0)$
+and $\wt(x+v) = d(x+u,u+v)$.
+
+Corollary: If $S \subseteq V(Q^n)$ is a resolving set, then so is $u +
+S$ for all $u \in V(Q^n)$.  Without loss of generality, we may assume
+that any resolving set contains 0.
+
+Lemma: If $e=(1, \dots, 1) \in V(Q^n)$, we have, for all $x \in
+V(Q^n)$, $\wt(x+e) = n - \wt(x)$.
+
+Corollary: For all $x \in R_{u,v}$ we have $x+e \in R_{u,v}$.
+
+Definition: Denote by $\beta_n$ the metric dimension of $Q^n$.
+
+Lemma: For all $n$ we have $\beta_n \le \beta_{n+1}$.
+Proof:  Let $S$ be a minimum size resolving set for $Q^{n+1}$.  Let
+$\pi : V(Q^{n+1}) \rightarrow V(Q^n)$ denote the map which removes the
+last coordinate: $\pi((x_1, \dots, x_{n+1}) = (x_1, \dots, x_n)$, and
+$\psi: V(Q^n) \rightarrow V(Q^{n+1})$ the map that adds a 0 coordinate
+at the end.  That is $\psi((x_1, \dots, x_n)) = (x_1, \dots, x_n, 0)$.
+Without loss of generality, by adding $e$ to any element of $S$ whose
+last coordinate is 1, we may assume that the last coordinate of all
+the elements of $S$ are 0.  It is clear that if $x,y \in V(Q^n)$ that
+$d(x,y) = d(\psi(x), \psi(y))$.  However, by the assumption on $S$, we
+have, for all $u \in S$, $u = \psi(\pi(u))$.  Thus $\pi(S)$ is a
+resolving set for $Q^n$. QED.
+
+Lemma: For all $m,n$ we have $\beta_{m+n} \le \beta_m + \beta_n$.  In
+particular, since $\beta_1 = 1$, we have $\beta_{n+1} \le \beta_n +
+1$.
+
+Proof: Let $S$ be a resolving set for $Q^n$ and $T$ a resolving set
+for $Q^m$.  Without loss of generality, we may assume that $0 \in S, 0
+\in T$.  Define two maps $\phi: V(Q^m) \rightarrow V(Q^{m+n})$, $\phi:
+V(Q^n) \rightarrow V(Q^{m+n})$ as follows $\phi((x_1, \dots, x_m)) =
+(x_1, \dots, x_m, 0, \dots, 0)$, and $\psi((y_1, \dots, y_n)) = (1,
+\dots, 1, y_1, \dots, y_n)$.  I claim that $U := \psi(S) \cup \phi(T)$
+is a resolving set for $Q^{n+m}$.  Define maps $\rho: V(Q^{n+m})
+\rightarrow V(Q^n)$ by $\rho((x_1, \dots, x_{m+n})) = (x_{m+1}, \dots,
+x_{m+n}))$ and $\sigma: V(Q^{n+m}) \rightarrow V(Q^m)$ by
+$\sigma((x_1, \dots, x_{m+n})) = (x_1, \dots, x_m)$.
+We show that for all $x\ne y \in
+V(Q^{m+n))$ there is an element of $U$ that resolves $(x,y)$. There
+are three cases.
+
+Note that for all $x,y$, $d(x,y) = d(\sigma(x), \sigma(y)) +
+d(\rho(x), \rho(y))$.
+Note that we have $\sigma \psi u = e$ and $\rho \psi u = u$,
+$\sigma \phi v = v, \rho \phi v = 0$.
+
+1) $\wt(\sigma(x)) = \wt(\sigma(y))$ and $\rho x \ne \rho y$.  Let $u \in S$ resolve $(\rho(x),
+   \rho(y))$.  Then
+   \begin{displaymath}
+   \begin{aligned}
+   d(\psi(u), x) - d(\psi(u), y) &= d(\sigma \psi u, \sigma x) + d(\rho \psi u, \rho  x)
+                                                     -(d(\sigma \psi u, \sigma y) + d(\rho \psi u, \rho x)) \\
+                                               &= d(e, \sigma x)  + d(u, \rho x) - (d(e, \sigma y)  + d(u, \rho y)) \\
+                                               & = d(u, \rho x) - d(u, \rho y)
+  \end{aligned}
+   \end{displaymath}
+   By hypothesis there is a $v \in T$ which resolves $(\rho x,
+   \rho y)$.
+   
+2) $\wt(\rho(x)) = \wt(\rho(y))$ and $\sigma x \ne \sigma y$.  For $v \in T$
+   \begin{displaymath}
+   \begin{aligned}
+   d(\phi(v), x) - d(\phi(v), y) &= d(\sigma \phi u, \sigma x) + d(\rho \phi u, \rho  x)
+                                                     -(d(\sigma \phi u, \sigma y) + d(\rho \phi u, \rho x)) \\
+                                               &= d(v, \sigma x)  + d(0, \rho x) - (d(v, \sigma y)  + d(0, \rho y)) \\
+                                               & = d(v, \sigma x) - d(v, \sigma y)
+  \end{aligned}
+   \end{displaymath}
+   By hypothesis there is a $v \in T$ which resolves $(\sigma x,
+   \sigma y)$.
+3) In the remaining cases either $\wt \sigma x \ne \wt \sigma y$ or
+   $\wt \rho x \ne \wt \rho y$.  I assert that either 0, or $\psi 0$
+   resolve $(x,y)$.  Namely
+   \begin{displaymath}
+   \begin{aligned}
+   d(0, x) - d(0, y) &= d(\sigma 0, \sigma x) + d(\rho 0, \rho  x)
+                                                     -(d(\sigma 0, \sigma y) + d(\rho 0, \rho x)) \\
+                                               &= d(0, \sigma x)  + d(0, \rho x) - (d(0, \sigma y)  + d(0, \rho y)) \\
+                                               & = (\wt \sigma x - \wt \sigma y) + (\wt \rho x - \wt \rho y)
+  \end{aligned}
+   \end{displaymath}
+   and
+   \begin{displaymath}
+   \begin{aligned}
+   d(\psi 0, x) - d(\psi 0, y) &= d(\sigma \psi 0, \sigma x) + d(\rho 0, \rho  x)
+                                                     -(d(\sigma \psi 0, \sigma y) + d(\rho \psi 0, \rho x)) \\
+                                               &= d(e, \sigma x)  + d(0, \rho x) - (d(e, \sigma y)  + d(0, \rho y)) \\
+                                               &= -(\wt \sigma x - \wt \sigma y) + (\wt \rho x - \wt \rho y)
+   \end{aligned}
+   \end{displaymath}
 
 
 
