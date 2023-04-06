@@ -166,5 +166,9 @@ def symmetry_breakers(num, depth: int,
     # elements of greater weight than n/2 are forbidden
     for elt in weight_range(num, num // 2 + 1, num):
         yield ([elt], [])
+    # If even dimension, forbid the top half of the half weight elements
+    if num % 2 == 0:
+        for elt in weight_range(num - 1, num // 2 - 1, num // 2 - 1):
+            yield([(1,) + elt], [])
     yield from symmetry_breakers_sub(np.zeros((1, num), dtype=np.int8),
                                      depth, forbid = forbid, trace=trace)
