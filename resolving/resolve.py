@@ -121,7 +121,7 @@ def resolve_hypercube_sat(num: int,
     # for clause in symmetry_breaking_clauses(num, symm, pool):
 
     cnf = CNF()
-    with Timer('setup') as timed:
+    with Timer('setup'):
         pool, gph = setup_hypercube(cnf, num, symm = symm, forbid = forbid)
 
     cnf.extend(CardEnc.atmost(lits = [pool.id(('x', _)) for _ in gph.nodes],
