@@ -35,4 +35,94 @@ Inductively, we have E[i,k,0] = 1 for all i,k
 E[i,k, r + 1] = E[i,k,r] /\ (X[r,i] == X[r,k])
 
 """
-pass
+
+from typing import List, Tuple, Set
+from pysat.formula import CNF
+from itertools import chain
+from .lex import lex_compare
+from .check import resolvable_model
+
+def _validate(variables: List[int] | Set[int]) -> Set[int] | None:
+    """
+    Must be positive ints non-repeating
+    """
+    if not (isinstance(variables, (list, set))
+            and all(isinstance(_, int) and _ > 0 for _ in variables)):
+        return None
+    return set(variables)
+
+class QBF:
+    """
+    Manage Quantified Boolean formulas
+    """
+
+    def __init__(self):
+
+        self._model = []
+        self._quantifiers = [] # Quantifiers
+        self._quantified = set()
+
+    def _add(self, variables: List[int], quantifier: str):
+        """
+        Add variables with a given quantifier.
+        """
+        varset = _validate(variables)
+        if varset is None:
+            raise ValueError("Variables must be a positive int")
+        overlap = self._quantified.intersection(varset)
+        if overlap:
+            raise ValueError(f"Variables have already been quantified: {overlap}")
+        self._quantified.update(varset)
+        if len(self._quantifiers) == 0:
+            self._quantifiers.append((quantifier, varset))
+        elif self._quantifiers[0][0] == quantifier:
+            self._quantifiers[0] = (quantifier, self._quantifiers[0][1].union(varset))
+        else:
+            self._quantifiers.append((quantifier, varset))
+
+    def exists(self, variables: List[int]):
+        """
+        Add exists variables
+        """
+        self._add(variables, 'e')
+
+    def forall(self, variables: List[int]):
+        """
+        Add exists variables
+        """
+        self._add(variables, 'a')
+
+    def add_model(self, cnf: CNF):
+        """
+        Add Clauses to the existing model.
+        """
+        self._model += cnf.clauses.copy()
+
+    def write(self, filename: str):
+        """
+        Write out in QDimacs format.
+        """
+
+        # First validate
+        support = set(chain(*(map(abs, _) for _ in self._model)))
+        if not self._quantified.issubset(support):
+            alone = self._quantified.difference(support)
+            print(f"Warning: variables not in model {alone}")
+        nvars = max(max(support), max(self._quantified))
+        with open("{}.cnf".format(filename), 'w') as fil:
+            fil.write(f"p cnf {len(self._model)} {nvars}\n")
+            fil.write('\n'.join((f"{quant[0]} {' '.join(map(str, quant[1]))} 0")
+                                  for quant in self._quantifiers))
+            fil.write('n')
+            fil.write('\n'.join(' '.join(map(str, _)) + '0') for _ in self._model)
+            fil.write('n')
+
+def quantified_hypercube(num: int, bound: int) -> Tuple[QBF, IDPool]:
+    """
+    Create a QBF formula for checking if beta_n = bound.
+    """
+    qbf = QBF()
+    cnf = CNF()
+    pool = IDPool()
+
+    
