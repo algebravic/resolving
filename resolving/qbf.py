@@ -36,11 +36,13 @@ E[i,k, r + 1] = E[i,k,r] /\ (X[r,i] == X[r,k])
 
 """
 
-from typing import List, Tuple, Set
-from pysat.formula import CNF
+from typing import List, Tuple, Set, Iterable
+from pysat.formula import CNF, IDPool
 from itertools import chain
 from .lex import lex_compare
 from .check import resolvable_model
+
+CLAUSE = List[int]
 
 def _validate(variables: List[int] | Set[int]) -> Set[int] | None:
     """
@@ -117,6 +119,52 @@ class QBF:
             fil.write('\n'.join(' '.join(map(str, _)) + '0') for _ in self._model)
             fil.write('n')
 
+def parity(num: int, par: int) -> Iterable[Tuple[int, ...]]:
+    """
+    Generate all odd/even parity of length n.
+    """
+    if num == 0:
+        if par == 0:
+            yield tuple()
+        return
+    yield from ((0,) + _ for _ in parity(num - 1, par))
+    yield from ((1,) + _ for _ in parity(num - 1, 1 - par))
+
+def parity_constraint(lits: List[int], par: int) -> Iterable[List[int]]:
+    """
+    Parity constrained clauses.
+    """
+    num = len(lits)
+    # Forbid opposite parity elements
+    yield from ( ( (1-2 * _[0]) * _[1] for _ in zip(cons, lits))
+                 for cons in parity(num, 1 - par))
+
+def pre_post(pre: List[CLAUSE],
+             post: List[CLAUSE],
+             pool: IDPool) -> Iterable[CLAUSE]:
+    """
+    Generate clauses for pre ==> post
+    """
+    cvars = []
+    for clause in pre:
+        if len(clause) == 1:
+            cvars.append(- clause[0])
+        else:
+            new_var = pool._next()
+            cvars.append(- new_var)
+            yield [-new_var] + clause
+            yield from ([new_var, -_] for _ in clause)
+    yield from (cvars + _ for _ in post)
+
+def equiv(lft: List[CLAUSE],
+          rgt: List[CLAUSE],
+          pool: IDPool) -> Iterable[CLAUSE]:
+    """
+    Generate clauses for pre <==> post
+    """
+    yield from pre_post(lft, rgt, pool)
+    yield from pre_post(rgt, lft, pool)
+    
 def quantified_hypercube(num: int, bound: int) -> Tuple[QBF, IDPool]:
     """
     Create a QBF formula for checking if beta_n = bound.
@@ -125,4 +173,13 @@ def quantified_hypercube(num: int, bound: int) -> Tuple[QBF, IDPool]:
     cnf = CNF()
     pool = IDPool()
 
+    for ind in range(bound - 1):
+        for jind in range(num):
+            cnf.extend(parity_constraint([pool.id(('u', ind, jind)),
+                                          pool.id(('x', ind, jind)),
+                                          pool.id(('y', jind))], 1))
+            cnf.extend(parity_constraint([pool.id(('v', ind, jind)),
+                                          pool.id(('x', ind, jind)),
+                                          pool.id(('z', jind))], 1))
+            
     
