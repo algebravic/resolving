@@ -245,5 +245,27 @@ $\sigma \phi v = v, \rho \phi v = 0$.
    \end{aligned}
    \end{displaymath}
 
+* More efficient generation of hitting sets
+
+Since the resolving set $R_{u,v} = u + R_{0, u+v} = v + R_{0, u+v}$,
+we concentrate, first, on describing $R_{0,u}$.
+
+Lemma: The set $R_{0,u} = \{ x : 2\wt(x \wedge u) \ne \wt(u)\}$.  In
+particular, this means that if $\wt(u)$ is odd, then R_{0,u} =
+\mathbb{F}_2^n$.
+
+Proof: We first describe the complement of $R_{0,u}$.  By definition
+$x \not \in R_{0,u}$ if $\wt(x) = \wt(x + u)$.  However $x = x
+\wedge u + x \wedge \neg u$, where the two terms are disjoint.
+Similarly $x+u = \neg x \wedge u + x \wedge \neg u$.
+Thus $\wt(x) = \wt(x+u)$ if and only if $\wt(x \wedge u) = \wt(\neg x \wedge
+u)$. Here $\wedge$ is elementwise.  The latter is true if and only if
+$2 \wt(x \wedge u) = \wt(u)$.
+
+We know find the size of the orbits of $R_{0,u}$ under the action of
+the hyperoctahedral group.  To do that first, we find the order of the
+stabilizer.  It suffice to consider only those $u$ of the form $(1,
+\dots, 1, 0, \dots 0)$.  That is those in which $u_i = 1$ for $i=1,
+\dots, t$ for $t$ even, and $u_i = 0$ for $i=t+1, \dots, n$.
 
 
