@@ -72,11 +72,13 @@ def setup_hypercube(cnf: CNF | WCNF,
     Setup the problem
     """
     gph = nx.hypercube_graph(num)
-    pool = resolving_model(gph, cnf)
-    cnf.extend(map(partial(_process, pool), symmetry_breakers(num,
-                                                              symm,
-                                                              forbid=forbid,
-                                                              trace=trace)))
+    with Timer('model'):
+        pool = resolving_model(gph, cnf)
+    with Timer('symmetry'):
+        cnf.extend(map(partial(_process, pool), symmetry_breakers(num,
+                                                                  symm,
+                                                                  forbid=forbid,
+                                                                  trace=trace)))
     return pool, gph
 
 def get_answer(soln: List[int] | None,
@@ -100,8 +102,7 @@ def resolve_hypercube_maxsat(num: int,
     Use maxsat to find the minimal resolving set for the hypecube.
     """
     cnf = WCNF()
-    with Timer('setup'):
-        pool, gph = setup_hypercube(cnf, num, symm = symm,
+    pool, gph = setup_hypercube(cnf, num, symm = symm,
                                     forbid = forbid, trace = trace)
     for elt in gph.nodes:
         cnf.append([-pool.id(('x', elt))], weight = 1)
@@ -121,8 +122,7 @@ def resolve_hypercube_sat(num: int,
     # for clause in symmetry_breaking_clauses(num, symm, pool):
 
     cnf = CNF()
-    with Timer('setup'):
-        pool, gph = setup_hypercube(cnf, num, symm = symm, forbid = forbid)
+    pool, gph = setup_hypercube(cnf, num, symm = symm, forbid = forbid)
 
     cnf.extend(CardEnc.atmost(lits = [pool.id(('x', _)) for _ in gph.nodes],
                               bound = bound,
