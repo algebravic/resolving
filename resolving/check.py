@@ -27,7 +27,7 @@ possibly with symmetry breaking constraints.
 the y,z variables will be distinct pairs that are not resolved by x.
 """
 
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Iterable
 from itertools import chain
 from pysat.formula import CNF, IDPool
 from pysat.card import CardEnc, EncType
@@ -46,9 +46,27 @@ def _validate_lits(lits: List[int]) -> bool:
             and all((isinstance(_, int) for _ in lits))
             and all((_ != 0 for _ in lits)))
 
+def encode_equation(univ: Set[int], pos: Set[int],
+                    variables: List[int],
+                    idx: List[int],
+                    encoding: int,
+                    pool: IDPool) -> None:
+    """
+    Generate cardinality encodings.
+    """
+
+    lits = ([variables[_] for _ in pos]
+            + [-variables[_] for _ in univ.difference(pos)])
+    if len(univ) > 0:
+        yield from CardEnc.equals(lits = lits,
+                                  bound = len(univ),
+                                  encoding = encoding,
+                                  vpool = pool)
 
 def resolvable_model(potential: np.ndarray,
-                     encode: str = 'totalizer') -> Tuple[CNF, IDPool]:
+                     pool: IDPool,
+                     use_subset: bool = False,
+                     encode: str = 'totalizer') -> Iterable[List[int]]:
     """
     Check if a subset is resolvable
 
@@ -64,31 +82,46 @@ def resolvable_model(potential: np.ndarray,
 
     mval, nval = potential.shape
     pmat = (1 - 2 * potential).tolist()
-    cnf = CNF()
-    pool = IDPool()
     encoding = getattr(EncType, encode, EncType.totalizer)
     xvars = [pool.id(('x', _)) for _ in range(nval)]
     yvars = [pool.id(('y', _)) for _ in range(nval)]
     # Exclusion: both can't be 1 simultaneously
-    cnf.extend([[- _[0], - _[1]] for _ in zip(xvars, yvars)])
+    yield from ([[- _[0], - _[1]] for _ in zip(xvars, yvars)])
 
     # Forbid 0
-    cnf.append(xvars + yvars)
+    yield from xvars + yvars
 
     for ind in range(mval):
-        signs = pmat[ind]
-        # Exactly half of these lits must be true
-        lits = ([_[0] * _[1] for _ in zip(signs, xvars)]
-                + [ - _[0] * _[1] for _ in zip(signs, yvars)])
+        if use_subset:
+            ones = {_ for _, val in enumerate(potential[ind]) if val == 1}
+            zeroes = set(range(nval)).difference(ones)
+            lits = ([xvars[_] for _ in ones]
+                    + [-yvars[_] for _ in ones])
+            if sum(ones):
+                yield from CardEnc.equals(lits = lits,
+                                          bound = sum(ones),
+                                          encoding = encoding,
+                                          vpool = pool)
+            lits = ([xvars[_] for _ in zeroes]
+                    + [-yvars[_] for _ in zeroes])
+            if sum(zeroes):
+                yield from CardEnc.equals(lits = lits,
+                                          bound = sum(zeroes),
+                                          encoding = encoding,
+                                          vpool = pool)
 
-        if not _validate_lits(lits):
-            print(f"lits = {lits}")
+        else:
+            signs = pmat[ind]
+            # Exactly half of these lits must be true
+            lits = ([_[0] * _[1] for _ in zip(signs, xvars)]
+                    + [ - _[0] * _[1] for _ in zip(signs, yvars)])
 
-        cnf.extend(CardEnc.equals(lits = lits,
-                                  bound = nval,
-                                  encoding = encoding,
-                                  vpool = pool))
-    return cnf, pool
+            if not _validate_lits(lits):
+                print(f"lits = {lits}")
+            yield from CardEnc.equals(lits = lits,
+                                      bound = nval,
+                                      encoding = encoding,
+                                      vpool = pool)
 
 def _getvec(val: List[IDENT], dim: int, stem: str) -> VECTOR:
     """
@@ -109,7 +142,9 @@ def check_resolvable(points: List[VECTOR],
     """
     potential = np.array(points)
     _, nval = potential.shape
-    cnf, pool = resolvable_model(potential, encode = encode)
+    cnf = CNF()
+    pool = IDPool()
+    cnf.extend(resolvable_model(potential, pool, encode = encode))
 
     with Solver(name = solver, bootstrap_with = cnf, use_timer = True) as solve:
         status = solve.solve()
