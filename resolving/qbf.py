@@ -14,8 +14,8 @@ putative resolving set.
 Define U[i,j] = X[i,j] xor Y[j], for i,j
        V[i,j] = X[i,j] xor Z[j]
 
-We have constraints \/_i X[i] \/ \/_i Y[i] (rule out 0)
-                    ~X[i]\/~Y[i] for all i (not simulatenously 1)
+We have constraints \/_i Y[i] \/ \/_i Z[i] (rule out 0)
+                    ~Y[i]\/~Z[i] for all i (not simulatenously 1)
                     sum_j U[i,j] + sum_j ~V[i,j] = N for all i
 
 We also need symmetry breaking constaints for the X[i,j]:
@@ -38,6 +38,7 @@ E[i,k, r + 1] = E[i,k,r] /\ (X[r,i] == X[r,k])
 
 from typing import List, Tuple, Set, Iterable
 from pysat.formula import CNF, IDPool
+from pysat.card import CardEnc, EncType
 from itertools import chain
 from .lex import lex_compare
 from .check import resolvable_model
@@ -181,5 +182,42 @@ def quantified_hypercube(num: int, bound: int) -> Tuple[QBF, IDPool]:
             cnf.extend(parity_constraint([pool.id(('v', ind, jind)),
                                           pool.id(('x', ind, jind)),
                                           pool.id(('z', jind))], 1))
-            
-    
+    cnf.append([pool.id(('x', _)) for _ in range(num)] +
+               [pool.id(('y', _)) for _ in range(num)])
+
+    cnf.extend([[-pool.id(('y', _)), - pool.id(('z', _))]
+                for _ in range(num)])
+    for jind in range(num):
+        cnf.extend(CardEnc.equals(lits =
+                                  [pool.id(('u', jind, _))
+                                   for _ in range(num)] +
+                                  [- pool.id(('v', jind, _))
+                                   for _ in range(num)],
+                                  encoding = encoding,
+                                  bound = num,
+                                  vpool = pool))
+        
+    for ind in range(bound - 2):
+        cnf.extend(CardEnc.atleast(lits =
+                                   [pool.id(('x', ind+1, _))
+                                    for _ in range(num)] +
+                                   [-pool.id(('x', ind, _))
+                                    for _ in range(num)],
+                                   encoding = encoding,
+                                   bound = num,
+                                   vpool = pool))
+    for ind in range(bound - 2):
+        equ = CardEnc.equals(lits =
+                             [pool.id(('x', ind+1, _))
+                              for _ in range(num)] +
+                             [-pool.id(('x', ind, _))
+                              for _ in range(num)],
+                             encoding = encoding,
+                             bound = num,
+                             vpool = pool)
+
+        lexical = lex_less([pool.id(('x', ind, _)) for _ in range(num)],
+                           [pool.id(('x', ind + 1, _)) for _ in range(num)])
+
+        cnf.extend(pre_post(equ, lexical, pool))
+        
