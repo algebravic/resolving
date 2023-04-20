@@ -268,4 +268,47 @@ stabilizer.  It suffice to consider only those $u$ of the form $(1,
 \dots, 1, 0, \dots 0)$.  That is those in which $u_i = 1$ for $i=1,
 \dots, t$ for $t$ even, and $u_i = 0$ for $i=t+1, \dots, n$.
 
+Lemma: If $\wt(u), \wt(u')$ are even and $u \ne u'$ then $R_{0,u} \ne
+R_{0,u'}$.
 
+Proof: Since we may identify elements of $\mathbb{F}_2^n$ with subsets
+of $[n] := \{1, \dots, n\}$.  Without loss of generality we may assume
+that $\#U$ and $\#U'$ are both even, and that $\#U \ge \#U'$.
+Let $X_1$ be a subset of $U \cap U'$ of cardinality $\lfloor \#(U \cap
+U') / 2 \rfloor$, $X_2$ a subset of $U' \backslash U$ of cardinality
+$\lceil \#(U' \backslash U) / 2\rceil$.
+If we choose $X$ so that $w := \# (X \cap U') \ne \frac 1
+2 \#U'$, then $x \in R_{0,u'}$.  Choose $X$ so that $\#(X \cap (U
+\backslash U')) = \lfloor \# (U \backslash U') / 2 \rfloor$.
+R_{0, u'}$.  If $\#(U \backslash U') \ge \frac 1 2 \#U$, then we may
+choose $X$ to be contained in $\#(U \backslash U')$ and have
+cardinality $\frac 1 2 \#U$
+It suffices to prove that there exists a
+$X \subset [n]$ such that $2 \#(X \cap U) = \#U$, and $2 \#(X \cap U')
+\ne \#U'$.   It is clear that such an $X$ exists if and only if such
+an $X$ exists with $X \subseteq U \cup U'$.
+So let $w_1 = \#(X \cap (U \cap U'))$, $w_2 = \#(X \cap (\overline{U}
+\cap U'))$, $w_3 = \#(X \cap (U \cap \overline{U'}))$.
+Then $\#(X \cap U) = w_1 + w_3$, $\#(X \cap U') = w_1 + w_2$.
+Similarly let $z_1 = \#(\overline{X} \cap (U \cap U'))$, $z_2 = \#(\overline{X} \cap (\overline{U}
+\cap U'))$, $z_3 = \#(\overline{X} \cap (U \cap \overline{U'}))$.
+Then $\#U = w_1 + w_3 + z_1 + z_3$, $\#U' = w_1 + w_2 + z_1 _+ z_2$.
+$\#U = 2 w_1 + 2 w_3$, $\#U' = 2 w_1 + 2 w_2 + 2 y$ with $y \ne 0$
+\begin{displaymath}
+A =
+\begin{pmatrix}
+1 & 0 & 1 & 1 & 0 & 1 & 0\\
+1 & 1 & 0 & 1 & 1 & 0 & 0\\
+2 & 0 & 2 & 0 & 0 & 0 & 0\\
+2 & 2 & 0 & 0 & 0 & 0 & 2
+\end{pmatrix}
+\end{displaymath}
+Eliminating:
+Elimnate $w_1$: (a) $\#U - \#U'$ = w_3 - w_2 + z_3 - z_2$
+(b) $\#U = 2 z_1 + 2 z_3 - 2 w_3$, (c) $\#U' = 2 z_1 + 2 z_2 - 2 w_2 - y$.
+Eliminate $z_1$: (b) - (c)
+(d) $\#U - \#U' = 2 z_3 + 2 w_2 - 2 w_3 - 2 z_2 + 2 y$.
+Add (a) + (1/2) (d): $\#U - \#U' = 2 z_3 - 2 z_2 +  y$
+
+Without loss of generality we may assume that $\#U \ge \#U'$.
+The kernel 

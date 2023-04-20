@@ -162,7 +162,7 @@ def symmetry_breakers(num, depth: int,
     be negative literals, the second list the positive.
     """
     # all 0's always present
-    if symm > 0:
+    if depth > 0:
         for elt in weight_range(num, num // 2 + 1, num):
             yield ([elt], [])
         if num % 2 == 0:

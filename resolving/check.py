@@ -27,7 +27,7 @@ possibly with symmetry breaking constraints.
 the y,z variables will be distinct pairs that are not resolved by x.
 """
 
-from typing import List, Tuple, Optional, Iterable
+from typing import List, Tuple, Optional, Iterable, Set
 from itertools import chain
 from pysat.formula import CNF, IDPool
 from pysat.card import CardEnc, EncType
@@ -89,7 +89,7 @@ def resolvable_model(potential: np.ndarray,
     yield from ([[- _[0], - _[1]] for _ in zip(xvars, yvars)])
 
     # Forbid 0
-    yield from xvars + yvars
+    yield xvars + yvars
 
     for ind in range(mval):
         if use_subset:
@@ -97,16 +97,16 @@ def resolvable_model(potential: np.ndarray,
             zeroes = set(range(nval)).difference(ones)
             lits = ([xvars[_] for _ in ones]
                     + [-yvars[_] for _ in ones])
-            if sum(ones):
+            if len(ones) > 0:
                 yield from CardEnc.equals(lits = lits,
-                                          bound = sum(ones),
+                                          bound = len(ones),
                                           encoding = encoding,
                                           vpool = pool)
             lits = ([xvars[_] for _ in zeroes]
                     + [-yvars[_] for _ in zeroes])
-            if sum(zeroes):
+            if len(zeroes) > 0:
                 yield from CardEnc.equals(lits = lits,
-                                          bound = sum(zeroes),
+                                          bound = len(zeroes),
                                           encoding = encoding,
                                           vpool = pool)
 
@@ -132,8 +132,24 @@ def _getvec(val: List[IDENT], dim: int, stem: str) -> VECTOR:
     vec[value] = 1
     return tuple(vec)
 
+def _check_cnf(formula: List[int]) -> bool:
+    """
+    Check for valid CNF.
+    """
+    if not isinstance(formula, list):
+        yield None
+        return
+    for elt in formula:
+        if not (isinstance(elt, list)
+                and all((isinstance(_, int)
+                         and _ != 0 for _ in elt))):
+            yield elt
+    return (isinstance(formula, list)
+            and all((isinstance(_, int)
+                     and _ != 0 for _ in formula)))
 
 def check_resolvable(points: List[VECTOR],
+                     use_subset: bool = False,
                      solver = 'cd15',
                      encode = 'totalizer') -> Tuple[VECTOR, VECTOR] | None:
     """
@@ -144,7 +160,12 @@ def check_resolvable(points: List[VECTOR],
     _, nval = potential.shape
     cnf = CNF()
     pool = IDPool()
-    cnf.extend(resolvable_model(potential, pool, encode = encode))
+    formula = list(resolvable_model(potential, pool,
+                                    use_subset = use_subset,
+                                    encode = encode))
+    if not _check_cnf(formula):
+        raise ValueError("formula is not valid")
+    cnf.extend(formula)
 
     with Solver(name = solver, bootstrap_with = cnf, use_timer = True) as solve:
         status = solve.solve()
@@ -159,7 +180,11 @@ def check_resolvable(points: List[VECTOR],
         else:
             return None
 
-def random_check(num: int, target: int, times = 100) -> bool:
+def random_check(num: int, target: int,
+                 use_subset: bool = False,
+                 solver = 'cd15',
+                 encode: str = 'totalizer',
+                 times = 100) -> bool:
     """
     Generate a bunch of random sets of a given size.
     If any succeeds return True
@@ -167,7 +192,10 @@ def random_check(num: int, target: int, times = 100) -> bool:
 
     for ind in range(times):
         tst = np.random.randint(0, 2, size = (target, num), dtype=np.int8)
-        res = check_resolvable(tst)
+        res = check_resolvable(tst,
+                               solver = solver,
+                               use_subset = use_subset,
+                               encode = encode)
         if res is None:
             print(f"There were {ind + 1} trials")
             return True
