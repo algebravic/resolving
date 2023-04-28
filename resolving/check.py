@@ -132,21 +132,20 @@ def _getvec(val: List[IDENT], dim: int, stem: str) -> VECTOR:
     vec[value] = 1
     return tuple(vec)
 
+def _check_clause(clause : List[int]) -> bool:
+    """
+    Check if a valid clause
+    """
+
+    return (isinstance(clause, list)
+            and all((isinstance(_, int) and _ != 0 for _ in clause)))
+
 def _check_cnf(formula: List[int]) -> bool:
     """
     Check for valid CNF.
     """
-    if not isinstance(formula, list):
-        yield None
-        return
-    for elt in formula:
-        if not (isinstance(elt, list)
-                and all((isinstance(_, int)
-                         and _ != 0 for _ in elt))):
-            yield elt
     return (isinstance(formula, list)
-            and all((isinstance(_, int)
-                     and _ != 0 for _ in formula)))
+            and all(map(_check_clause, formula)))
 
 def check_resolvable(points: List[VECTOR],
                      use_subset: bool = False,

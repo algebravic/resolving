@@ -12,13 +12,49 @@ The candidates for an additonal row will be all those with weight <=
 that of the last row.  In addition, within each sector, all of the 1's come
 first.  We also reject a row which is identical to any of the previous rows.
 """
-from typing import List, Tuple, Iterable, Dict
+from typing import List, Tuple, Iterable, Dict, Set, FrozenSet
 from itertools import product, chain
 from more_itertools import bucket
 import numpy as np
 
 VECTOR = Tuple[int, ...]
 
+def _restricted(cap: int, parts: List[int]) -> Iterable[List[FrozenSet[int]]]:
+    """
+    Recursive sub.  Given a list of pairs (cap, set),
+    where cap >= len(set), and union of all sets is is
+    set(range(0, |union(set)|)).
+    """
+    if cap == 0:
+        yield [frozenset() for _ in range(len(parts))]
+        return
+    for elt in _restricted(cap - 1, parts):
+        # place cap in the appropriate set, if there's room
+        for ind, val in enumerate(elt):
+            if len(val) < parts[ind]:
+                yield elt[: ind] + [val.union([cap - 1])] + elt[ind+1:]
+
+def restricted_partitions(parts: List[int]) -> Iterable[List[FrozenSet[int]]]:
+    """
+    Given a list of positive integers, let n be their sum.
+    This yields a sequence of all ordered set partitions whose
+    cardinalities correspond to the parts in the input.
+    """
+    yield from _restricted(sum(parts), parts)
+
+def set_partitions(num: int, nparts: int) -> Iterable[List[FrozenSet[int]]]:
+    """
+    Set partitions of range(n) into at most nparts.
+    """
+    if num == 0:
+        yield [frozenset() for _ in range(nparts)]
+        return
+    for elt in set_partitions(num - 1, nparts):
+        isempty = False
+        for ind in range(nparts):
+            if not isempty:
+                yield elt[: ind] + [elt[ind].union([num])] + elt[ind+1: ]
+            isempty = isempty or len(elt[ind]) == 0 # only add to the first empty
 
 def partitions(num: int, parts: List[int]) -> Iterable[Tuple[int]]:
     """

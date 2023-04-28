@@ -53,7 +53,7 @@ def solve_maxsat(cnf: WCNF,
     print("Time = {}".format(max_solver.oracle_time()))
     return soln
 
-def solve_sat(cnf: CNF, solver_name: str) -> List[int] | None:
+def solve_sat(cnf: CNF, solver_name: str) -> Tuple[Solver, List[int]] | None:
     """
     Solve with a sat solver
     """

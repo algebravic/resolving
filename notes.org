@@ -312,3 +312,125 @@ Add (a) + (1/2) (d): $\#U - \#U' = 2 z_3 - 2 z_2 +  y$
 
 Without loss of generality we may assume that $\#U \ge \#U'$.
 The kernel 
+* <2023-04-25 Tue> Finding resolvers
+
+Here's the problem:
+
+We're given A partition $[r,s,s]$ of $n=r + 2s$ corresponding to
+ putting all 0's in the $r$ part, all 1's in the first $s$ part and
+ all $-1$s in the second $s$ part. We'd like to find all 0/1 tuples
+ so that $x \cdot s != 0$ in efficient way.  First, the ones in the
+ first part (or size $r$) can be arbitrary.  The only restriction both
+ necessary and sufficient, is that the number of 1's in both of the
+ $r$ parts are not equal.  Since we're only interested in those
+ assignments which are inequivalent under permutations preserving the
+ partition, we should put all the 1's first, before the 0's.  The
+ number of assignments that yield 0 is then
+\begin{displaymath}
+2^r \sum_{j=0}^s \binom{s}{j}^2.
+\end{displaymath}
+Recall that if $f(x) = \sum_{j=0}^s \binom{s}{j}x^j = (1+x)^s$, then
+$f(x) ^ 2 = \sum_{j=0}^{2s} (\sum_{i=0}^{\min{j,s}} \binom{s}{i}
+\binom{s}{j-i}) x^j$.  The coefficient of $x^s$ in this is
+$\sum_{i=0}^s \binom{s}{i}\binom{s}{s-i} = \sum_{i=0}^s
+\binom{s}{i}^2$.  Thus this is $\binom{2s}{s}$.
+
+* <2023-04-25 Tue> Certifying resolving
+
+If we're given a putative resolving set as an $m \times n$ matrix, $A$
+whose rows are the members of the set, either it does not resolve, on
+which case a SAT solver can find a pair of nodes which can't be
+distinguished, say, $u,v$.  This is equivalent to $A (u-v) = 0$.  If
+it does resolve, we'd like a good certificate.  This is equivalent to
+showing that the only solution to $A x = 0$ where all the coordinates
+of $x$ are $0,\pm 1$ is the 0 vector.  This would be equivalent to the
+there being no 0/1 solutions to $A (x-y) = 0$ with $x_i + y_i \le 1$
+and $\sum_i (x_i + y_i) \ge 1$.  So, how many $0,\frac 12$ cuts would
+we need to show this?  Somehow I think that I can reduce this to a
+decoding problem for linear codes over GF(2).
+
+First note that we can massage the matrix $A$ so that it's a 0/1
+matrix.  If $e$ is the all 1 vector we then have $Ax + Ay  \le A e$.
+Adding this to $Ax - Ay = 0$ we get $2Ax \le A e$. 
+
+* <2023-04-27 Thu> An LP certificate?
+
+Suppose that we want to verify that the metric dimension is $> m$.
+This would be equivalent to the fact that for all $m \times n$ 0/1
+matrices $A$ we have $Ax = 0$ there exists $x \in \{0,1,-1\}^n$, such that
+$e^T x = 0$, where $e$ is the all 1's vector, and $x \ne 0$.
+
+Another try: Consider only those vectors $y$ which have precisely one
+coordinate +1 and one coordinate -1 and the rest 0.   Note that all
+test vectors $x$ can be written as a sum of such vectors.  Thus if all
+$y$ vectors satisfy $Ay = 0$ then so do all $x$ vectors.  So, taking
+negation, if there exists an $x$ vector with $Ax \ne 0$ then there
+exists a $y$ vector with $Ay \ne 0$.  However, even if there is a $y$
+vector with $Ay \ne 0$, that doesn't mean that there isn't a sum of
+such that yields 0.
+
+This suggests an incremental method.  Start with a solution to all
+weight 2 vectors.  From the solution we can find a description of all
+disjoint sums which yield 0.  Add those clauses as conflict clauses.
+In particular, one can just consider pairs 
+
+Incrementally we can do the following: set up two sat solvers.
+One of them will either find a counterexample, or, by showing UNSAT,
+that all pairs are resolved.  We can have assumptions which are set to
+the the current assignment for the $A$ matrix.  If it finds a
+counterexample it will also generate other counterexamples by
+permuting coordinates, with each permutation preserving the current A
+matrix.   There may be too many permutations, so one would just want
+to use a small generating set of the stabilizer.  An observation,
+since there are lots of symmetries, one would like symmetry breaking
+clauses.  First, since negating a test vector with nonzero value also
+gives one with a nonzero value one can assume that the the nonzero
+value is $\ge 1$.  We also can assume that, within a sector, that the
+-1 come first, then 0's, then 1.  We can encode that in terms of the
+assumption variables.  Note that if we take as necessary that all
+columns are distinct, then all sectors have size 1, so this is
+unnecessary.
+
+This looks like a possible Skolem function: Given a boolean formula
+$\phi(X,Y)$, where we want $\forall X \exists Y \phi(X,Y)$, is there a
+boolean function $F(X)$ such that $\phi(X,F(X))$ is a tautology?
+
+$E(X,Y,Y') := \phi(X,Y) \vee \neg \phi(X,Y') \vee (Y' \LeftRightArrow F(X))$
+If $E$ is UNSAT, things are good, otherwise it produces a
+counterexample.  How to repair?  They use MAXSAT.  Hard clauses
+$E(X,Y,Y') := \phi(X,Y) \vee \neg \phi(X,Y')$.
+soft $Y' \LeftRightArrow F(X)$
+
+The other SAT solver will have the initial "bare bones" problem with
+successive conflict clauses.
+
+Another aside: If $n$ is large it's probably better to use Hermite
+normal form of the putative $A$ matrix to find it's kernel.  We then
+have a lattice which will contain all possible countexamples.  One
+could aggresively reduce this.
+
+This is equivalent (?) to the following: let $V = \{A \in
+\RR^{m \times n} : A x = 0, \forall x \in \{0,-1,1\}^n, e^T x = 0\}$.
+Then we want all 0/1 matrices $A$ to be contained in $V$.  Since $V$
+is convex this is equivalent to $[0,1]^{m \times n} \subseteq V$.
+More details:  It's clear that $V$ is a linear subspace.  So let $W$
+be the linear subspaces of $\RR^n$ which is spanned by $\{x \in
+\{0,-1,1\}^n, e^T x = 0, x \ne 0\}$.  Then $V = \{A \in \RR^{m \times
+n} : A v = 0, \forall v \in W\}$.  Conversely, if $[0,1]^{m \times n}
+\not \subseteq V$, that's the set in which we can find a resolving
+matrix.
+
+Something is wrong with above since $[0,1]^n$ is full dimensional but
+$V$ clearly is not.
+
+Aside: If $U, V$ are convex sets is $U \backslash V$ either empty or
+convex?   No, clearly not, consider the complement of $[0,1]^n$.
+
+* <2023-04-27 Thu> Using a solver with assumptions
+A solver with assumptions has the following property:
+You can invoke it giving it a list of literals which are assumed
+true.  The use of this is to be able to "turn clauses on and off".
+For example this is used in RC2.
+
+
+
