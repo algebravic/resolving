@@ -1,14 +1,25 @@
 """
 Lexicographic CNF
 """
-from typing import List
+from typing import List, Iterable
+from enum import Enum
 from pysat.formula import CNF, IDPool
+
+class Comparator(Enum):
+    """
+    Comparison operators.
+    """
+    EQUAL = 1
+    LESS = 2
+    GREATER = 3
+    LESSEQUAL = 4
+    GREATEREQUAL = 5
 
 def lex_compare(op1: List[int],
                 op2: List[int],
-                cnf: CNF,
+                operator: Comparator,
                 pool: IDPool,
-                reverse: bool = False) -> Tuple[int, int]:
+                reverse: bool = False) -> Iterable[List[int]]:
     """
     Generate CNF for lexicographic comparison
     between two lists of literals.
@@ -26,28 +37,42 @@ def lex_compare(op1: List[int],
 
     ineq = pool._next() # 1 = greater, 0 = less
     equal = pool._next()
-    cnf.append([equal]) # Things start out equal
+    yield [equal] # Things start out equal
 
     for elt1, elt2 in zip(op1, op2):
 
         nxt_equal = pool._next()
         # E' <==> (E /\ x1 /\ x2) \/ (E /\ -x1 /\ -x2)
-        #     =   E /\ (x1 \/ -x2) /\ (-x1 \/ x2)
+         #     =   E /\ (x1 \/ -x2) /\ (-x1 \/ x2)
         # -E' <== (E /\ x1 /\ - x2)
         # G  <== (E /\ x1 /\ - x2)
         # -G  <== (E /\ - x1 /\ x2)
         # -E'  <== (E /\ - x1 /\ x2)
-        cnf.extend([[-equal, elt1, elt2, nxt_equal],
+        yield from ([-equal, elt1, elt2, nxt_equal],
                     [-equal, -elt1, -elt2, nxt_equal],
-                    [-equal, -elt1, elt2, - ineq],
+                    [-equal, -elt1, elt2, ineq],
                     [-equal, -elt1, elt2, -nxt_equal],
-                    [-equal, elt1, -elt2, ineq],
+                    [-equal, elt1, -elt2, - ineq],
                     [-equal, elt1, -elt2, -nxt_equal]
-                    ])
+                    )
         equal = nxt_equal
     # check for unequal lengths
-    if len(op1) > len(op2):
-        cnf.append([-equal, ineq])
-    elif len(op1) < len(op2):
-        cnf.append([-equal, -ineq])
-    return equal, ineq
+    if len(op1) != len(op2):
+        nxt_equal = pool._next()
+        yield [-equal, -nxt_equal]
+        if len(op1) < len(op2):
+            yield [-equal, - ineq]
+        else:
+            yield [-equal, ineq]
+        equal = nxt_equal
+    match operator:
+       case Comparator.EQUAL:
+          yield [equal]
+       case Comparator.LESS:
+          yield from ([-ineq], [-equal])
+       case Comparator.GREATER:
+          yield from ([ineq], [-equal])
+       case Comparator.LESSEQUAL:
+          yield [-ineq, equal]
+       case Comparator.GREATEREQUAL:
+          yield [ineq, equal]
