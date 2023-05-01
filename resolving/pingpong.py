@@ -40,22 +40,22 @@ def get_prefix(pool: IDPool, prefix: str, model: MODEL) -> List[Tuple[str, int,.
     return [(_[0][1:], _[1])
             for _ in name_val if isinstance(_[0], tuple) and _[0][0] == prefix]
 
-def implies(form1: List[CLAUSE],
-            form2: List[CLAUSE],
-            pool: IDPool) -> Iterable[CLAUSE]:
+def implies(pool: IDPool,
+            form1: List[CLAUSE],
+            form2: List[CLAUSE]) -> Iterable[CLAUSE]:
     """
     Clauses instantiating cl1 -> cl2.
     """
+    avatars = []
     for clause in form1:
         if len(clause) > 1:
             lit = pool._next()
             yield [-lit] + clause
-            for elt in clause:
-                yield [lit, -elt]
+            yield from ([lit, -elt] for elt in clause)
         else:
             lit = clause[0]
-        for cl2 in form2:
-            yield [-lit] + cl2
+        avatars.append(- lit)
+    yield from (avatars + elt for elt in form2)
 
 def set_equal(lit: int, lit1: int, lit2:int) -> Iterable[CLAUSE]:
     """
@@ -85,26 +85,9 @@ def set_and(lit: int, lit1: int, lit2: int) -> Iterable[CLAUSE]:
 
 def negate(pool: IDPool, formula: FORMULA) -> Iterable[CLAUSE]:
     """
-    Negate a formula.  This is correct:
-
-    A formula is a conjunction of clauses.  For each clause, C, of length > 1
-    create a new variable, x, and the conditions x <-> C.  If a clause is of
-    length 1 use the one literal in the clause.  The satisfiability of the
-    original formula is equivalent to the new conditions plus the condition
-    the conjunction of all the introduced literals.  The satisfiability of the
-    negation of the original formula uses the disjunction of the negation of
-    all the literals.
+    Negate a formula.
     """
-    negation = []
-    for clause in formula:
-        if len(clause) == 1:
-            lit = clause[0]
-        else:
-            lit = pool._next()
-            yield [-lit] + clause
-            yield from ([lit, - _] for _ in clause)
-        negation.append(- lit)
-    yield negation # Can't be all true
+    yield from implies(pool, formula, [])
 
 def _check_diff_cols(mat: np.ndarray) -> List[Tuple[int, int]]:
     """
@@ -132,10 +115,7 @@ def special_less(lit1: CLAUSE,
                          encoding = getattr(EncType, encode,
                                             EncType.totalizer),
                          vpool = pool)
-    yield from implies(eql.clauses, eqc.clauses + lexlt, pool)
-                         
-
-
+    yield from implies(pool, eql.clauses, eqc.clauses + lexlt)
 
 def extract_mat(pool: IDPool, prefix: str, model: MODEL) -> np.ndarray:
     """
@@ -225,8 +205,7 @@ class Conflict:
     def get_conflicts(self,
                       amat: np.ndarray,
                       times: int,
-                      verbose: int = 0) -> Iterable[
-                          Tuple[List[int], List[int]]]:
+                      verbose: int = 0) -> Iterable[np.ndarray]:
         """
         Given an A matrix get up to times counterexamples to resolvability.
         """
@@ -260,9 +239,9 @@ class Conflict:
                          for _ in range(self._dim)])
             # Make this conditional on the assumptions
             self._solve.add_clause([- _ for _ in assumptions] + forbid)
-            # Now add the clauses to solve1
-            yield (np.arange(self._dim)[xval == 1].tolist(),
-                   np.arange(self._dim)[yval == 1].tolist())
+
+            yield xval - yval
+
     @property
     def census(self):
         """
@@ -327,16 +306,18 @@ class Resolve:
             raise ValueError(f"Columns not distinct: {col_diffs}!")
         return amat
 
-    def add_conflict(self, xind: List[int], yind: List[int]):
+    def add_conflict(self, xval: np.ndarray):
         """
         Add conflict clauses.
         """
         for clause in negate(
                 self._pool,
                 chain(*(CardEnc.equals(
-                    lits = ([self._alits[kind, _] for _ in xind]
-                            + [- self._alits[kind, _] for _ in yind]),
-                    bound = len(yind),
+                    lits = ([self._alits[kind, _]
+                             for _ in range(self._dim) if xval[_] == 1]
+                            + [- self._alits[kind, _]
+                               for _ in range(self._dim) if xval[_] == -1]),
+                    bound = (xval == -1).sum(),
                     encoding = self._encoding,
                     vpool = self._pool).clauses
                         for kind in range(self._mdim)))):
@@ -434,34 +415,34 @@ def ping_pong(dim: int, mdim: int,
     """
     Ping Pong method.
     """
-    resolver = Resolve(dim, mdim, solver=solver, encode=encode, alt = alt, **kwds)
+    resolver = Resolve(dim, mdim - 1, solver=solver, encode=encode, alt = alt, **kwds)
 
     if verbose > 0:
         print(f"Resolve census = {resolver.census}")
 
-    conflict = Conflict(dim, mdim, solver=solver, encode=encode, **kwds)
+    conflict = Conflict(dim, mdim - 1, solver=solver, encode=encode, **kwds)
 
     if verbose > 0:
         print(f"Conflict census = {conflict.census}")
 
-    old_amat = np.zeros((mdim, dim), dtype = np.int8)
+    old_amat = np.zeros((mdim - 1, dim), dtype = np.int8)
 
     while True:
         # Add new conflicts.  At the beginning there are none
         amat = resolver.get()
+        if verbose > 0:
+            print(f"A:\n{amat}")
         if amat is None:
             return None
-        # Extract the A matrix
+        # Check validity
         if (old_amat == amat).all():
             raise ValueError("A matrix didn't change!")
         old_amat = amat.copy()
-        if verbose > 0:
-            print(f"A = {amat}")
         # Note: np.int8 != int.
         # Give A (as assumptions) to model2 to find conflicts.
         con_count = 0
-        for xind, yind in conflict.get_conflicts(amat, times, verbose = verbose):
+        for xval in conflict.get_conflicts(amat, times, verbose = verbose):
             con_count += 1
-            resolver.add_conflict(xind, yind)
+            resolver.add_conflict(xval)
         if con_count == 0: # success!
             return amat
