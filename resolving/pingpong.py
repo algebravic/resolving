@@ -27,10 +27,8 @@ from pysat.formula import CNF, IDPool
 from pysat.solvers import Solver
 from pysat.card import CardEnc, EncType
 from .lex import lex_compare, Comparator
-
-CLAUSE = List[int]
-FORMULA = List[CLAUSE]
-MODEL = List[int]
+from .logic import CLAUSE, FORMULA, MODEL
+from .logic import negate, set_equal, set_xor, set_and, special_less
 
 def get_prefix(pool: IDPool, prefix: str, model: MODEL) -> List[Tuple[str, int,...]]:
     """
@@ -40,55 +38,6 @@ def get_prefix(pool: IDPool, prefix: str, model: MODEL) -> List[Tuple[str, int,.
     return [(_[0][1:], _[1])
             for _ in name_val if isinstance(_[0], tuple) and _[0][0] == prefix]
 
-def implies(pool: IDPool,
-            form1: List[CLAUSE],
-            form2: List[CLAUSE]) -> Iterable[CLAUSE]:
-    """
-    Clauses instantiating cl1 -> cl2.
-    """
-    avatars = []
-    for clause in form1:
-        if len(clause) > 1:
-            lit = pool._next()
-            yield [-lit] + clause
-            yield from ([lit, -elt] for elt in clause)
-        else:
-            lit = clause[0]
-        avatars.append(- lit)
-    yield from (avatars + elt for elt in form2)
-
-def set_equal(lit: int, lit1: int, lit2:int) -> Iterable[CLAUSE]:
-    """
-    CNF for lit := (lit1 == lit2)
-    """
-    yield from ([-lit, lit1, lit2],
-                [-lit, -lit1, -lit2],
-                [lit, lit1, -lit2],
-                [lit, -lit1, lit2])
-
-def set_xor(lit: int, lit1: int, lit2:int) -> Iterable[CLAUSE]:
-    """
-    CNF for lit := (lit1 XOR lit2)
-    """
-    yield from ([-lit, lit1, lit2],
-                [-lit, -lit1, -lit2],
-                [lit, lit1, -lit2],
-                [lit, -lit1, lit2])
-
-def set_and(lit: int, lit1: int, lit2: int) -> Iterable[CLAUSE]:
-    """
-    lit <-> lit1 and lit2
-    """
-    yield from ([-lit, lit1],
-                [-lit, lit2],
-                [lit, -lit1, -lit2])
-
-def negate(pool: IDPool, formula: FORMULA) -> Iterable[CLAUSE]:
-    """
-    Negate a formula.
-    """
-    yield from implies(pool, formula, [])
-
 def _check_diff_cols(mat: np.ndarray) -> List[Tuple[int, int]]:
     """
     Check if a matrix has distinct columns.
@@ -96,26 +45,6 @@ def _check_diff_cols(mat: np.ndarray) -> List[Tuple[int, int]]:
     _, ndim = mat.shape
     return [(ind, jind) for jind in range(1, ndim) for ind in range(jind)
             if (mat[:, ind] == mat[:, jind]).all()]
-
-def special_less(lit1: CLAUSE,
-                 lit2: CLAUSE,
-                 pool: IDPool,
-                 encode: str = 'totalizer') -> Iterable[CLAUSE]:
-    """
-    (wgt(lit1) >= wgt(lit2)) -> ((wgt(lit1) == wgt(lit2) and lit1 < lex lit2)
-    """
-    lexlt = list(lex_compare(lit1, lit2, Comparator.LESS, pool = pool))
-    eqc = CardEnc.equals(lits = lit1 + [- _ for _ in lit2],
-                         bound = len(lit2),
-                         encoding = getattr(EncType, encode,
-                                            EncType.totalizer),
-                         vpool = pool)
-    eql = CardEnc.atmost(lits = [- _ for _ in lit1] + lit2,
-                         bound = len(lit1),
-                         encoding = getattr(EncType, encode,
-                                            EncType.totalizer),
-                         vpool = pool)
-    yield from implies(pool, eql.clauses, eqc.clauses + lexlt)
 
 def extract_mat(pool: IDPool, prefix: str, model: MODEL) -> np.ndarray:
     """
@@ -331,10 +260,9 @@ class Resolve:
         # Everything is increasing so others are nonzero
         self._cnf.append([self._pool.id(('A', 0, _)) for _ in range(self._dim)])
         for kind in range(self._mdim - 1):
-            self._cnf.extend(list(special_less(
+            self._cnf.extend(list(special_less(self._pool,
                 [self._pool.id(('A', kind, _)) for _ in range(self._dim)],
-                [self._pool.id(('A', kind + 1, _)) for _ in range(self._dim)],
-                self._pool)))
+                [self._pool.id(('A', kind + 1, _)) for _ in range(self._dim)])))
         for kind in range(self._mdim):
             self._cnf.extend(CardEnc.atmost(lits =
                                             [self._pool.id(('A', kind, _))
