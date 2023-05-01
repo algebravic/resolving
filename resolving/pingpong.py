@@ -170,9 +170,13 @@ class CONFLICT:
         self._dim = dim
         self._mdim = mdim
         self._encoding = getattr(EncType, encode, EncType.totalizer)
-        self._generate()
+        self._cnf = CNF()
+        self._pool = IDPool()
         self._alit = {_ : self._pool.id(('A',) + _)
                       for _ in product(range(mdim), range(dim))}
+        self._xlit = {_: self._pool.id(('X', _)) for _ in range(self._dim)}
+        self._ylit = {_: self._pool.id(('Y', _)) for _ in range(self._dim)}
+        self._generate()
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
                              use_timer = True, **kwds)
@@ -181,25 +185,23 @@ class CONFLICT:
         """
         The second model.
         """
-
-        self._cnf = CNF()
-        self._pool = IDPool()
-        xlits = [self._pool.id(('X', _)) for _ in range(self._dim)]
-        ylits = [self._pool.id(('Y', _)) for _ in range(self._dim)]
-
         # x and y can't both be 1
+        xlits = [self._xlit[_] for _ in range(self._dim)]
+        ylits = [self._ylit[_] for _ in range(self._dim)]
         self._cnf.extend([[-_[0], - _[1]] for _ in zip(xlits, ylits)])
         # cnf.append(xlits + ylits) # Not identically 0
         # Support (even) is > 2
-        self._cnf.extend(CardEnc.atleast(lits = xlits + ylits,
-                                         bound = 4,
-                                         encoding = self._encoding,
-                                         vpool = self._pool))
+        self._cnf.extend(CardEnc.atleast(
+            lits = xlits + ylits,
+            bound = 4,
+            encoding = self._encoding,
+            vpool = self._pool))
         # sum_i (x[i] - y[i]) = 0
-        self._cnf.extend(CardEnc.equals(lits = xlits + [-_ for _ in ylits],
-                                        bound = self._dim,
-                                        encoding = self._encoding,
-                                        vpool = self._pool))
+        self._cnf.extend(CardEnc.equals(
+            lits = xlits + [-_ for _ in ylits],
+            bound = self._dim,
+            encoding = self._encoding,
+            vpool = self._pool))
         self._cnf.extend(list(lex_compare(ylits, xlits,
                                           Comparator.LESS,
                                           self._pool)))
@@ -211,12 +213,14 @@ class CONFLICT:
                 self._cnf.extend(set_and(self._pool.id(('C', kind ,ind)),
                                          self._pool.id(('A', kind, ind)),
                                          self._pool.id(('Y', ind))))
-        self._cnf.extend(CardEnc.equals(
-            lits=([self._pool.id(('B', kind, _)) for _ in range(self._dim)]
-                  + [- self._pool.id(('C', kind, _)) for _ in range(self._dim)]),
-            bound = self._dim,
-            encoding = self._encoding,
-            vpool = self._pool))
+                self._cnf.extend(CardEnc.equals(
+                    lits=([self._pool.id(('B', kind, _))
+                           for _ in range(self._dim)]
+                          + [- self._pool.id(('C', kind, _))
+                             for _ in range(self._dim)]),
+                    bound = self._dim,
+                    encoding = self._encoding,
+                    vpool = self._pool))
 
     def get_conflicts(self,
                       amat: np.ndarray,
@@ -334,8 +338,8 @@ class RESOLVE:
         """
         equalities = list(chain(*(
             CardEnc.equals(
-                lits = ([self._alit[kind, _] for _ in xind]
-                        + [- self._alit[kind, _] for _ in yind]),
+                lits = ([self._alits[kind, _] for _ in xind]
+                        + [- self._alits[kind, _] for _ in yind]),
                 bound = len(yind),
                 encoding = self._encoding,
                 vpool = self._pool).clauses
@@ -456,6 +460,8 @@ def ping_pong(dim: int, mdim: int,
         if (old_amat == amat).all():
             raise ValueError("A matrix didn't change!")
         old_amat = amat.copy()
+        if verbose > 0:
+            print(f"A = {amat}")
         # Note: np.int8 != int.
         # Give A (as assumptions) to model2 to find conflicts.
         con_count = 0
