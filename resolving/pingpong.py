@@ -157,7 +157,7 @@ def getvec(pool: IDPool, prefix: str, model: MODEL) -> np.ndarray:
                                           
     return np.array([_[1] for _ in values], dtype=np.int8)
 
-class CONFLICT:
+class Conflict:
     """
     A class to find vectors not distinguished by a matrix.
     """
@@ -270,7 +270,7 @@ class CONFLICT:
         """
         return Counter(map(len, self._cnf.clauses))
 
-class RESOLVE:
+class Resolve:
     """
     A class to find a putative resolving matrix.
     """
@@ -288,7 +288,10 @@ class RESOLVE:
         self._pool = IDPool()
         self._alits = {_ : self._pool.id(('A',) + _)
                        for _ in product(range(self._mdim),range(self._dim))}
-        self._generate(alt)
+        if alt:
+            self._model1()
+        else:
+            self._model2()
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
                              use_timer = True, **kwds)
@@ -299,15 +302,6 @@ class RESOLVE:
         The clause census.
         """
         return Counter(map(len, self._cnf.clauses))
-
-    def _generate(self, alt: bool):
-        """
-        Generate the initial clauses.
-        """
-        if alt:
-            self._model1()
-        else:
-            self._model2()
 
     def get(self, verbose: int = 0) -> np.ndarray | None:
         """
@@ -332,21 +326,22 @@ class RESOLVE:
             print(f"A array = {dict(avalues)}")
             raise ValueError(f"Columns not distinct: {col_diffs}!")
         return amat
+
     def add_conflict(self, xind: List[int], yind: List[int]):
         """
         Add conflict clauses.
         """
-        equalities = list(chain(*(
-            CardEnc.equals(
-                lits = ([self._alits[kind, _] for _ in xind]
-                        + [- self._alits[kind, _] for _ in yind]),
-                bound = len(yind),
-                encoding = self._encoding,
-                vpool = self._pool).clauses
-            for kind in range(self._mdim))))
-        for clause in negate(self._pool, equalities):
+        for clause in negate(
+                self._pool,
+                chain(*(CardEnc.equals(
+                    lits = ([self._alits[kind, _] for _ in xind]
+                            + [- self._alits[kind, _] for _ in yind]),
+                    bound = len(yind),
+                    encoding = self._encoding,
+                    vpool = self._pool).clauses
+                        for kind in range(self._mdim)))):
             self._solve.add_clause(clause)
-        
+
     def _model1(self):
         """
         First model with symmetry breaking
@@ -439,15 +434,15 @@ def ping_pong(dim: int, mdim: int,
     """
     Ping Pong method.
     """
-    resolver = RESOLVE(dim, mdim, solver=solver, encode=encode, alt = alt, **kwds)
+    resolver = Resolve(dim, mdim, solver=solver, encode=encode, alt = alt, **kwds)
 
     if verbose > 0:
-        print(f"RESOLVE census = {resolver.census}")
+        print(f"Resolve census = {resolver.census}")
 
-    conflict = CONFLICT(dim, mdim, solver=solver, encode=encode, **kwds)
+    conflict = Conflict(dim, mdim, solver=solver, encode=encode, **kwds)
 
     if verbose > 0:
-        print(f"CONFLICT census = {conflict.census}")
+        print(f"Conflict census = {conflict.census}")
 
     old_amat = np.zeros((mdim, dim), dtype = np.int8)
 
