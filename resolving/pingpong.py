@@ -438,7 +438,7 @@ def ping_pong(dim: int, mdim: int,
         if (old_amat == amat).all():
             raise ValueError("A matrix didn't change!")
         old_amat = amat.copy()
-        # Note: np.int8 != int.
+
         # Give A (as assumptions) to model2 to find conflicts.
         con_count = 0
         for xval in conflict.get_conflicts(amat, times, verbose = verbose):
