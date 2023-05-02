@@ -432,5 +432,67 @@ You can invoke it giving it a list of literals which are assumed
 true.  The use of this is to be able to "turn clauses on and off".
 For example this is used in RC2.
 
+* <2023-05-02 Tue> Negation
+I thought that the following should produce a negation of a CNF
+#+begin_src python
+  def implies(pool: IDPool,
+              form1: Iterable[CLAUSE],
+              form2: Iterable[CLAUSE]) -> Iterable[CLAUSE]:
+      """
+      Clauses instantiating cl1 -> cl2.
+      """
+      avatars = []
+      for clause in form1:
+          # Make lit equisatisfiable with clause
+          if len(clause) > 1:
+              lit = pool._next()
+              yield [-lit] + clause
+              yield from ([-elt, lit] for elt in clause)
+          else:
+              lit = clause[0]
+          avatars.append(- lit)
+      yield from (avatars + clause for clause in form2)
+
+      def negate(pool: IDPool, formula: Iterable[CLAUSE]) -> Iterable[CLAUSE]:
+      """
+      Negate a formula.
+      """
+      yield from implies(pool, formula, [[]])
+#+end_src
+
+Suppose that $F$ is a CNF, $F = \bigwedge_i C_i$ where $C_i$ is a clause
+(a disjunction of literals), $C_i = \bigvee_j \ell_{i,j}$.  Introduce
+new variables $x_i$, the clauses $\neg x_i \vee C_i$, and $\neg
+\ell_{i,j} \vee x_i$ for all $i,j$.  Then $F$ is equisatisfiable with
+$\bigwedge_i x_i$.  Thus, $\neg F$ is equisatisfiable with $\bigvee_i
+\neg x_i$.  Suppose that $S$ is a compatible set of literals, such
+that $F(S)$ is satisfiable (here $F(S)$ means the result of unit
+propation after assuming all the literals in $S$).  Can it happen that
+$\neg F(S)$ is satisfiable?  This would be equivalent to there exists
+and $i$ such that $\neg C_i(S)$ is satisfiable.
+
+More details: suppose that $F(X,Y)$ is a formula, where the variables
+in $X$ and $Y$ are disjoint.  Suppose that $x_0$ is an assignment of the
+variables in $X$, such that there is a $y_0$ with $F(x_0, y_0)$ true.
+If we look at $\neg F(X,Y)$ is it true there there is no assignment
+$y_1$ such that $F(x_0,y_1)$ is false?
+
+Say $A$ is a desired set, and we find a formula such that
+$A = \{ x : \exists y, F(x,y) \}$.  We want to describe the complement
+of $A$.  This would mean that for all $x \in A$ for all $y$ $F(x,y)$
+is false.
+
+Suppose that we have $F(X,Y), G(X,Y)$ as CNF and we wish to encode
+$F(X,Y) \vee G(X,Y)$.  Again, it might happen that if there are
+$x,y_1, y_2$ such that $F(x,y_1)$ is true, $G(x,y_1)$ is false, but
+$F(x,y_2)$ and $G(x,y_2)$ are both false.
+
+But suppose that $z,w$ are new variables and we encode $F(X,Y)
+\Rightarrow z, G(X,Y) \Rightarrow w$.
+
+In the BDD encoding the auxilliary variables are completely determined
+by the $X$ variables.
+
+
 
 
