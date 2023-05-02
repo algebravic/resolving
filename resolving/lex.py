@@ -15,10 +15,10 @@ class Comparator(Enum):
     LESSEQUAL = 4
     GREATEREQUAL = 5
 
-def lex_compare(op1: List[int],
+def lex_compare(pool: IDPool,
+                op1: List[int],
                 op2: List[int],
                 operator: Comparator,
-                pool: IDPool,
                 reverse: bool = False) -> Iterable[List[int]]:
     """
     Generate CNF for lexicographic comparison
