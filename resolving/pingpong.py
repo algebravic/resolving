@@ -20,15 +20,16 @@ We will also, optionally as solver (2) to provide at most r solutions.
 
 """
 from typing import Iterable, List, Tuple
-from itertools import product, chain
+from itertools import product, chain, combinations
 from collections import Counter
 import numpy as np
 from pysat.formula import CNF, IDPool
 from pysat.solvers import Solver
 from pysat.card import CardEnc, EncType
 from .lex import lex_compare, Comparator
-from .logic import CLAUSE, FORMULA, MODEL
-from .logic import negate, set_equal, set_xor, set_and, special_less
+from .logic import MODEL
+from .logic import negate, set_equal, set_and, special_less, big_or
+from .bdd import not_equal
 
 def get_prefix(pool: IDPool, prefix: str, model: MODEL) -> List[Tuple[str, int,...]]:
     """
@@ -81,25 +82,26 @@ class Conflict:
         self._encoding = getattr(EncType, encode, EncType.totalizer)
         self._cnf = CNF()
         self._pool = IDPool()
-        self._alit = {_ : self._pool.id(('A',) + _)
+        self._avar = {_ : self._pool.id(('A',) + _)
                       for _ in product(range(mdim), range(dim))}
-        self._xlit = {_: self._pool.id(('X', _)) for _ in range(self._dim)}
-        self._ylit = {_: self._pool.id(('Y', _)) for _ in range(self._dim)}
+        self._xvar = {_: self._pool.id(('X', _)) for _ in range(self._dim)}
+        self._yvar = {_: self._pool.id(('Y', _)) for _ in range(self._dim)}
         self._generate()
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
                              use_timer = True, **kwds)
+        self._cum_time = 0.0
 
     def _generate(self):
         """
-        The second model.
+        The Conflict formula
         """
         # x and y can't both be 1
-        xlits = [self._xlit[_] for _ in range(self._dim)]
-        ylits = [self._ylit[_] for _ in range(self._dim)]
+        xlits = [self._xvar[_] for _ in range(self._dim)]
+        ylits = [self._yvar[_] for _ in range(self._dim)]
         self._cnf.extend([[-_[0], - _[1]] for _ in zip(xlits, ylits)])
-        # cnf.append(xlits + ylits) # Not identically 0
-        # Support (even) is > 2
+
+        # Support (even) is >= 4
         self._cnf.extend(CardEnc.atleast(
             lits = xlits + ylits,
             bound = 4,
@@ -111,25 +113,28 @@ class Conflict:
             bound = self._dim,
             encoding = self._encoding,
             vpool = self._pool))
-        self._cnf.extend(list(lex_compare(ylits, xlits,
-                                          Comparator.LESS,
-                                          self._pool)))
+        self._cnf.extend(list(lex_compare(self._pool,
+                                          ylits, xlits,
+                                          Comparator.LESS)))
+
+        bvar = {_: self._pool.id(('B',) + _) for _ in product(range(self._mdim),
+                                                           range(self._dim))}
+        cvar = {_: self._pool.id(('C',) + _) for _ in product(range(self._mdim),
+                                                           range(self._dim))}
         for kind in range(self._mdim):
             for ind in range(self._dim):
-                self._cnf.extend(set_and(self._pool.id(('B', kind ,ind)),
-                                         self._pool.id(('A', kind, ind)),
-                                         self._pool.id(('X', ind))))
-                self._cnf.extend(set_and(self._pool.id(('C', kind ,ind)),
-                                         self._pool.id(('A', kind, ind)),
-                                         self._pool.id(('Y', ind))))
-                self._cnf.extend(CardEnc.equals(
-                    lits=([self._pool.id(('B', kind, _))
-                           for _ in range(self._dim)]
-                          + [- self._pool.id(('C', kind, _))
-                             for _ in range(self._dim)]),
-                    bound = self._dim,
-                    encoding = self._encoding,
-                    vpool = self._pool))
+                self._cnf.extend(set_and(bvar[kind, ind],
+                                         self._avar[kind, ind],
+                                         self._xvar[ind]))
+                self._cnf.extend(set_and(cvar[kind, ind],
+                                         self._avar[kind, ind],
+                                         self._yvar[ind]))
+            self._cnf.extend(CardEnc.equals(
+                lits=([bvar[kind, _] for _ in range(self._dim)]
+                      + [- cvar[kind, _] for _ in range(self._dim)]),
+                bound = self._dim,
+                encoding = self._encoding,
+                vpool = self._pool))
 
     def get_conflicts(self,
                       amat: np.ndarray,
@@ -139,13 +144,15 @@ class Conflict:
         Given an A matrix get up to times counterexamples to resolvability.
         """
         assumptions = [(2 * int(amat[key]) - 1) * lit
-                       for key, lit in self._alit.items()]
-        if verbose > 1:
+                       for key, lit in self._avar.items()]
+        if verbose > 2:
             print(f"assumptions = {assumptions}")
         for _ in range(times):
             status = self._solve.solve(assumptions = assumptions)
-            if verbose > 0:
-                print(f"status CONFLICTS = {status} time = {self._solve.time()}")
+            stime = self._solve.time()
+            self._cum_time += stime
+            if verbose > 1:
+                print(f"status Conflicts = {status} time = {stime}")
             if not status:
                 return
             # get counterexample
@@ -154,18 +161,16 @@ class Conflict:
             model = self._solve.get_model()
             xval = getvec(self._pool, 'X', model)
             yval = getvec(self._pool, 'Y', model)
-            if verbose > 0:
+            if verbose > 1:
                 print(f"counterexample = {xval - yval}")
                 # Check it
                 chk = amat @ (xval - yval)
                 if not (chk == 0).all():
                     raise ValueError(f"residual = {chk}")
             # Forbid this value
-            # Should we make it conditional on the assumptions?
-            forbid = ([int(1 - 2*xval[_]) * self._pool.id(('X', _))
-                       for _ in range(self._dim)]
-                      + [int(1 - 2*yval[_]) * self._pool.id(('Y', _))
-                         for _ in range(self._dim)])
+            # Note: must convert np.int8 to int
+            forbid = ([int(1 - 2*xval[_]) * self._xvar[_] for _ in range(self._dim)]
+                      + [int(1 - 2*yval[_]) * self._yvar[_] for _ in range(self._dim)])
             # Make this conditional on the assumptions
             self._solve.add_clause([- _ for _ in assumptions] + forbid)
 
@@ -177,6 +182,11 @@ class Conflict:
         Get the initial model clause census.
         """
         return Counter(map(len, self._cnf.clauses))
+
+    @property
+    def cum_time(self):
+        """ Cumulative solving times """
+        return self._cum_time
 
 class Resolve:
     """
@@ -194,15 +204,17 @@ class Resolve:
         self._encoding = getattr(EncType, encode, EncType.totalizer)
         self._cnf = CNF()
         self._pool = IDPool()
-        self._alits = {_ : self._pool.id(('A',) + _)
+        self._avar = {_ : self._pool.id(('A',) + _)
                        for _ in product(range(self._mdim),range(self._dim))}
         if alt:
             self._model1()
         else:
             self._model2()
+        self._solve_name = solver
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
                              use_timer = True, **kwds)
+        self._cum_time = 0.0
 
     @property
     def census(self):
@@ -211,19 +223,26 @@ class Resolve:
         """
         return Counter(map(len, self._cnf.clauses))
 
+    @property
+    def cum_time(self):
+        """ Cumulative time """
+        return self._cum_time
+
     def get(self, verbose: int = 0) -> np.ndarray | None:
         """
         Get a resolving matrix
         """
         status = self._solve.solve()
-        if verbose > 0:
-            print(f"RESOLVE status = {status} time = {self._solve.time()}")
+        stime = self._solve.time()
+        self._cum_time += stime
+        if verbose > 1:
+            print(f"RESOLVE status = {status} time = {stime}")
         if not status:
             return None
         model = self._solve.get_model()
         amat = extract_mat(self._pool, 'A', model)
-        # Check that A has changed.
-        if verbose > 0:
+
+        if verbose > 1:
             print(f"amat = {amat}")
         # Check that A has all columns distinct
         col_diffs = _check_diff_cols(amat)
@@ -237,20 +256,19 @@ class Resolve:
 
     def add_conflict(self, xval: np.ndarray):
         """
-        Add conflict clauses.
+        Add clauses that forbid A@x = 0
         """
-        for clause in negate(
-                self._pool,
-                chain(*(CardEnc.equals(
-                    lits = ([self._alits[kind, _]
-                             for _ in range(self._dim) if xval[_] == 1]
-                            + [- self._alits[kind, _]
-                               for _ in range(self._dim) if xval[_] == -1]),
-                    bound = (xval == -1).sum(),
-                    encoding = self._encoding,
-                    vpool = self._pool).clauses
-                        for kind in range(self._mdim)))):
-            self._solve.add_clause(clause)
+        inequalities = []
+        indicators = [self._pool._next() for _ in range(self._mdim)]
+        bound = (xval == -1).sum()
+        for kind in range(self._mdim):
+            lits = ([self._avar[kind, _]
+                     for _ in range(self._dim) if xval[_] == 1]
+                    + [- self._avar[kind, _]
+                       for _ in range(self._dim) if xval[_] == -1])
+            inequalities += list(
+                not_equal(self._pool, lits, bound, indicators[kind]))
+        self._solve.append_formula(inequalities + [indicators])
 
     def _model1(self):
         """
@@ -258,14 +276,14 @@ class Resolve:
         """
         # Non zero first row
         # Everything is increasing so others are nonzero
-        self._cnf.append([self._pool.id(('A', 0, _)) for _ in range(self._dim)])
+        self._cnf.append([self._avar[0, _] for _ in range(self._dim)])
         for kind in range(self._mdim - 1):
             self._cnf.extend(list(special_less(self._pool,
-                [self._pool.id(('A', kind, _)) for _ in range(self._dim)],
-                [self._pool.id(('A', kind + 1, _)) for _ in range(self._dim)])))
+                [self._avar[kind, _] for _ in range(self._dim)],
+                [self._avar[kind + 1, _] for _ in range(self._dim)])))
         for kind in range(self._mdim):
             self._cnf.extend(CardEnc.atmost(lits =
-                                            [self._pool.id(('A', kind, _))
+                                            [self._avar[kind, _]
                                              for _ in range(self._dim)],
                                             bound = self._dim // 2,
                                             encoding = self._encoding,
@@ -273,36 +291,40 @@ class Resolve:
         # Create the column constraints
         # Row -1 everything is equal
         # E[k,i,j] = (A[:k+1,i] == A[:k+1,j]).all()
-        self._cnf.extend([[self._pool.id(('E', -1, ind, jind))]
-                          for jind in range(1, self._dim)
-                          for ind in range(jind)])
+        evar = {_: self._pool.id(('E',) + _)
+                for _ in product(range(-1, self._mdim),
+                                 combinations(range(self._dim), 2))}
+        zvar = {_: self._pool.id(('Z',) + _)
+                for _ in product(range(self._mdim),
+                                 combinations(range(self._dim), 2))}
+        self._cnf.extend([[evar[-1, _]]
+                           for _ in combinations(range(self._dim), 2)])
         # The remaining rows
         # defined = set()
-        for kind in range(self._mdim):
-            for jind in range(1, self._dim):
-                for ind in range(jind):
-                    # Z[k,i,j] <-> A[k,i] == A[k,j]
-                    self._cnf.extend(set_xor(-self._pool.id(('Z', kind, ind, jind)),
-                                             self._pool.id(('A', kind, ind)),
-                                             self._pool.id(('A', kind, jind))))
-                    # E[k,i,j] <-> Z[k,i,j] /\ E[k-1,i,j]
-                    # defined.add((kind, ind, jind))
-                    self._cnf.extend(set_and(self._pool.id(('E', kind, ind, jind)),
-                                             self._pool.id(('E', kind-1, ind, jind)),
-                                             self._pool.id(('Z', kind, ind, jind))))
-                    # E[k-1,i,j] /\ A[k,i] -> A[k,j]
-                    # Shift all 1's in a sector to the left
-                    self._cnf.append([-self._pool.id(('E',kind-1, ind, jind)),
-                                 -self._pool.id(('A', kind, ind)),
-                                 self._pool.id(('A', kind, jind))])
+        for kind, (ind, jind) in product(range(self._mdim),
+                                         combinations(range(self._dim), 2)):
+            
+            # Z[k,i,j] <-> A[k,i] == A[k,j]
+            self._cnf.extend(set_equal(zvar[kind, (ind, jind)],
+                                       self._avar[kind, ind],
+                                       self._avar[kind, jind]))
+            # E[k,i,j] <-> Z[k,i,j] /\ E[k-1,i,j]
+            # defined.add((kind, ind, jind))
+            self._cnf.extend(set_and(evar[kind, (ind, jind)],
+                                     evar[kind - 1, (ind, jind)],
+                                     zvar[kind, (ind, jind)]))
+            # E[k-1,i,j] /\ A[k,i] -> A[k,j]
+            # Shift all 1's in a sector to the left
+            self._cnf.append([-evar[kind-1, (ind, jind)],
+                              -self._avar[kind, ind],
+                              self._avar[kind, jind]])
         # Distinct columns
         # req = {(mdim - 1, ind, jind) for jind in range(1, dim) for ind in range(jind)}
         # print(f"req = {sorted(req)}")
         # if not req.issubset(defined):
         #    raise ValueError(f"Not defined {req.difference(defined)}")
-        self._cnf.extend([[-self._pool.id(('E', self._mdim-1, ind, jind))]
-                          for jind in range(1, self._dim)
-                          for ind in range(jind)])
+        self._cnf.extend([[-evar[self._mdim - 1, _]]
+                           for _ in combinations(range(self._dim), 2)])
 
     def _model2(self):
         """
@@ -311,23 +333,26 @@ class Resolve:
 
         # Non zero first row
         # Everything is increasing so others are nonzero
-        self._cnf.append([self._alits[0, _] for _ in range(self._dim)])
+        self._cnf.append([self._avar[0, _] for _ in range(self._dim)])
+        self._cnf.append([self._avar[_, 0] for _ in range(self._mdim)])
         # Double sorted increasing
         for ind in range(self._mdim-1):
-            self._cnf.extend(list(lex_compare([self._alits[ind, _]
+            self._cnf.extend(list(lex_compare(self._pool,
+                                              [self._avar[ind, _]
                                                for _ in range(self._dim)],
-                                              [self._alits[ind + 1, _]
+                                              [self._avar[ind + 1, _]
                                                for _ in range(self._dim)],
-                                              Comparator.LESS, self._pool)))
+                                              Comparator.LESS)))
         for ind in range(self._dim-1):
-            self._cnf.extend(list(lex_compare([self._alits[_, ind]
+            self._cnf.extend(list(lex_compare(self._pool,
+                                              [self._avar[_, ind]
                                                for _ in range(self._mdim)],
-                                              [self._alits[_, ind+1]
+                                              [self._avar[_, ind+1]
                                                for _ in range(self._mdim)],
-                                              Comparator.LESS, self._pool)))
+                                              Comparator.LESS)))
         for ind in range(self._mdim):
             self._cnf.extend(CardEnc.equals(lits =
-                                            [self._alits[ind, _]
+                                            [self._avar[ind, _]
                                              for _ in range(self._dim)],
                                             bound = self._dim // 2,
                                             encoding = self._encoding,
@@ -339,26 +364,33 @@ def ping_pong(dim: int, mdim: int,
               encode: str = 'totalizer',
               solver: str = 'cd15',
               alt: bool = False,
+              check: bool = False,
+              trace: int = 0,
               **kwds) -> np.ndarray | None:
     """
     Ping Pong method.
     """
     resolver = Resolve(dim, mdim - 1, solver=solver, encode=encode, alt = alt, **kwds)
 
-    if verbose > 0:
+    if verbose > 1:
         print(f"Resolve census = {resolver.census}")
 
     conflict = Conflict(dim, mdim - 1, solver=solver, encode=encode, **kwds)
 
-    if verbose > 0:
+    if verbose > 1:
         print(f"Conflict census = {conflict.census}")
 
     old_amat = np.zeros((mdim - 1, dim), dtype = np.int8)
-
+    total_conflicts = 0
+    pass_no = 0
     while True:
+        pass_no += 1
+        if trace > 0 and pass_no % trace == 0:
+            print(f"At pass {pass_no}, resolve time = {resolver.cum_time}")
+            print(f"conflict time = {conflict.cum_time}, conflicts = {total_conflicts}")
         # Add new conflicts.  At the beginning there are none
-        amat = resolver.get()
-        if verbose > 0:
+        amat = resolver.get(verbose = verbose)
+        if verbose > 1:
             print(f"A:\n{amat}")
         if amat is None:
             return None
@@ -372,5 +404,6 @@ def ping_pong(dim: int, mdim: int,
         for xval in conflict.get_conflicts(amat, times, verbose = verbose):
             con_count += 1
             resolver.add_conflict(xval)
+        total_conflicts += con_count
         if con_count == 0: # success!
             return amat
