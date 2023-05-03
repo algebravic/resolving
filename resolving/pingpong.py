@@ -430,7 +430,7 @@ def ping_pong(dim: int, mdim: int,
         if verbose > 1:
             print(f"A:\n{amat}")
         if amat is None:
-            return None
+            break
         # Check validity
         if (old_amat == amat).all():
             raise ValueError("A matrix didn't change!")
