@@ -285,14 +285,14 @@ class Resolve:
                      for _ in range(self._dim) if xval[_] == 1]
                     + [- self._avar[kind, _]
                        for _ in range(self._dim) if xval[_] == -1])
-            indic1 = self._pool.next()
+            indic1 = self._pool._next()
             indicators.append(indic1)
             for clause in CardEnc.atmost(
                     lits = lits, bound = bound - 1,
                     encoding = self._encoding,
                     vpool = self._pool).clauses:
                 self._solve.add_clause([-indic1] + clause)
-            indic2 = self._pool.next()
+            indic2 = self._pool._next()
             indicators.append(indic2)
             for clause in CardEnc.atleast(
                     lits = lits, bound = bound + 1,
