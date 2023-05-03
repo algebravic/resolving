@@ -299,7 +299,7 @@ class Resolve:
                     encoding = self._encoding,
                     vpool = self._pool).clauses:
                 self._solve.add_clause([-indic2] + clause)
-            self._solve.add_clause(indicators)
+        self._solve.add_clause(indicators)
 
     def _model1(self):
         """
