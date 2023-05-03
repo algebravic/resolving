@@ -256,6 +256,7 @@ class Resolve:
             raise ValueError(f"Columns not distinct: {col_diffs}!")
         return amat
     def add_conflict(self, xval: np.ndarray):
+        """ Add conflict clauses """
         (self.bdd_add_conflict if self._alt else self.alt_add_conflict)(xval)
             
     def bdd_add_conflict(self, xval: np.ndarray):
