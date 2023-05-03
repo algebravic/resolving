@@ -443,4 +443,9 @@ def ping_pong(dim: int, mdim: int,
             resolver.add_conflict(xval)
         total_conflicts += con_count
         if con_count == 0: # success!
-            return amat
+            break
+
+    if verbose > 0:
+        print(f"conflict time = {conflict.cum_time}, conflicts={total_conflicts}")
+        print(f"Total passes: {pass_no}, resolve time = {resolver.cum_time}.")
+    return amat
