@@ -493,6 +493,110 @@ But suppose that $z,w$ are new variables and we encode $F(X,Y)
 In the BDD encoding the auxilliary variables are completely determined
 by the $X$ variables.
 
+* <2023-05-02 Tue> The results
+
+Definition: If $G$ is an unidirected graph, let $d_G(x,y)$ denote the
+length of the shortest path in $G$ between $x$ and $y$.  A subset $S
+\subseteq V(G)$ is *resolving* if for every $x \ne y \in V(G)$ there
+is a $z \in S$ such that $d_G(x,z) \ne d_G(y,z)$.  The *metric
+dimension* of $G$ is the cardinality of the smallest resolving set.
+
+Definition: If $S$ is a set, the *Hamming Distance* between two
+$n$-tuples in $S^n$ is the number of positions in which they differ.
+
+Notation: If $n\ge 1$ is an integer, denote by $Q^n$ the *hypercube of
+dimension $n$*.  This is the undirected graph whose vertices are
+labeled with $n$-tuples of 0/1, with two vertices connected by an edge
+if the *Hamming distance* between their labels is 1.
+
+We are particularly interested in the metric dimension of the hypercube:
+$Q^n$.   Denote by $\oplus$ the operation on the set $\{0,1\}$ given
+by $0 \oplus 0 = 1 \oplus 1 = 0$, and $0 \oplus 1 = 1 \oplus 0 = 1$.
+We note that for $x,y \in \{0,1\}$ we have $(-1)^{x \oplus y} =
+(-1)^{x+y}$.  We also have $(-1)^x = 1 - 2x$.  We extend the $\oplus$
+operation to $n$-tuples coordinatewise.
+
+Notation: if $A$ is a 0/1 matrix, or $v$ a 0/1 vector, denote by $A'$
+(resp. $v'$) the matrix whose $(i,j)$ entry is $(-1)^{A_{i,j})$
+(resp. $i$-th entry is $(-1)^{v_i}$).
+Definition: An $m \times n$ matrix, $A$, with entries in $\{0,1\}$ is a
+*sensing matrix* if $A'u' \ne A'v'$ for all $u \ne v \in \{0,1\}^n$.
+
+Note that if $u,v \in V(Q^n)$ then $\sum_i (-1)^{u_i} (-1)^{v_i} =
+\sum_i (1 - 2 (u_i \oplus v_i)) = n - 2 d_{Q^n} (u,v)$.
+
+Note that $d_{Q^n}(z,u) \ne d_{Q^n}(z,v)$ if and only if
+$0 \ne \sum_i (1-2z_i)(1-2u_i) - (1-2z_i)(1-2v_i) =
+2\sum_i (1-2z_i)(u_i-v_i)$.  Or
+$\sum_i (u_i - v_i) = 2\sum_i z_i (u_i - v_i)$
+Let $A$ denote the matrix whose rows are the $z_i$.
+Then
+\begin{displaymath}
+B := 
+\begin{bmatrix}
+1 & 1 & \dots & 1 \\
+& & -2A \\
+\end{bmatrix}
+\end{displaymath}
+Then $A$ is a sensing matrix if and only if $2A x = e^T x$ for all vectors
+$x \ne 0$ whose coordinates are in $\{0,-1,1\}$, $e$ is the all 1's vector.
+
+Note: If the vectors, $x$ are restricted to those of the form
+$\phi(u) - \phi(v)$, then $e^T x = 0$.
+
+Lemma: A subset $S \subset V(Q^n)$ is a resolving set for $Q^n$ if and
+only if the $m\times n$ matrix whose rows are the labels of $S$ is a
+sensing matrix.
+
+Lemma: Let $a \in \{0,1\}^n$, and $e = (1, \dots, 1)$.  A set $S
+\subseteq V(Q^n)$ is resolving if and only if $a \oplus S$ is
+resolving, where $a + S := \{a + \ell(v) : v \in S\}$.  A set $S$ is
+resolving if and only if for every $x \in S$ the set $S' =
+S\backslash\{x\} \cup \{e + x\}$ is resolving.
+
+Definition: A sensing matrix is normalized if its first row is 0.
+
+Corollary: The metric dimension of $Q^n$ is $\ge m$ if and only if
+there exists an $m \times n$ normalized sensing matrix.
+
+Definition: A 0/1 matrix, $A$ is *subsensing* if none of its rows is 0
+and $Ax \ne 0$ for all $x \in \{0,-1,1\}$ such that $e^T x = 0$.
+
+Corollary: The metric dimensioinm of $Q^n$ is $\ge m$ if and only if
+there exists an $(m-1) \times n$ subsensing matrix.
+
+Proof: Let $A$ be a normalized sensing matrix.  
+
+Notation: If $A$ is a matrix and $S$ is a subset of its columns,
+denote by $A_S$ the sum of the columns indexed by $S$. 
+
+Proposition: An $m \times n$ 0/1 matrix $A$ is a subsensing matrix if
+and only if the the quantities $A_S$ for $S$ all subsets of column
+indices of cardinality $\lfloor n / 2 \rfloor$ are distinct.
+
+Corollary: An $m \times n$ subsensing matrix exists if and only if one
+exists whose rows and columns are non zero and lexicographically
+strictly increasing with respect to row/column index.
+
+Proof: By the proposition, it is clear that permuting the rows and/or
+columns of a subsensing matrix does not affect the property of being
+subsensing.
+
+* <2023-05-03 Wed> Hamming Graphs
+Let $S$ be a finite set.  The *Hamming distance* on the set $S^n$ is
+defined by:
+$d((a_1, \dots, a_n), (b_1, \dots, b_n)) = \#\{1 \le i \le n: a_i \ne b_i\}$
+
+The $n$-th order Hamming graph over $S$ is a graph whose vertices are
+labeled by distinct $n$-tuples of elements of $S$, with an edge
+between two vertices when the Hamming distance between their labels is
+1.
+
+We define a map from $\phi: S^n \rightarrow \{0,1\}^{S \times n}$, by
+a *one-hot* mapping, $s \mapsto v$ where $v_t = 0$ if $t\ne s$ and
+$v_s=1$.
+
+Lemma: If $s,t \in S^n$, then $2 H(s,t) = d_H(\phi(s), \phi(t))$.
 
 
 
