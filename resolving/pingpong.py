@@ -194,6 +194,7 @@ class Resolve:
     """
 
     def __init__(self, dim: int, mdim: int,
+                 alt_model: bool = False,
                  alt: bool = False,
                  solver = 'cd15',
                  encode = 'totalizer',
@@ -206,7 +207,7 @@ class Resolve:
         self._pool = IDPool()
         self._avar = {_ : self._pool.id(('A',) + _)
                        for _ in product(range(self._mdim),range(self._dim))}
-        if alt:
+        if alt_model:
             self._model1()
         else:
             self._model2()
@@ -215,6 +216,7 @@ class Resolve:
                              bootstrap_with = self._cnf,
                              use_timer = True, **kwds)
         self._cum_time = 0.0
+        self._alt = alt
 
     @property
     def census(self):
@@ -253,8 +255,10 @@ class Resolve:
             print(f"A array = {dict(avalues)}")
             raise ValueError(f"Columns not distinct: {col_diffs}!")
         return amat
-
     def add_conflict(self, xval: np.ndarray):
+        (self.alt_add_conflict if self._alt else self.bdd_add_conflict)(xval)
+            
+    def bdd_add_conflict(self, xval: np.ndarray):
         """
         Add clauses that forbid A@x = 0
         """
@@ -269,6 +273,33 @@ class Resolve:
             inequalities += list(
                 not_equal(self._pool, lits, bound, indicators[kind]))
         self._solve.append_formula(inequalities + [indicators])
+
+    def alt_add_conflict(self, xval: np.ndarray):
+        """
+        Add clauses that forbid A@x = 0
+        """
+        indicators = []
+        bound = (xval == -1).sum()
+        for kind in range(self._mdim):
+            lits = ([self._avar[kind, _]
+                     for _ in range(self._dim) if xval[_] == 1]
+                    + [- self._avar[kind, _]
+                       for _ in range(self._dim) if xval[_] == -1])
+            indic1 = self._pool.next()
+            indicators.append(indic1)
+            for clause in CardEnc.atmost(
+                    lits = lits, bound = bound - 1,
+                    encoding = self._encoding,
+                    vpool = self._pool).clauses:
+                self._solve.add_clause([-indic1] + clause)
+            indic2 = self._pool.next()
+            indicators.append(indic2)
+            for clause in CardEnc.atleast(
+                    lits = lits, bound = bound + 1,
+                    encoding = self._encoding,
+                    vpool = self._pool).clauses:
+                self._solve.add_clause([-indic2] + clause)
+            self._solve.add_clause(indicators)
 
     def _model1(self):
         """
@@ -364,13 +395,19 @@ def ping_pong(dim: int, mdim: int,
               encode: str = 'totalizer',
               solver: str = 'cd15',
               alt: bool = False,
+              alt_model: bool = False,
               check: bool = False,
               trace: int = 0,
               **kwds) -> np.ndarray | None:
     """
     Ping Pong method.
     """
-    resolver = Resolve(dim, mdim - 1, solver=solver, encode=encode, alt = alt, **kwds)
+    resolver = Resolve(dim, mdim - 1,
+                       solver=solver,
+                       encode=encode,
+                       alt = alt,
+                       alt_model = alt_model,
+                       **kwds)
 
     if verbose > 1:
         print(f"Resolve census = {resolver.census}")
