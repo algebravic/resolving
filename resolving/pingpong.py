@@ -219,6 +219,7 @@ class Resolve:
                              use_timer = True, **kwds)
         self._cum_time = 0.0
         self._alt = alt
+        self._conflicts = set()
 
     @property
     def census(self):
@@ -231,6 +232,11 @@ class Resolve:
     def cum_time(self):
         """ Cumulative time """
         return self._cum_time
+
+    @property
+    def num_conflicts(self):
+        """ Return the number of distinct conflicts """
+        return len(self._conflicts)
 
     def get(self, verbose: int = 0, times: int = 1) -> Iterable[np.ndarray]:
         """
@@ -269,6 +275,10 @@ class Resolve:
 
     def add_conflict(self, xval: np.ndarray):
         """ Add conflict clauses """
+        txval = tuple(xval.tolist())
+        if txval in self._conflicts:
+            return
+        self._conflicts.add(txval)
         (self.bdd_add_conflict if self._alt else self.alt_add_conflict)(xval)
             
     def bdd_add_conflict(self, xval: np.ndarray):
@@ -432,14 +442,13 @@ def ping_pong(dim: int, mdim: int,
         print(f"Conflict census = {conflict.census}")
 
     old_amat = np.zeros((mdim - 1, dim), dtype = np.int8)
-    total_conflicts = 0
     pass_no = 0
     found_solution = False
     while True:
         pass_no += 1
         if trace > 0 and pass_no % trace == 0:
             print(f"At pass {pass_no}, resolve time = {resolver.cum_time}")
-            print(f"conflict time = {conflict.cum_time}, conflicts = {total_conflicts}")
+            print(f"conflict time = {conflict.cum_time}, conflicts = {resolver.num_conflicts}")
         # Add new conflicts.  At the beginning there are none
         amat_count = 0
         conflicts = []
@@ -464,9 +473,8 @@ def ping_pong(dim: int, mdim: int,
             break
         for xval in conflicts:
             resolver.add_conflict(xval)
-        total_conflicts += len(conflicts)
 
     if verbose > 0:
-        print(f"conflict time = {conflict.cum_time}, conflicts={total_conflicts}")
+        print(f"conflict time = {conflict.cum_time}, conflicts={resolver.num_conflicts}")
         print(f"Total passes: {pass_no}, resolve time = {resolver.cum_time}.")
     return amat
