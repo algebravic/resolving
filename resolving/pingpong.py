@@ -35,7 +35,9 @@ def get_prefix(pool: IDPool, prefix: str, model: MODEL) -> List[Tuple[str, int,.
     """
     Get all prefixes which are defined.
     """
+    
     name_val = [(pool.obj(abs(_)), int(_ > 0)) for _ in model]
+    
     return [(_[0][1:], _[1])
             for _ in name_val if isinstance(_[0], tuple) and _[0][0] == prefix]
 
@@ -230,31 +232,41 @@ class Resolve:
         """ Cumulative time """
         return self._cum_time
 
-    def get(self, verbose: int = 0) -> np.ndarray | None:
+    def get(self, verbose: int = 0, times: int = 1) -> Iterable[np.ndarray]:
         """
         Get a resolving matrix
         """
-        status = self._solve.solve()
-        stime = self._solve.time()
-        self._cum_time += stime
-        if verbose > 1:
-            print(f"RESOLVE status = {status} time = {stime}")
-        if not status:
-            return None
-        model = self._solve.get_model()
-        amat = extract_mat(self._pool, 'A', model)
+        for _ in range(times):
+            status = self._solve.solve()
+            stime = self._solve.time()
+            self._cum_time += stime
+            if verbose > 1:
+                print(f"Resolve status = {status} time = {stime}")
+                if not status:
+                    break
+            if not status:
+                break
+            
+            model = self._solve.get_model()
+            
+            amat = extract_mat(self._pool, 'A', model)
+            yield amat
+            # Now forbid this one
+            self._solve.add_clause(
+                [- (2 * int(amat[key]) - 1) * val
+                 for key, val in self._avar.items()])
 
-        if verbose > 1:
-            print(f"amat = {amat}")
-        # Check that A has all columns distinct
-        col_diffs = _check_diff_cols(amat)
-        if col_diffs:
-            evalues = get_prefix(self._pool, 'E', model)
-            print(f"E array = {dict(evalues)}")
-            avalues = get_prefix(self._pool, 'A', model)
-            print(f"A array = {dict(avalues)}")
-            raise ValueError(f"Columns not distinct: {col_diffs}!")
-        return amat
+            if verbose > 1:
+                print(f"amat = {amat}")
+            # Check that A has all columns distinct
+            col_diffs = _check_diff_cols(amat)
+            if col_diffs:
+                evalues = get_prefix(self._pool, 'E', model)
+                print(f"E array = {dict(evalues)}")
+                avalues = get_prefix(self._pool, 'A', model)
+                print(f"A array = {dict(avalues)}")
+                raise ValueError(f"Columns not distinct: {col_diffs}!")
+
     def add_conflict(self, xval: np.ndarray):
         """ Add conflict clauses """
         (self.bdd_add_conflict if self._alt else self.alt_add_conflict)(xval)
@@ -392,6 +404,7 @@ class Resolve:
 
 def ping_pong(dim: int, mdim: int,
               times: int = 1,
+              rtimes: int = 1,
               verbose: int = 0,
               encode: str = 'totalizer',
               solver: str = 'cd15',
@@ -421,30 +434,37 @@ def ping_pong(dim: int, mdim: int,
     old_amat = np.zeros((mdim - 1, dim), dtype = np.int8)
     total_conflicts = 0
     pass_no = 0
+    found_solution = False
     while True:
         pass_no += 1
         if trace > 0 and pass_no % trace == 0:
             print(f"At pass {pass_no}, resolve time = {resolver.cum_time}")
             print(f"conflict time = {conflict.cum_time}, conflicts = {total_conflicts}")
         # Add new conflicts.  At the beginning there are none
-        amat = resolver.get(verbose = verbose)
-        if verbose > 1:
-            print(f"A:\n{amat}")
-        if amat is None:
+        amat_count = 0
+        conflicts = []
+        amat = None
+        for amat in resolver.get(times = rtimes, verbose = verbose):
+            amat_count += 1
+            if verbose > 1:
+                print(f"A:\n{amat}")
+            # Check validity
+            if (old_amat == amat).all():
+                raise ValueError("A matrix didn't change!")
+            old_amat = amat.copy()
+            con_count = 0
+            # Give A (as assumptions) to model2 to find conflicts.
+            for xval in conflict.get_conflicts(amat, times, verbose = verbose):
+                con_count += 1
+                conflicts.append(xval)
+            if con_count == 0:
+                found_solution = True
+                break
+        if found_solution or amat_count == 0:
             break
-        # Check validity
-        if (old_amat == amat).all():
-            raise ValueError("A matrix didn't change!")
-        old_amat = amat.copy()
-
-        # Give A (as assumptions) to model2 to find conflicts.
-        con_count = 0
-        for xval in conflict.get_conflicts(amat, times, verbose = verbose):
-            con_count += 1
+        for xval in conflicts:
             resolver.add_conflict(xval)
-        total_conflicts += con_count
-        if con_count == 0: # success!
-            break
+        total_conflicts += len(conflicts)
 
     if verbose > 0:
         print(f"conflict time = {conflict.cum_time}, conflicts={total_conflicts}")
