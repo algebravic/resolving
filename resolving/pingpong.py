@@ -88,6 +88,9 @@ class Conflict:
                       for _ in product(range(mdim), range(dim))}
         self._xvar = {_: self._pool.id(('X', _)) for _ in range(self._dim)}
         self._yvar = {_: self._pool.id(('Y', _)) for _ in range(self._dim)}
+        # Assumption variables to find largest weight conflict
+        self._wvar = {_: self._pool.id(('W', _))
+                      for _ in range(2, self._dim // 2 + 1)}
         self._generate()
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
@@ -102,7 +105,13 @@ class Conflict:
         xlits = [self._xvar[_] for _ in range(self._dim)]
         ylits = [self._yvar[_] for _ in range(self._dim)]
         self._cnf.extend([[-_[0], - _[1]] for _ in zip(xlits, ylits)])
-
+        for wgt in range(2, self._dim // 2 + 1):
+            self._cnf.extend(list(([- self._wvar[wgt]] + clause
+                             for clause in CardEnc.equals(
+                                     lits = xlits,
+                                     bound = wgt,
+                                     encoding = self._encoding,
+                                     vpool = self._pool).clauses)))
         # Support (even) is >= 4
         self._cnf.extend(CardEnc.atleast(
             lits = xlits + ylits,
@@ -141,6 +150,7 @@ class Conflict:
     def get_conflicts(self,
                       amat: np.ndarray,
                       times: int,
+                      largest: bool = False, # Find largest weight
                       verbose: int = 0) -> Iterable[np.ndarray]:
         """
         Given an A matrix get up to times counterexamples to resolvability.
@@ -149,31 +159,53 @@ class Conflict:
                        for key, lit in self._avar.items()]
         if verbose > 2:
             print(f"assumptions = {assumptions}")
+        if largest:
+            tries = list(range(self._dim // 2, 1, -1))
+        else:
+            tries = [0]
         for _ in range(times):
-            status = self._solve.solve(assumptions = assumptions)
-            stime = self._solve.time()
-            self._cum_time += stime
-            if verbose > 1:
-                print(f"status Conflicts = {status} time = {stime}")
-            if not status:
-                return
-            # get counterexample
-            # forbid it in solve2
-            # add a conflict in solve1
-            model = self._solve.get_model()
-            xval = getvec(self._pool, 'X', model)
-            yval = getvec(self._pool, 'Y', model)
-            if verbose > 1:
-                print(f"counterexample = {xval - yval}")
-                # Check it
+            found = False
+            for wgt in tries:
+                # Consider only weight = wgt
+                if largest:
+                    weights = ([self._wvar[wgt]]
+                               + [-self._wvar[_]
+                                  for _ in range(2, self._dim // 2 + 1)
+                                  if _ != wgt])
+                else: # Turn off all selection constraints
+                    weights = [-self._wvar[_]
+                               for _ in range(2, self._dim // 2 + 1)]
+                status = self._solve.solve(assumptions = assumptions + weights)
+
+                stime = self._solve.time()
+                self._cum_time += stime
+                if verbose > 1:
+                    print(f"status Conflicts = {status} time = {stime}")
+                if not status:
+                    continue
+                found = True
+                # get counterexample
+                # forbid it in solve2
+                # add a conflict in solve1
+                model = self._solve.get_model()
+                xval = getvec(self._pool, 'X', model)
+                yval = getvec(self._pool, 'Y', model)
+                if verbose > 1:
+                    print(f"counterexample = {xval - yval}")
+                    # Check it
                 chk = amat @ (xval - yval)
                 if not (chk == 0).all():
                     raise ValueError(f"residual = {chk}")
-            # Forbid this value
-            # Note: must convert np.int8 to int
-            forbid = ([int(1 - 2*xval[_]) * self._xvar[_] for _ in range(self._dim)]
-                      + [int(1 - 2*yval[_]) * self._yvar[_] for _ in range(self._dim)])
-            # Make this conditional on the assumptions
+                # Forbid this value
+                # Note: must convert np.int8 to int
+                forbid = ([int(1 - 2*xval[_]) * self._xvar[_] for _ in range(self._dim)]
+                          + [int(1 - 2*yval[_]) * self._yvar[_] for _ in range(self._dim)])
+                # Make this conditional on the assumptions
+                break
+
+            if not found:
+                return
+
             self._solve.add_clause([- _ for _ in assumptions] + forbid)
 
             yield xval - yval
@@ -420,7 +452,7 @@ def ping_pong(dim: int, mdim: int,
               solver: str = 'cd15',
               alt: bool = False,
               alt_model: bool = False,
-              check: bool = False,
+              largest: bool = False,
               trace: int = 0,
               **kwds) -> np.ndarray | None:
     """
@@ -461,18 +493,18 @@ def ping_pong(dim: int, mdim: int,
             if (old_amat == amat).all():
                 raise ValueError("A matrix didn't change!")
             old_amat = amat.copy()
-            con_count = 0
             # Give A (as assumptions) to model2 to find conflicts.
-            for xval in conflict.get_conflicts(amat, times, verbose = verbose):
-                con_count += 1
-                conflicts.append(xval)
-            if con_count == 0:
+            lconf = list(conflict.get_conflicts(amat, times,
+                                                largest = largest,
+                                                verbose = verbose))
+            if len(lconf) == 0:
                 found_solution = True
                 break
+            conflicts += lconf
         if found_solution or amat_count == 0:
             break
-        for xval in conflicts:
-            resolver.add_conflict(xval)
+        # Only do this for the side effects
+        list(map(resolver.add_conflict, conflicts))
 
     if verbose > 0:
         print(f"conflict time = {conflict.cum_time}, conflicts={resolver.num_conflicts}")
