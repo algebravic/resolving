@@ -230,6 +230,7 @@ class Resolve:
     def __init__(self, dim: int, mdim: int,
                  alt_model: bool = False,
                  alt: bool = False,
+                 nozero: bool = True,
                  solver = 'cd15',
                  encode = 'totalizer',
                  **kwds):
@@ -241,6 +242,7 @@ class Resolve:
         self._pool = IDPool()
         self._avar = {_ : self._pool.id(('A',) + _)
                        for _ in product(range(self._mdim),range(self._dim))}
+        self._nozero = nozero
         if alt_model:
             self._model1()
         else:
@@ -362,7 +364,8 @@ class Resolve:
         """
         # Non zero first row
         # Everything is increasing so others are nonzero
-        self._cnf.append([self._avar[0, _] for _ in range(self._dim)])
+        if self._nozero:
+            self._cnf.append([self._avar[0, _] for _ in range(self._dim)])
         for kind in range(self._mdim - 1):
             self._cnf.extend(list(special_less(self._pool,
                 [self._avar[kind, _] for _ in range(self._dim)],
@@ -420,7 +423,8 @@ class Resolve:
         # Non zero first row
         # Everything is increasing so others are nonzero
         self._cnf.append([self._avar[0, _] for _ in range(self._dim)])
-        self._cnf.append([self._avar[_, 0] for _ in range(self._mdim)])
+        if self._nozero:
+            self._cnf.append([self._avar[_, 0] for _ in range(self._mdim)])
         # Double sorted increasing
         for ind in range(self._mdim-1):
             self._cnf.extend(list(lex_compare(self._pool,
@@ -453,6 +457,7 @@ def ping_pong(dim: int, mdim: int,
               alt: bool = False,
               alt_model: bool = False,
               largest: bool = False,
+              nozero: bool = True,
               trace: int = 0,
               **kwds) -> np.ndarray | None:
     """
@@ -463,6 +468,7 @@ def ping_pong(dim: int, mdim: int,
                        encode=encode,
                        alt = alt,
                        alt_model = alt_model,
+                       nozero = nozero,
                        **kwds)
 
     if verbose > 1:
