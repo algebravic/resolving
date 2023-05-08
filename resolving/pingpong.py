@@ -441,7 +441,7 @@ class Resolve:
                                                for _ in range(self._mdim)],
                                               Comparator.LESS)))
         for ind in range(self._mdim):
-            self._cnf.extend(CardEnc.equals(lits =
+            self._cnf.extend(CardEnc.atmost(lits =
                                             [self._avar[ind, _]
                                              for _ in range(self._dim)],
                                             bound = self._dim // 2,
