@@ -598,5 +598,33 @@ $v_s=1$.
 
 Lemma: If $s,t \in S^n$, then $2 H(s,t) = d_H(\phi(s), \phi(t))$.
 
+* <2023-05-05 Fri> Quantitative statements
+
+Definition: A *separating vector* of length $n$ is  a vector $x$  with
+coordinates in $\{0,-1,1\}$ and satisfying $\sum_{i=1}^n x_i = 0$, and
+with $\#{ 1 \le i \le n : x_i = 1\} \ge 2$.
+
+Lemma: The number of separating vectors of length $n$ is
+$(3^n - 1)/2 -2 \binom{n}{2}$.
+
+Proof: The number of separating vectors is
+$\sum_{j=2}^{\lfloor n/2 \rfloor} 2^j \binom{n}{n-2j,j,j}$.
+Namely, then number of separating vectors, $x$, with $\#\{1 \le i \le
+n : x_i = 1\}$ is $2^j \binom{n}{n-2j,j,j}$.  However
+$\binom{n}{n-2j,j,j} = \binom{n}{2j} \binom{2j}{j}$
+Let $F(X) = \sum_{j=0}^{\lfloor n/2 \rfloor} \binom{n}{2j} X^{j}$.
+and $G(X) = \sum_{j=0}^{n} \binom{2j}{j} (2X)^j$.
+Note that $2 F(X) = (1 + \sqrt{X})^n + (1 - \sqrt{X})^n$
+
+From OEIS:
+
+A002426		Central trinomial coefficients: largest coefficient of (1 + x + x^2)^n. 
+
+a(n) is asymptotic to d*3^n/sqrt(n) with d around 0.5.. - Benoit
+Cloitre, Nov 02 2002, d = sqrt(3/Pi)/2 = 0.4886025119... - Alec
+Mihailovs (alec(AT)mihailovs.com), Feb 24 2005
+
+
+
 
 
