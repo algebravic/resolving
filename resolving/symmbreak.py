@@ -1,4 +1,4 @@
-"""
+r"""
 Implement snake lex
 """
 from typing import Iterable, List
@@ -25,13 +25,13 @@ def double_lex(pool: IDPool,
                                list(map(int, mat[:, jind+1])),
                                Comparator.LESS)
 
-def zig_zag(mat: np.ndarray) -> Iterable[int]:
+def zig_zag(mat: np.ndarray, par: int) -> Iterable[int]:
     """
     Zig zag from two rows
     """
     _, ndim = mat.shape
     for ind in range(ndim):
-        yield int(mat[ind % 2, ind])
+        yield int(mat[(ind + par) % 2, ind])
           
 def snake_lex(pool: IDPool,
               mat: np.ndarray) -> Iterable[CLAUSE]:
@@ -45,31 +45,29 @@ def snake_lex(pool: IDPool,
     mdim, ndim = mat.shape
     # Column constraints
     # Two cases, mdim, even/odd
-    for ind in range(0,mdim,2):
-        if ind+1 < mdim:
-            yield from lex_compare(pool,
-                                   list(map(int,mat[:,ind])),
-                                   list(map(int,mat[:,ind+1])),
-                                   Comparator.LESSEQUAL)
-        if ind+2 < mdim:
-            yield from lex_compare(pool,
-                                   list(map(int,mat[:,ind])),
-                                   list(map(int,mat[:,ind+2])),
-                                   Comparator.LESSEQUAL)
-            yield from lex_compare(pool,
-                                   reversed(list(map(int,mat[:,ind+1]))),
-                                   reversed(list(map(int,mat[:,ind+2]))),
-                                   Comparator.LESSEQUAL)
-        if ind+3 < mdim:
-            yield from lex_compare(pool,
-                                   reversed(list(map(int,mat[:,ind+1]))),
-                                   reversed(list(map(int,mat[:,ind+3]))),
-                                   Comparator.LESSEQUAL)
-        
+    for ind in range(0, mdim - 1, 2):
+        yield from lex_compare(pool,
+                               list(map(int,mat[ind])),
+                               list(map(int,mat[ind+1])),
+                               Comparator.LESS)
+    for ind in range(0, mdim - 2, 2):
+        yield from lex_compare(pool,
+                               list(map(int,mat[ind])),
+                               list(map(int,mat[ind+2])),
+                               Comparator.LESS)
+        yield from lex_compare(pool,
+                               list(reversed(list(map(int,mat[ind+1])))),
+                               list(reversed(list(map(int,mat[ind+2])))),
+                               Comparator.LESS)
+    for ind in range(0, mdim - 3, 2):
+        yield from lex_compare(pool,
+                               list(reversed(list(map(int,mat[ind+1])))),
+                               list(reversed(list(map(int,mat[ind+3])))),
+                               Comparator.LESS)
+
     # Now the rows
-    for ind in range(0,ndim,2):
-        if ind+2 < ndim:
-            yield from lex_compare(pool,
-                                   list(zig_zag(mat[ind: ind+2])),
-                                   list(zig_zag(mat[ind+1: ind+3])),
-                                   Comparator.LESSEQUAL)
+    for ind in range(0,ndim - 1):
+        yield from lex_compare(pool,
+                               list(zig_zag(mat[:, ind: ind+2], ind % 2)),
+                               list(zig_zag(mat[:, ind: ind+2], (ind +1) % 2)),
+                               Comparator.LESS)

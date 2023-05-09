@@ -30,6 +30,7 @@ from .lex import lex_compare, Comparator
 from .logic import MODEL
 from .logic import negate, set_equal, set_and, special_less, big_or
 from .bdd import not_equal
+from .symmbreak import double_lex, snake_lex
 
 def get_prefix(pool: IDPool, prefix: str, model: MODEL) -> List[Tuple[str, int,...]]:
     """
@@ -233,11 +234,13 @@ class Resolve:
                  nozero: bool = True,
                  solver = 'cd15',
                  encode = 'totalizer',
+                 snake: bool = False,
                  **kwds):
 
         self._dim = dim
         self._mdim = mdim
         self._encoding = getattr(EncType, encode, EncType.totalizer)
+        self._snake = snake
         self._cnf = CNF()
         self._pool = IDPool()
         self._avar = {_ : self._pool.id(('A',) + _)
@@ -426,20 +429,10 @@ class Resolve:
         if self._nozero:
             self._cnf.append([self._avar[_, 0] for _ in range(self._mdim)])
         # Double sorted increasing
-        for ind in range(self._mdim-1):
-            self._cnf.extend(list(lex_compare(self._pool,
-                                              [self._avar[ind, _]
-                                               for _ in range(self._dim)],
-                                              [self._avar[ind + 1, _]
-                                               for _ in range(self._dim)],
-                                              Comparator.LESS)))
-        for ind in range(self._dim-1):
-            self._cnf.extend(list(lex_compare(self._pool,
-                                              [self._avar[_, ind]
-                                               for _ in range(self._mdim)],
-                                              [self._avar[_, ind+1]
-                                               for _ in range(self._mdim)],
-                                              Comparator.LESS)))
+        amat = np.array([[self._avar[ind, jind] for jind in range(self._dim)]
+                         for ind in range(self._mdim)], dtype=int)
+        breaker = snake_lex if self._snake else double_lex
+        self._cnf.extend(list(breaker(self._pool, amat)))
         for ind in range(self._mdim):
             self._cnf.extend(CardEnc.atmost(lits =
                                             [self._avar[ind, _]
@@ -454,6 +447,7 @@ def ping_pong(dim: int, mdim: int,
               verbose: int = 0,
               encode: str = 'totalizer',
               solver: str = 'cd15',
+              snake: bool = False,
               alt: bool = False,
               alt_model: bool = False,
               largest: bool = False,
@@ -469,6 +463,7 @@ def ping_pong(dim: int, mdim: int,
                        alt = alt,
                        alt_model = alt_model,
                        nozero = nozero,
+                       snake = snake,
                        **kwds)
 
     if verbose > 1:
