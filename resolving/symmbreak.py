@@ -7,6 +7,24 @@ from pysat.formula import IDPool
 from .logic import CLAUSE
 from .lex import lex_compare, Comparator
 
+def double_lex(pool: IDPool,
+               mat: np.ndarray) -> Iterable[CLAUSE]:
+    """
+    The Double Lex symmetry breaking constraint.
+    """
+
+    mdim, ndim = mat.shape
+    for ind in range(mdim - 1):
+        yield from lex_compare(pool,
+                               list(map(int, mat[ind])),
+                               list(map(int, mat[ind+1])),
+                               Comparator.LESS)
+    for jind in range(ndim - 1):
+        yield from lex_compare(pool,
+                               list(map(int, mat[:, jind])),
+                               list(map(int, mat[:, jind+1])),
+                               Comparator.LESS)
+
 def zig_zag(mat: np.ndarray) -> Iterable[int]:
     """
     Zig zag from two rows
