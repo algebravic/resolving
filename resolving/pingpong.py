@@ -432,7 +432,7 @@ class Resolve:
         amat = np.array([[self._avar[ind, jind] for jind in range(self._dim)]
                          for ind in range(self._mdim)], dtype=int)
         breaker = snake_lex if self._snake else double_lex
-        self._cnf.extend(list(breaker(self._pool, amat)))
+        self._cnf.extend(list(breaker(self._pool, amat.T)))
         for ind in range(self._mdim):
             self._cnf.extend(CardEnc.atmost(lits =
                                             [self._avar[ind, _]
