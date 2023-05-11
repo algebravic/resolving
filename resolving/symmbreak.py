@@ -45,29 +45,27 @@ def snake_lex(pool: IDPool,
     mdim, ndim = mat.shape
     # Column constraints
     # Two cases, mdim, even/odd
-    for ind in range(0, mdim - 1, 2):
-        yield from lex_compare(pool,
-                               list(map(int,mat[ind])),
-                               list(map(int,mat[ind+1])),
-                               Comparator.LESS)
-    for ind in range(0, mdim - 2, 2):
-        yield from lex_compare(pool,
-                               list(map(int,mat[ind])),
-                               list(map(int,mat[ind+2])),
-                               Comparator.LESS)
-        yield from lex_compare(pool,
-                               list(reversed(list(map(int,mat[ind+1])))),
-                               list(reversed(list(map(int,mat[ind+2])))),
-                               Comparator.LESS)
-    for ind in range(0, mdim - 3, 2):
-        yield from lex_compare(pool,
-                               list(reversed(list(map(int,mat[ind+1])))),
-                               list(reversed(list(map(int,mat[ind+3])))),
-                               Comparator.LESS)
+    # Count = m//2 + 2 * ((m-1) // 2) + (m-2) // 2
+    # = 2 * (m // 2) + 2 * ((m-1) // 2) - 1
+    # If m odd, this is 4*((m-1)/2) - 1 = 2 * m - 3
+    # If m even, this is m + 2*((m-1)/2) - 1 = 2 * m - 2
 
+    for ind in range(2 * ndim - 3):
+        arow = ind // 2
+        if ind % 4 < 2:
+            yield from lex_compare(pool,
+                                   list(map(int,mat[:,arow])),
+                                   list(map(int,mat[:,arow+1+ind%2])),
+                                   Comparator.LESS)
+        else:
+            yield from lex_compare(pool,
+                                   list(reversed(list(map(int,mat[:,arow])))),
+                                   list(reversed(list(map(int,mat[:,arow+1+ind % 2])))),
+                                   Comparator.LESS)
+            
     # Now the rows
-    for ind in range(0,ndim - 1):
+    for ind in range(0,mdim - 1):
         yield from lex_compare(pool,
-                               list(zig_zag(mat[:, ind: ind+2], ind % 2)),
-                               list(zig_zag(mat[:, ind: ind+2], (ind +1) % 2)),
+                               list(zig_zag(mat[ind: ind+2], 0)),
+                               list(zig_zag(mat[ind: ind+2], 1)),
                                Comparator.LESS)
