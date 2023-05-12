@@ -26,9 +26,9 @@ import numpy as np
 from pysat.formula import CNF, IDPool
 from pysat.solvers import Solver
 from pysat.card import CardEnc, EncType
-from .lex import lex_compare, Comparator
+from .lex import lex_compare, Comparator, standard_lex, special_less
 from .logic import MODEL
-from .logic import negate, set_equal, set_and, special_less, big_or
+from .logic import negate, set_equal, set_and, big_or
 from .bdd import not_equal
 from .symmbreak import double_lex, snake_lex
 
