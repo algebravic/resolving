@@ -4,6 +4,7 @@ Lexicographic CNF
 from typing import List, Iterable
 from enum import Enum
 from pysat.formula import CNF, IDPool
+from .logic import set_xor, implies, CLAUSE
 
 class Comparator(Enum):
     """
@@ -76,3 +77,44 @@ def lex_compare(pool: IDPool,
           yield [-ineq, equal]
        case Comparator.GREATEREQUAL:
           yield [ineq, equal]
+
+def lex_less(pool: IDPool,
+             op1: List[int],
+             op2: List[int]) -> Iterable[List[int]]:
+    yield from lex_compare(pool, op1, op2, Comparator.LESS)
+    
+def standard_lex(pool: IDPool,
+                 op1: List[int],
+                 op2: List[int]) -> Iterable[List[int]]:
+    """
+    Lexicographic <
+    """
+    equals = []
+    for lit1, lit2 in zip(op1, op2):
+        lit = pool._next()
+        yield from set_xor(lit, lit1, lit2)
+        equals.append(lit)
+    # lita <= litb: ~lita /\ litb
+    for ind, (lit1, lit2) in enumerate(zip(op1, op2)):
+        yield equals[: ind] + [-lit1, lit2]
+    yield equals # make it strict
+
+def special_less(pool: IDPool,
+                 lit1: CLAUSE,
+                 lit2: CLAUSE,
+                 encode: str = 'totalizer') -> Iterable[CLAUSE]:
+    """
+    (wgt(lit1) >= wgt(lit2)) -> ((wgt(lit1) == wgt(lit2) and lit1 < lex lit2)
+    """
+    eqc = CardEnc.equals(lits = lit1 + [- _ for _ in lit2],
+                         bound = len(lit2),
+                         encoding = getattr(EncType, encode,
+                                            EncType.totalizer),
+                         vpool = pool).clauses
+    eql = CardEnc.atmost(lits = [- _ for _ in lit1] + lit2,
+                         bound = len(lit1),
+                         encoding = getattr(EncType, encode,
+                                            EncType.totalizer),
+                         vpool = pool).clauses
+    lexlt = list(lex_less(pool, lit1, lit2))
+    yield from implies(pool, eql, eqc + lexlt)

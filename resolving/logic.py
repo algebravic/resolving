@@ -4,7 +4,6 @@ Various utilities for generating CNF
 from typing import Iterable, List
 from pysat.formula import IDPool
 from pysat.card import CardEnc, EncType
-from .lex import lex_compare, Comparator
 
 CLAUSE = List[int]
 FORMULA = List[CLAUSE]
@@ -98,23 +97,3 @@ def negate(pool: IDPool, formula: Iterable[CLAUSE]) -> Iterable[CLAUSE]:
     Negate a formula.
     """
     yield from implies(pool, formula, [[]])
-
-def special_less(pool: IDPool,
-                 lit1: CLAUSE,
-                 lit2: CLAUSE,
-                 encode: str = 'totalizer') -> Iterable[CLAUSE]:
-    """
-    (wgt(lit1) >= wgt(lit2)) -> ((wgt(lit1) == wgt(lit2) and lit1 < lex lit2)
-    """
-    eqc = CardEnc.equals(lits = lit1 + [- _ for _ in lit2],
-                         bound = len(lit2),
-                         encoding = getattr(EncType, encode,
-                                            EncType.totalizer),
-                         vpool = pool).clauses
-    eql = CardEnc.atmost(lits = [- _ for _ in lit1] + lit2,
-                         bound = len(lit1),
-                         encoding = getattr(EncType, encode,
-                                            EncType.totalizer),
-                         vpool = pool).clauses
-    lexlt = list(lex_compare(pool, lit1, lit2, Comparator.LESS))
-    yield from implies(pool, eql, eqc + lexlt)
