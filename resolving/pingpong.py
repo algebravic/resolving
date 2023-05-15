@@ -331,6 +331,7 @@ class Resolve:
                            + [- self._conflicts[conflict]])
 
             status = self._solve.solve(assumptions = assumptions)
+            self._cum_time += self._solve.time()
             if status: # It's needed
                 good.add(conflict)
             else:
@@ -552,5 +553,8 @@ def ping_pong(dim: int, mdim: int,
         print(f"duplicates = {resolver.duplicates}")
         print(f"Total passes: {pass_no}, resolve time = {resolver.cum_time}.")
     if minimal and amat is None:
-        return resolver.minimal()
+        minimal_conflicts = resolver.minimal()
+        if verbose > 0:
+            print(f"Final resolve time = {resolver.cum_time}")
+        return minimal_conflicts
     return amat
