@@ -246,6 +246,7 @@ class Resolve:
         self._avar = {_ : self._pool.id(('A',) + _)
                        for _ in product(range(self._mdim),range(self._dim))}
         self._nozero = nozero
+        self._duplicates = 0
         if alt_model:
             self._model1()
         else:
@@ -256,7 +257,7 @@ class Resolve:
                              use_timer = True, **kwds)
         self._cum_time = 0.0
         self._alt = alt
-        self._conflicts = set()
+        self._conflicts = dict()
 
     @property
     def census(self):
@@ -275,12 +276,16 @@ class Resolve:
         """ Return the number of distinct conflicts """
         return len(self._conflicts)
 
+    @property
+    def duplicates(self):
+        return self._duplicates
+
     def get(self, verbose: int = 0, times: int = 1) -> Iterable[np.ndarray]:
         """
         Get a resolving matrix
         """
         for _ in range(times):
-            status = self._solve.solve()
+            status = self._solve.solve(assumptions = self._conflicts.values())
             stime = self._solve.time()
             self._cum_time += stime
             if verbose > 1:
@@ -310,12 +315,42 @@ class Resolve:
                 print(f"A array = {dict(avalues)}")
                 raise ValueError(f"Columns not distinct: {col_diffs}!")
 
+    def minimal(self) -> List[Tuple[int,...]]:
+        """
+        Return a minimal set of conflicts that still
+        cause the model to be UNSAT.
+
+        One by one try to delete a conflict
+        """
+        not_needed = set()
+        good = set(self._conflicts.keys())
+        for conflict in self._conflicts.keys():
+            good.remove(conflict)
+            assumptions = ([self._conflicts[_] for _ in good]
+                           + [-self._conflicts[_] for _ in not_needed]
+                           + [- self._conflicts[conflict]])
+
+            status = self._solve.solve(assumptions = assumptions)
+            if status: # It's needed
+                good.add(conflict)
+            else:
+                not_needed.add(conflict)
+        return good
+        
     def add_conflict(self, xval: np.ndarray):
-        """ Add conflict clauses """
+        """
+        Add conflict clauses.
+        Each conflict has an associated assumption variable.
+        We have a dict whose key is the tuple for the conflict,
+        and the value is a new variable associated to the conflict.
+        We will use those variables later to find a minimal set of conflicts
+        for the UNSAT case.
+        """
         txval = tuple(xval.tolist())
         if txval in self._conflicts:
+            self._duplicates += 1
             return
-        self._conflicts.add(txval)
+        self._conflicts[txval] = self._pool._next()
         (self.bdd_add_conflict if self._alt else self.alt_add_conflict)(xval)
             
     def bdd_add_conflict(self, xval: np.ndarray):
@@ -332,7 +367,10 @@ class Resolve:
                        for _ in range(self._dim) if xval[_] == -1])
             inequalities += list(
                 not_equal(self._pool, lits, bound, indicators[kind]))
-        self._solve.append_formula(inequalities + [indicators])
+        assump = self._conflicts[tuple(xval.tolist())]
+        
+        self._solve.append_formula([[-assump] + _ for _ in
+                                    inequalities + [indicators]])
 
     def alt_add_conflict(self, xval: np.ndarray):
         """
@@ -340,6 +378,7 @@ class Resolve:
         """
         indicators = []
         bound = (xval == -1).sum()
+        assump = self._conflicts[tuple(xval.tolist())]
         for kind in range(self._mdim):
             lits = ([self._avar[kind, _]
                      for _ in range(self._dim) if xval[_] == 1]
@@ -351,15 +390,15 @@ class Resolve:
                     lits = lits, bound = bound - 1,
                     encoding = self._encoding,
                     vpool = self._pool).clauses:
-                self._solve.add_clause([-indic1] + clause)
+                self._solve.add_clause([-assump, -indic1] + clause)
             indic2 = self._pool._next()
             indicators.append(indic2)
             for clause in CardEnc.atleast(
                     lits = lits, bound = bound + 1,
                     encoding = self._encoding,
                     vpool = self._pool).clauses:
-                self._solve.add_clause([-indic2] + clause)
-        self._solve.add_clause(indicators)
+                self._solve.add_clause([-assump, -indic2] + clause)
+        self._solve.add_clause([-assump] + indicators)
 
     def _model1(self):
         """
@@ -452,8 +491,9 @@ def ping_pong(dim: int, mdim: int,
               alt_model: bool = False,
               largest: bool = False,
               nozero: bool = True,
+              minimal: bool = False,
               trace: int = 0,
-              **kwds) -> np.ndarray | None:
+              **kwds) -> np.ndarray | None | List[Tuple[int,...]]:
     """
     Ping Pong method.
     """
@@ -509,5 +549,8 @@ def ping_pong(dim: int, mdim: int,
 
     if verbose > 0:
         print(f"conflict time = {conflict.cum_time}, conflicts={resolver.num_conflicts}")
+        print(f"duplicates = {resolver.duplicates}")
         print(f"Total passes: {pass_no}, resolve time = {resolver.cum_time}.")
+    if minimal and amat is None:
+        return resolver.minimal()
     return amat
