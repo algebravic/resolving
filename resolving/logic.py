@@ -1,7 +1,7 @@
 """
 Various utilities for generating CNF
 """
-from typing import Iterable, List
+from typing import Iterable, List, Tuple
 from pysat.formula import IDPool
 from pysat.card import CardEnc, EncType
 
@@ -97,3 +97,49 @@ def negate(pool: IDPool, formula: Iterable[CLAUSE]) -> Iterable[CLAUSE]:
     Negate a formula.
     """
     yield from implies(pool, formula, [[]])
+
+def parity(num: int, par: int) -> Iterable[Tuple[int, ...]]:
+    """
+    Generate all odd/even parity of length n.
+    """
+    if num == 0:
+        if par == 0:
+            yield tuple()
+        return
+    yield from ((0,) + _ for _ in parity(num - 1, par))
+    yield from ((1,) + _ for _ in parity(num - 1, 1 - par))
+
+def parity_constraint(lits: List[int], par: int) -> Iterable[List[int]]:
+    """
+    Parity constrained clauses.
+    """
+    num = len(lits)
+    # Forbid opposite parity elements
+    yield from ( ( (1-2 * _[0]) * _[1] for _ in zip(cons, lits))
+                 for cons in parity(num, 1 - par))
+
+def pre_post(pre: List[CLAUSE],
+             post: List[CLAUSE],
+             pool: IDPool) -> Iterable[CLAUSE]:
+    """
+    Generate clauses for pre ==> post
+    """
+    cvars = []
+    for clause in pre:
+        if len(clause) == 1:
+            cvars.append(- clause[0])
+        else:
+            new_var = pool._next()
+            cvars.append(- new_var)
+            yield [-new_var] + clause
+            yield from ([new_var, -_] for _ in clause)
+    yield from (cvars + _ for _ in post)
+
+def equiv(lft: List[CLAUSE],
+          rgt: List[CLAUSE],
+          pool: IDPool) -> Iterable[CLAUSE]:
+    """
+    Generate clauses for pre <==> post
+    """
+    yield from pre_post(lft, rgt, pool)
+    yield from pre_post(rgt, lft, pool)
