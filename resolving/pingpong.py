@@ -320,11 +320,23 @@ class Resolve:
         Return a minimal set of conflicts that still
         cause the model to be UNSAT.
 
-        One by one try to delete a conflict
+        One by one try to delete a conflict.
+
+        Aha, I can use the get_core method.
         """
+        try:
+            core = self._solve.get_core()
+            self._cum_time += self._solve.time()
+            if core is None: # last called was UNSAT
+                return []
+            reverse = {_[1]: _[0] for _ in self._conflicts.items()}
+            return [reverse[abs(_)] for _ in core]
+        except SystemError:
+            pass
+            
         not_needed = set()
         good = set(self._conflicts.keys())
-        for conflict in self._conflicts.keys():
+        for conflict in self._conflicts:
             good.remove(conflict)
             assumptions = ([self._conflicts[_] for _ in good]
                            + [-self._conflicts[_] for _ in not_needed]
