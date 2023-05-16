@@ -36,32 +36,28 @@ def hypercube_model(num: int, bound: int,
     # x and y can't be 1 simultaneously
     # b = a /\ x, c = a /\ y
     # Double lex, or snake lex for the a variables
+    xyvars = list(xvars.values()) + list(yvars.values())
     qbf.exists(list(avars.values()))
-    qbf.forall(list(xvars.values()) + list(yvars.values()))
-
+    qbf.forall(xyvars)
+    aindicator = pool._next()
     for ind, jind in product(range(bound - 1), range(num)):
-        cnf.extend(set_and(bvars[ind, jind], avars[ind, jind], xvars[jind]))
-        cnf.extend(set_and(cvars[ind, jind], avars[ind, jind], yvars[jind]))
-    cnf.append(list(xvars.values()) + list(yvars.values())) # prohibit 0
-    cnf.append([avars[0, _] for _ in range(num)])
-    cnf.append([avars[_, 0] for _ in range(bound - 1)])
-    # (X,Y) sums to 0
-    cnf.extend(CardEnc.equals(lits = list(xvars.values()) + [-_ for _ in yvars.values()],
-                              bound = num,
-                              encoding = encoding,
-                              vpool = pool))
-    # Lex constraints.
+        cnf.extend([[-aindicator] + _
+                   for _ in set_and(bvars[ind, jind], avars[ind, jind], xvars[jind])])
+        cnf.extend([[-aindicator] + _
+                    for _ in set_and(cvars[ind, jind], avars[ind, jind], yvars[jind])])
+    cnf.append([-aindicator] + [avars[0, _] for _ in range(num)])
+    cnf.append([-aindicator] + [avars[_, 0] for _ in range(bound - 1)])
     amat = np.array([[avars[ind, jind] for jind in range(num)]
                      for ind in range(bound - 1)], dtype=int)
     breaker = snake_lex if snake else double_lex
-    cnf.extend(list(breaker(pool, amat.T)))
+    cnf.extend([[-aindicator] + _ for _ in breaker(pool, amat.T)])
     for ind in range(bound - 1):
-        cnf.extend(CardEnc.atmost(lits =
+        cnf.extend([[-aindicator] + _ for _ in CardEnc.atmost(lits =
                                   [avars[ind, _]
                                    for _ in range(num) ],
                                   bound = num // 2,
                                   encoding = encoding,
-                                  vpool = pool))
+                                  vpool = pool)])
     indicators = []
     # There is a row which resolves (X,Y)
     for kind in range(bound - 1):
@@ -83,7 +79,42 @@ def hypercube_model(num: int, bound: int,
                 encoding = encoding,
                 vpool = pool).clauses:
             cnf.append([-indic2] + clause)
-    cnf.append(indicators)
+    cnf.append([-aindicator] + indicators)
+    # Constraints on the X/Y variables (universally quantified)
+    # Our problem is of the form exists A forall X,Y F(X,Y,A)
+    # But we only want to quantify over a restricted set of X,Y
+    # If G(X,Y) is the restriction for X,Y we should write
+    # exists A forall X,Y ~G(X,Y) \/ F(X,Y,A)
+    # complement is needed
+    xyindicators = []
+    indic = pool._next()
+    xyindicators.append(indic)
+    # indic -> ~(\/ xy[i]) == indic -> /\ ~xy[i]
+    cnf.extend([[-indic, -_] for _ in xyvars])
+    # (X,Y) sums to 0
+    xnyvars = list(xvars.values()) + [-_ for _ in yvars.values()]
+    indic1 = pool._next()
+    for clause in CardEnc.atmost(lits = xnyvars,
+                                 bound = num - 1,
+                                 encoding = encoding,
+                                 vpool = pool):
+        cnf.append([-indic1] + clause)
+    xyindicators.append(indic1)
+    indic2 = pool._next()
+    for clause in CardEnc.atleast(lits = xnyvars,
+                                  bound = num + 1,
+                                  encoding = encoding,
+                                  vpool = pool):
+        cnf.append([-indic2] + clause)
+    xyindicators.append(indic2)
+    # complement of x and y disjoint
+    # indic -> ~(~x \/ ~y) <-> indic -> (x /\ y)
+    for ind in range(num):
+        indic = pool._next()
+        xyindicators.append(indic)
+        cnf.extend([[-indic, xvars[ind]],[-indic, yvars[ind]]])
+    # Lex constraints.
+    cnf.append(xyindicators + [aindicator])
 
     qbf.add_model(cnf)
     return qbf, pool

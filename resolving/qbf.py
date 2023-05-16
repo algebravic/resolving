@@ -110,7 +110,7 @@ class QBF:
             print(f"Warning: variables not in model {alone}")
         nvars = max(max(support), max(self._quantified))
         with open("{}.cnf".format(filename), 'w') as fil:
-            fil.write(f"p cnf {len(self._model)} {nvars}\n")
+            fil.write(f"p cnf {nvars} {len(self._model)}\n")
             fil.write('\n'.join((f"{quant[0]} {' '.join(map(str, quant[1]))} 0")
                                   for quant in self._quantifiers))
             fil.write('\n')
