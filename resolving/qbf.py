@@ -39,18 +39,19 @@ E[i,k, r + 1] = E[i,k,r] /\ (X[r,i] == X[r,k])
 from typing import List, Tuple, Set, Iterable
 from itertools import chain
 from pysat.formula import CNF
+from pysat.solvers import Solver
 
 CLAUSE = List[int]
 
-def _validate(variables: List[int] | Set[int]) -> Set[int] | None:
+def _validate(variables: List[int] | Set[int] | int) -> Set[int] | None:
     """
     Must be positive ints non-repeating
     """
-    if not (isinstance(variables, (list, set))
-            and all(isinstance(_, int) and _ > 0 for _ in variables)):
-        return None
-    return set(variables)
-
+    if isinstance(variables, int):
+        return set([variables]) if variables > 0 else None
+    return (set(variables) if (isinstance(variables, (list, set))
+                and all(isinstance(_, int) and _ > 0 for _ in variables))
+            else None)
 class QBF:
     """
     Manage Quantified Boolean formulas
@@ -62,7 +63,7 @@ class QBF:
         self._quantifiers = [] # Quantifiers
         self._quantified = set()
 
-    def _add(self, variables: List[int], quantifier: str):
+    def _add(self, variables: List[int] | int, quantifier: str):
         """
         Add variables with a given quantifier.
         """
@@ -75,18 +76,18 @@ class QBF:
         self._quantified.update(varset)
         if len(self._quantifiers) == 0:
             self._quantifiers.append((quantifier, varset))
-        elif self._quantifiers[0][0] == quantifier:
-            self._quantifiers[0] = (quantifier, self._quantifiers[0][1].union(varset))
+        elif self._quantifiers[-1][0] == quantifier:
+            self._quantifiers[-1] = (quantifier, self._quantifiers[-1][1].union(varset))
         else:
             self._quantifiers.append((quantifier, varset))
 
-    def exists(self, variables: List[int]):
+    def exists(self, variables: List[int] | int):
         """
         Add exists variables
         """
         self._add(variables, 'e')
 
-    def forall(self, variables: List[int]):
+    def forall(self, variables: List[int] | int):
         """
         Add exists variables
         """
@@ -97,6 +98,13 @@ class QBF:
         Add Clauses to the existing model.
         """
         self._model += cnf.clauses.copy()
+
+    def check(self, solver = 'cd15') -> bool:
+        """
+        Check the satisfiability of the raw CNF.
+        """
+        return Solver(name = solver,
+            bootstrap_with = self._model).solve()
 
     def write(self, filename: str):
         """
