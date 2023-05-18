@@ -106,6 +106,56 @@ class QBF:
         return Solver(name = solver,
             bootstrap_with = self._model).solve()
 
+    def full_quantify(self):
+        """
+        Determine quantification levels for unbound variables.
+
+        For every bound variable, determine its level.
+        For every bound variable determine its tentative level
+        as being the maximum of the levels of the bound variables present
+        in any clause containing it or its negation.
+
+        Then, if its tentative level is at forall level, put it into
+        and existential level at one level further down (perhaps merging).
+        If its tentative level is at an existential level, then merge it into
+        that level.  I think that that is correct.
+        """
+
+        levels = dict()
+        unquantified = dict()
+        for level, (_, variables) in enumerate(self._quantifiers):
+            for variable in variables:
+                levels[variable] = level
+        # Now go through all the clauses
+        for clause in self._model:
+            quants = set(map(abs, clause)).intersection(self._quantified)
+            unquants = set(map(abs, clause)).difference(quants)
+            tlevel = max([levels[_] for _ in quants])
+            unquantified.update(unquants)
+            for elt in unquants:
+                if elt in unquantified:
+                    unquantified[elt] = max(unquantified[elt], tlevel)
+                else:
+                    unquantified[elt] = tlevel
+        # Now go through the unquantified variables assigning it to a level
+        updated = dict()
+        for elt, level in unquantified.items():
+            quantifier = self._quantifiers[level][0]
+            if quantifier == 'a':
+                # bump to the next level
+                if len(self._quantifiers) <= level + 1:
+                    self._quantifiers.append(('e', set()))
+                self._quantifiers[level + 1][1].update([elt])
+                if level + 1 not in updated:
+                    updated[level + 1] = 0
+                updated[level + 1] += 1
+            else:
+                self._quantifiers[level][1].update([elt])
+                if level not in updated:
+                    updated[level] = 0
+                updated[level] += 1
+        print(f"Updated {updated}")
+        
     def write(self, filename: str):
         """
         Write out in QDimacs format.
