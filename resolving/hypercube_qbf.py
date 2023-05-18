@@ -37,11 +37,11 @@ def xy_pos(pool: IDPool, num: int,
     xyvars = list(xvars.values()) + list(yvars.values())
     yield xyvars # Forbid 0
     xnyvars = list(xvars.values()) + [-_ for _ in yvars.values()]
-    yield CardEnc.equals(lits = xnyvars,
-                         bound = num,
-                         encoding = encoding,
-                         vpool = pool).clauses
-    yield [[-xvars[ind], -yvars[ind]] for ind in range(num)]
+    yield from CardEnc.equals(lits = xnyvars,
+                              bound = num,
+                              encoding = encoding,
+                              vpool = pool).clauses
+    yield from ([-xvars[ind], -yvars[ind]] for ind in range(num))
 
 def a_pos(pool: IDPool, num: int, bound: int,
           snake: bool = False,
