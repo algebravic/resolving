@@ -65,11 +65,10 @@ def a_pos(pool: IDPool, num: int, bound: int,
                                   encoding = encoding,
                                   vpool = pool).clauses
 
-def matrix_formula(pool: IDPool, num: int, bound: int,
-                   snake: bool = False,
-                   encoding: int = EncType.totalizer) -> FORMULA:
+def bc_formula(pool: IDPool, num: int, bound: int,
+               encoding: int = EncType.totalizer) -> Iterable[FORMULA]:
     """
-    The formula for the 'forall' part.
+    The constraints on B and C.
     """
     avars = {(ind, jind) : pool.id(('a', ind , jind)) for ind in range(bound-1)
              for jind in range(num)}
@@ -79,10 +78,6 @@ def matrix_formula(pool: IDPool, num: int, bound: int,
              for jind in range(num)}
     cvars = {(ind, jind) : pool.id(('c', ind , jind)) for ind in range(bound-1)
              for jind in range(num)}
-
-    yield from a_pos(pool, num, bound, encoding = encoding, snake = snake)
-    yield from xy_pos(pool, num, encoding = encoding)
-
     # b = a /\ x, c = a /\ y
     for ind, jind in product(range(bound - 1), range(num)):
         yield from set_and(bvars[ind, jind], avars[ind, jind], xvars[jind])
@@ -106,7 +101,6 @@ def matrix_formula(pool: IDPool, num: int, bound: int,
             encoding = encoding,
             vpool = pool).clauses)
     yield from large_or(pool, rcnf)
-
 
 def xy_neg(pool: IDPool, num: int,
            encoding: int = EncType.totalizer) -> Iterable[FORMULA]:
@@ -144,6 +138,8 @@ def xy_neg(pool: IDPool, num: int,
     yield from ([[xvars[ind]], [yvars[ind]]] for ind in range(num))
 
 def hypercube_model(num: int, bound: int,
+                    invert: bool = False,
+                    dependencies: bool = False,
                     snake: bool = False,
                     verbose: int = 0,
                     encode: str = 'totalizer') -> Tuple[QBF, IDPool]:
@@ -159,25 +155,33 @@ def hypercube_model(num: int, bound: int,
 
     qbf.exists([pool.id(('a', ind, jind))
                 for ind, jind in product(range(bound - 1), range(num))])
-    qbf.exists([pool.id(('b', ind, jind))
-                for ind, jind in product(range(bound - 1), range(num))])
-    qbf.exists([pool.id(('c', ind, jind))
-                for ind, jind in product(range(bound - 1), range(num))])
+    a_restriction = list(a_pos(pool, num, bound, encoding = encoding, snake = snake))
+    qbf.exists(qbf.unquantified(a_restriction))
     qbf.forall([pool.id(('x', jind)) for jind in range(num)])
     qbf.forall([pool.id(('y', jind)) for jind in range(num)])
+    # B and C depend on X and Y, so they must be quantified after.
+    if dependencies:
+        for ind, jind in product(range(bound - 1), range(num)):
+            qbf.dependency(pool.id(('b', ind, jind)),
+                           [pool.id(('x', jind)),pool.id(('y', jind))])
+            qbf.dependency(pool.id(('c', ind, jind)),
+                           [pool.id(('x', jind)),pool.id(('y', jind))])
+    else:
+        qbf.exists([pool.id(('b', ind, jind))
+                    for ind, jind in product(range(bound - 1), range(num))])
+        qbf.exists([pool.id(('c', ind, jind))
+                    for ind, jind in product(range(bound - 1), range(num))])
+    
+    # xy_restriction = list(xy_pos(pool, num, encoding = encoding))
+    nxy_restriction = list(large_or(pool, xy_neg(pool, num, encoding = encoding)))
+    bc_restriction = list(bc_formula(pool, num, bound, encoding = encoding))
+    qbf.exists(qbf.unquantified(nxy_restriction))
+    qbf.exists(qbf.unquantified(bc_restriction))
 
     cnf = CNF()
     cnf.extend(list(
-        large_or(pool,
-                 (matrix_formula(
-                     pool,
-                     num, bound, snake=snake, encoding=encoding),
-                  large_or(
-                      pool,
-                      xy_neg(
-                          pool,
-                          num,
-                          encoding=encoding))))))
+        large_or(pool, [a_restriction + bc_restriction,
+                        nxy_restriction])))
     if verbose > 0:
         print(f"Census = {Counter(map(len,cnf.clauses))}")
     qbf.add_model(cnf)

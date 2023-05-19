@@ -42,6 +42,7 @@ from pysat.formula import CNF
 from pysat.solvers import Solver
 
 CLAUSE = List[int]
+FORMULA = List[CLAUSE]
 
 def _validate(variables: List[int] | Set[int] | int) -> Set[int] | None:
     """
@@ -61,7 +62,8 @@ class QBF:
 
         self._model = []
         self._quantifiers = [] # Quantifiers
-        self._quantified = set()
+        self._quantified = dict()
+        self._dependencies = dict()
 
     def _add(self, variables: List[int] | int, quantifier: str):
         """
@@ -70,16 +72,15 @@ class QBF:
         varset = _validate(variables)
         if varset is None:
             raise ValueError(f"Variables must be a positive int {variables}")
-        overlap = self._quantified.intersection(varset)
+        overlap = set(self._quantified.keys()).intersection(varset)
         if overlap:
             raise ValueError(f"Variables have already been quantified: {overlap}")
-        self._quantified.update(varset)
-        if len(self._quantifiers) == 0:
+        self._quantified.update({_: quantifier for _ in varset})
+        if len(self._quantifiers) == 0 or self._quantifiers[-1][0] != quantifier:
             self._quantifiers.append((quantifier, varset))
-        elif self._quantifiers[-1][0] == quantifier:
-            self._quantifiers[-1] = (quantifier, self._quantifiers[-1][1].union(varset))
         else:
-            self._quantifiers.append((quantifier, varset))
+            self._quantifiers[-1] = (quantifier,
+                                     self._quantifiers[-1][1].union(varset))
 
     def exists(self, variables: List[int] | int):
         """
@@ -106,6 +107,39 @@ class QBF:
         return Solver(name = solver,
             bootstrap_with = self._model).solve()
 
+    def unquantified(self, form: FORMULA) -> List[int]:
+        """
+        Return all variables in the formula that are not quantified.
+        """
+        support = set(chain(*(map(abs, _) for _ in form)))
+        return list(support.difference(set(self._quantified.keys())))
+
+    def dependency(self, variable: int, varlist: List[int] | int):
+        """
+        Add dependencies to variable.
+        """
+        if variable in self._quantified:
+            raise ValueError(f"variable {variable} is already quantified")
+        if variable not in self._dependencies:
+            self._dependencies[variable] = set()
+        realvars = [varlist] if isinstance(varlist, int) else varlist
+        if not all(_ in self._quantified and self._quantified[_] == 'a'
+                   for _ in realvars):
+            raise ValueError("Not all variables universally quantified")
+        self._dependencies[variable].update(realvars)
+        
+    def push_down(self):
+        """
+        Make all the explicitly unquantified variables existential
+        at the lowest level.
+        """
+
+        support = set(chain(*(map(abs, _) for _ in self._model)))
+        not_quant = support.difference(
+            set(self._quantified.keys()).union(self._dependencies.keys()))
+        self.exists(list(not_quant))
+        print(f"# unquantified = {len(not_quant)}")
+
     def full_quantify(self):
         """
         Determine quantification levels for unbound variables.
@@ -122,24 +156,25 @@ class QBF:
         """
 
         levels = dict()
-        unquantified = dict()
+        not_quant = dict()
         for level, (_, variables) in enumerate(self._quantifiers):
             for variable in variables:
                 levels[variable] = level
         # Now go through all the clauses
         for clause in self._model:
-            quants = set(map(abs, clause)).intersection(self._quantified)
+            quants = set(map(abs, clause)).intersection(set(self._quantified.keys()))
             unquants = set(map(abs, clause)).difference(quants)
+            if len(quants) == 0:
+                continue
             tlevel = max([levels[_] for _ in quants])
-            unquantified.update(unquants)
             for elt in unquants:
-                if elt in unquantified:
-                    unquantified[elt] = max(unquantified[elt], tlevel)
+                if elt in not_quant:
+                    not_quant[elt] = max(not_quant[elt], tlevel)
                 else:
-                    unquantified[elt] = tlevel
-        # Now go through the unquantified variables assigning it to a level
+                    not_quant[elt] = tlevel
+        # Now go through the not_quant variables assigning it to a level
         updated = dict()
-        for elt, level in unquantified.items():
+        for elt, level in not_quant.items():
             quantifier = self._quantifiers[level][0]
             if quantifier == 'a':
                 # bump to the next level
@@ -149,11 +184,13 @@ class QBF:
                 if level + 1 not in updated:
                     updated[level + 1] = 0
                 updated[level + 1] += 1
-            else:
+            elif quantifier == 'e':
                 self._quantifiers[level][1].update([elt])
                 if level not in updated:
                     updated[level] = 0
                 updated[level] += 1
+            else:
+                print(f"Bad quantifier {quantifier} at level {level}")
         print(f"Updated {updated}")
         
     def write(self, filename: str):
@@ -163,14 +200,17 @@ class QBF:
 
         # First validate
         support = set(chain(*(map(abs, _) for _ in self._model)))
-        if not self._quantified.issubset(support):
-            alone = self._quantified.difference(support)
+        if not set(self._quantified.keys()).issubset(support):
+            alone = set(self._quantified.keys()).difference(support)
             print(f"Warning: variables not in model {alone}")
         nvars = max(max(support), max(self._quantified))
         with open("{}.cnf".format(filename), 'w') as fil:
             fil.write(f"p cnf {nvars} {len(self._model)}\n")
             fil.write('\n'.join((f"{quant[0]} {' '.join(map(str, quant[1]))} 0")
                                   for quant in self._quantifiers))
+            fil.write('\n')
+            fil.write('\n'.join((f"d {key} {' '.join(map(str,val))} 0")
+                                for key, val in self._dependencies.items()))
             fil.write('\n')
             fil.write('\n'.join((' '.join(map(str, _)) + ' 0') for _ in self._model))
             fil.write('\n')
