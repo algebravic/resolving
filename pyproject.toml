@@ -14,6 +14,7 @@ pypblib = "^0.0.4"
 more-itertools = "^9.1.0"
 PySMT = "^0.9.5"
 sympy = "^1.11.1"
+py-aiger = "^6.2.1"
 
 
 [build-system]
