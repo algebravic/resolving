@@ -23,9 +23,10 @@ from typing import Iterable, List, Tuple
 from itertools import product, chain, combinations
 from collections import Counter
 import numpy as np
-from pysat.formula import CNF, IDPool
+from pysat.formula import CNF, IDPool, WCNF
 from pysat.solvers import Solver
 from pysat.card import CardEnc, EncType
+from pysat.examples.optux import OptUx
 from .lex import lex_compare, Comparator, standard_lex, special_less
 from .logic import MODEL
 from .logic import negate, set_equal, set_and, big_or
@@ -258,6 +259,7 @@ class Resolve:
         self._cum_time = 0.0
         self._alt = alt
         self._conflicts = dict()
+        self._forbidden = [] # vars indicating forbidden previous matrices
 
     @property
     def census(self):
@@ -278,14 +280,17 @@ class Resolve:
 
     @property
     def duplicates(self):
+        """ Number of duplicate conflict clauses """
         return self._duplicates
 
     def get(self, verbose: int = 0, times: int = 1) -> Iterable[np.ndarray]:
         """
         Get a resolving matrix
         """
+        indic = self._pool._next()
         for _ in range(times):
-            status = self._solve.solve(assumptions = self._conflicts.values())
+            status = self._solve.solve(assumptions = (
+                list(self._conflicts.values())) + self._forbidden + [indic])
             stime = self._solve.time()
             self._cum_time += stime
             if verbose > 1:
@@ -300,7 +305,7 @@ class Resolve:
             amat = extract_mat(self._pool, 'A', model)
             yield amat
             # Now forbid this one
-            self._solve.add_clause(
+            self._solve.add_clause([-indic] +
                 [- (2 * int(amat[key]) - 1) * val
                  for key, val in self._avar.items()])
 
@@ -314,42 +319,58 @@ class Resolve:
                 avalues = get_prefix(self._pool, 'A', model)
                 print(f"A array = {dict(avalues)}")
                 raise ValueError(f"Columns not distinct: {col_diffs}!")
+        self._forbidden.append(-indic)
 
-    def minimal(self) -> List[Tuple[int,...]]:
+    def minimal_ux(self, verbose: int = 0) -> List[Tuple[int, ...]]:
+        """
+        Use OptUx to find a minimal set.
+        """
+
+        consider = list(self._conflicts.values())
+
+        wcnf = WCNF()
+        for elt in consider:
+            wcnf.add(elt, weight=1)
+        wcnf.extend(self._cnf.clauses)
+        wcnf.extend([[_] for _ in self._forbidden])
+        optux = OptUx(wcnf)
+        answer = optux.compute()
+        backwards = {_[1]:_[0] for _ in self._conflicts.items()}
+        self._cum_time += optux.oracle_time()
+        return [backwards[consider[_]] for _ in answer]
+        
+    def minimal(self, verbose: int = 0) -> List[Tuple[int,...]]:
         """
         Return a minimal set of conflicts that still
         cause the model to be UNSAT.
 
-        One by one try to delete a conflict.
+        Use the naive method with randomization.
 
-        Aha, I can use the get_core method.
+        self._conflicts is a dict whose key is the actual conflict
+        and value is the CNF variable number.
         """
-        try:
-            core = self._solve.get_core()
-            self._cum_time += self._solve.time()
-            if core is None: # last called was UNSAT
-                return []
-            reverse = {_[1]: _[0] for _ in self._conflicts.items()}
-            return [reverse[abs(_)] for _ in core]
-        except SystemError:
-            pass
-            
-        not_needed = set()
-        good = set(self._conflicts.keys())
-        for conflict in self._conflicts:
-            good.remove(conflict)
-            assumptions = ([self._conflicts[_] for _ in good]
-                           + [-self._conflicts[_] for _ in not_needed]
-                           + [- self._conflicts[conflict]])
 
+        rng = np.random.default_rng()
+
+        consider = rng.permutation(list(self._conflicts.values())).tolist()
+
+        good = set(consider)
+        bad = set()
+
+        for elt in consider:
+
+            good.remove(elt)
+
+            assumptions = list(good) + [-elt] + list(bad) + self._forbidden
             status = self._solve.solve(assumptions = assumptions)
             self._cum_time += self._solve.time()
-            if status: # It's needed
-                good.add(conflict)
+            if status: # elt must be there
+                good.add(elt)
             else:
-                not_needed.add(conflict)
-        return good
-        
+                bad.add(-elt)
+        rdict = {_[1]: _[0] for _ in self._conflicts.items()}
+        return [rdict[_] for _ in good]
+
     def add_conflict(self, xval: np.ndarray):
         """
         Add conflict clauses.
@@ -504,7 +525,7 @@ def ping_pong(dim: int, mdim: int,
               alt_model: bool = False,
               largest: bool = False,
               nozero: bool = True,
-              minimal: bool = False,
+              minimal: int = 0,
               trace: int = 0,
               **kwds) -> np.ndarray | None | List[Tuple[int,...]]:
     """
@@ -564,8 +585,9 @@ def ping_pong(dim: int, mdim: int,
         print(f"conflict time = {conflict.cum_time}, conflicts={resolver.num_conflicts}")
         print(f"duplicates = {resolver.duplicates}")
         print(f"Total passes: {pass_no}, resolve time = {resolver.cum_time}.")
-    if minimal and amat is None:
-        minimal_conflicts = resolver.minimal()
+    if minimal > 0 and amat is None:
+        minimizer = resolver.minimal if minimal == 1 else resolver.minimal_ux
+        minimal_conflicts = resolver.minimal(verbose=verbose)
         if verbose > 0:
             print(f"Final resolve time = {resolver.cum_time}")
         return minimal_conflicts
