@@ -33,6 +33,9 @@ from .logic import negate, set_equal, set_and, big_or
 from .bdd import not_equal
 from .symmbreak import double_lex, snake_lex
 
+CLAUSE = List[int]
+FORMULA = List[CLAUSE]
+
 def get_prefix(pool: IDPool, prefix: str, model: MODEL) -> List[Tuple[str, int,...]]:
     """
     Get all prefixes which are defined.
@@ -79,7 +82,7 @@ class Conflict:
     def __init__(self, dim: int, mdim: int,
                  solver: str = 'cd15',
                  encode: str = 'totalizer',
-                 **kwds):
+                 solver_kwds: dict = dict()):
 
         self._dim = dim
         self._mdim = mdim
@@ -96,9 +99,23 @@ class Conflict:
         self._generate()
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
-                             use_timer = True, **kwds)
+                             use_timer = True, **solver_kwds)
         self._cum_time = 0.0
 
+    def append(self, clause: CLAUSE):
+        """
+        append a clause to both the solver and the cnf
+        """
+        self._cnf.append(clause)
+        self._solve.add_clause(clause)
+        
+    def extend(self, form: FORMULA):
+        """
+        append a clause to both the solver and the cnf
+        """
+        self._cnf.extend(form)
+        self._solve.add_formula(form)
+        
     def _generate(self):
         """
         The Conflict formula
@@ -208,7 +225,7 @@ class Conflict:
             if not found:
                 return
 
-            self._solve.add_clause([- _ for _ in assumptions] + forbid)
+            self.append([- _ for _ in assumptions] + forbid)
 
             yield xval - yval
 
@@ -236,12 +253,14 @@ class Resolve:
                  solver = 'cd15',
                  encode = 'totalizer',
                  snake: bool = False,
-                 **kwds):
+                 maxweight: bool = True,
+                 solver_kwds: dict = dict()):
 
         self._dim = dim
         self._mdim = mdim
         self._encoding = getattr(EncType, encode, EncType.totalizer)
         self._snake = snake
+        self._maxweight = maxweight
         self._cnf = CNF()
         self._pool = IDPool()
         self._avar = {_ : self._pool.id(('A',) + _)
@@ -255,11 +274,24 @@ class Resolve:
         self._solve_name = solver
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
-                             use_timer = True, **kwds)
+                             use_timer = True, **solver_kwds)
         self._cum_time = 0.0
         self._alt = alt
         self._conflicts = dict()
-        self._forbidden = [] # vars indicating forbidden previous matrices
+
+    def append(self, clause: CLAUSE):
+        """
+        Append a clause to both the solver and to self._cnf
+        """
+        self._cnf.append(clause)
+        self._solve.add_clause(clause)
+
+    def extend(self, form: FORMULA):
+        """
+        Append a clause to both the solver and to self._cnf
+        """
+        self._cnf.extend(form)
+        self._solve.add_formula(form)
 
     @property
     def census(self):
@@ -292,11 +324,10 @@ class Resolve:
         set do we have to allow all of them.
         """
         indic = self._pool._next()
-        self._forbidden.append(indic)
+        control = list(self._conflicts.values())
+        ncontrol = [-_ for _ in self._conflicts.values()]
         for _ in range(times):
-            status = self._solve.solve(
-                assumptions = (
-                    list(self._conflicts.values())) + self._forbidden)
+            status = self._solve.solve(assumptions = control)
             stime = self._solve.time()
             self._cum_time += stime
             if verbose > 1:
@@ -311,7 +342,7 @@ class Resolve:
             amat = extract_mat(self._pool, 'A', model)
             yield amat
             # Now forbid this one
-            self._solve.add_clause([-indic] +
+            self.append(ncontrol +
                 [- (2 * int(amat[key]) - 1) * val
                  for key, val in self._avar.items()])
 
@@ -335,15 +366,15 @@ class Resolve:
 
         wcnf = WCNF()
         for elt in consider:
-            wcnf.add(elt, weight=1)
+            wcnf.append([elt], weight=1)
         wcnf.extend(self._cnf.clauses)
-        # Allow all of the previously found matrices
-        wcnf.extend([[-_] for _ in self._forbidden])
-        optux = OptUx(wcnf)
+        optux = OptUx(wcnf,verbose=verbose)
         answer = optux.compute()
         backwards = {_[1]:_[0] for _ in self._conflicts.items()}
         self._cum_time += optux.oracle_time()
-        return [backwards[consider[_]] for _ in answer]
+        # return answer
+        # indices are 1-origin?
+        return [backwards[consider[_ - 1]] for _ in answer]
         
     def minimal(self, verbose: int = 0) -> List[Tuple[int,...]]:
         """
@@ -367,9 +398,8 @@ class Resolve:
 
             good.remove(elt)
 
-            assumptions = (list(good) + [-elt] + list(bad)
-                           + [- _ for _ in self._forbidden])
-            status = self._solve.solve(assumptions = assumptions)
+            status = self._solve.solve(
+                assumptions = list(good) + [-elt] + list(bad))
             self._cum_time += self._solve.time()
             if status: # elt must be there
                 good.add(elt)
@@ -431,15 +461,15 @@ class Resolve:
                     lits = lits, bound = bound - 1,
                     encoding = self._encoding,
                     vpool = self._pool).clauses:
-                self._solve.add_clause([-assump, -indic1] + clause)
+                self.append([-assump, -indic1] + clause)
             indic2 = self._pool._next()
             indicators.append(indic2)
             for clause in CardEnc.atleast(
                     lits = lits, bound = bound + 1,
                     encoding = self._encoding,
                     vpool = self._pool).clauses:
-                self._solve.add_clause([-assump, -indic2] + clause)
-        self._solve.add_clause([-assump] + indicators)
+                self.append([-assump, -indic2] + clause)
+        self.append([-assump] + indicators)
 
     def _model1(self):
         """
@@ -453,13 +483,14 @@ class Resolve:
             self._cnf.extend(list(special_less(self._pool,
                 [self._avar[kind, _] for _ in range(self._dim)],
                 [self._avar[kind + 1, _] for _ in range(self._dim)])))
+        card_constraint = CardEnc.equals if self._maxweight else CardEnc.atmost
         for kind in range(self._mdim):
-            self._cnf.extend(CardEnc.atmost(lits =
-                                            [self._avar[kind, _]
-                                             for _ in range(self._dim)],
-                                            bound = self._dim // 2,
-                                            encoding = self._encoding,
-                                            vpool = self._pool))
+            self._cnf.extend(card_constraint(lits =
+                                             [self._avar[kind, _]
+                                              for _ in range(self._dim)],
+                                             bound = self._dim // 2,
+                                             encoding = self._encoding,
+                                             vpool = self._pool))
         # Create the column constraints
         # Row -1 everything is equal
         # E[k,i,j] = (A[:k+1,i] == A[:k+1,j]).all()
@@ -513,44 +544,52 @@ class Resolve:
                          for ind in range(self._mdim)], dtype=int)
         breaker = snake_lex if self._snake else double_lex
         self._cnf.extend(list(breaker(self._pool, amat.T)))
+        card_constraint = CardEnc.equals if self._maxweight else CardEnc.atmost
         for ind in range(self._mdim):
-            self._cnf.extend(CardEnc.atmost(lits =
-                                            [self._avar[ind, _]
-                                             for _ in range(self._dim)],
-                                            bound = self._dim // 2,
-                                            encoding = self._encoding,
-                                            vpool = self._pool))
+            self._cnf.extend(card_constraint(lits =
+                                             [self._avar[ind, _]
+                                              for _ in range(self._dim)],
+                                             bound = self._dim // 2,
+                                             encoding = self._encoding,
+                                             vpool = self._pool))
 
 def ping_pong(dim: int, mdim: int,
               times: int = 1,
               rtimes: int = 1,
-              verbose: int = 0,
+              verbose: int = 1,
               encode: str = 'totalizer',
               solver: str = 'cd15',
-              snake: bool = False,
-              alt: bool = False,
-              alt_model: bool = False,
-              largest: bool = False,
-              nozero: bool = True,
+              resolver_opts: dict = dict(),
+              largest=False, # favor larger weight conflicts
               minimal: int = 0,
               trace: int = 0,
-              **kwds) -> np.ndarray | None | List[Tuple[int,...]]:
+              mverbose: int = 0,
+              **solver_kwds) -> np.ndarray | None | List[Tuple[int,...]]:
     """
     Ping Pong method.
     """
+
+    resolver_opts_defaults = dict(
+        snake=False, # Use snake lex
+        alt=False, # Whether to use BDD for not equal
+        alt_model=False, # Use the alternate model
+        nozero=True, # disallow 0 column
+        maxweight=True # Only use maximum weights
+    )
     resolver = Resolve(dim, mdim - 1,
                        solver=solver,
                        encode=encode,
-                       alt = alt,
-                       alt_model = alt_model,
-                       nozero = nozero,
-                       snake = snake,
-                       **kwds)
+                       solver_kwds = solver_kwds,
+                       **(resolver_opts_defaults | resolver_opts))
+
 
     if verbose > 1:
         print(f"Resolve census = {resolver.census}")
 
-    conflict = Conflict(dim, mdim - 1, solver=solver, encode=encode, **kwds)
+    conflict = Conflict(dim, mdim - 1,
+                        solver=solver,
+                        encode=encode,
+                        **solver_kwds)
 
     if verbose > 1:
         print(f"Conflict census = {conflict.census}")
@@ -562,7 +601,8 @@ def ping_pong(dim: int, mdim: int,
         pass_no += 1
         if trace > 0 and pass_no % trace == 0:
             print(f"At pass {pass_no}, resolve time = {resolver.cum_time}")
-            print(f"conflict time = {conflict.cum_time}, conflicts = {resolver.num_conflicts}")
+            print(f"conflict time = {conflict.cum_time}, "
+                  + f"conflicts = {resolver.num_conflicts}")
         # Add new conflicts.  At the beginning there are none
         amat_count = 0
         conflicts = []
@@ -589,12 +629,13 @@ def ping_pong(dim: int, mdim: int,
         list(map(resolver.add_conflict, conflicts))
 
     if verbose > 0:
-        print(f"conflict time = {conflict.cum_time}, conflicts={resolver.num_conflicts}")
+        print(f"Final conflict time = {conflict.cum_time}, "
+              + f"conflicts={resolver.num_conflicts}")
         print(f"duplicates = {resolver.duplicates}")
         print(f"Total passes: {pass_no}, resolve time = {resolver.cum_time}.")
     if minimal > 0 and amat is None:
         minimizer = resolver.minimal if minimal == 1 else resolver.minimal_ux
-        minimal_conflicts = resolver.minimal(verbose=verbose)
+        minimal_conflicts = minimizer(verbose=mverbose)
         if verbose > 0:
             print(f"Final resolve time = {resolver.cum_time}")
         return minimal_conflicts
