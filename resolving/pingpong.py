@@ -285,12 +285,18 @@ class Resolve:
 
     def get(self, verbose: int = 0, times: int = 1) -> Iterable[np.ndarray]:
         """
-        Get a resolving matrix
+        Get a resolving matrix.  With each call to get we have an indicator
+        variable which can activate the forbidden clause.  During the main
+        loop, since we're only adding constraints, we can disallow all of the
+        previously found matrices.  Only when we're looking for a minimal
+        set do we have to allow all of them.
         """
         indic = self._pool._next()
+        self._forbidden.append(indic)
         for _ in range(times):
-            status = self._solve.solve(assumptions = (
-                list(self._conflicts.values())) + self._forbidden + [indic])
+            status = self._solve.solve(
+                assumptions = (
+                    list(self._conflicts.values())) + self._forbidden)
             stime = self._solve.time()
             self._cum_time += stime
             if verbose > 1:
@@ -319,7 +325,6 @@ class Resolve:
                 avalues = get_prefix(self._pool, 'A', model)
                 print(f"A array = {dict(avalues)}")
                 raise ValueError(f"Columns not distinct: {col_diffs}!")
-        self._forbidden.append(-indic)
 
     def minimal_ux(self, verbose: int = 0) -> List[Tuple[int, ...]]:
         """
@@ -332,7 +337,8 @@ class Resolve:
         for elt in consider:
             wcnf.add(elt, weight=1)
         wcnf.extend(self._cnf.clauses)
-        wcnf.extend([[_] for _ in self._forbidden])
+        # Allow all of the previously found matrices
+        wcnf.extend([[-_] for _ in self._forbidden])
         optux = OptUx(wcnf)
         answer = optux.compute()
         backwards = {_[1]:_[0] for _ in self._conflicts.items()}
@@ -361,7 +367,8 @@ class Resolve:
 
             good.remove(elt)
 
-            assumptions = list(good) + [-elt] + list(bad) + self._forbidden
+            assumptions = (list(good) + [-elt] + list(bad)
+                           + [- _ for _ in self._forbidden])
             status = self._solve.solve(assumptions = assumptions)
             self._cum_time += self._solve.time()
             if status: # elt must be there
