@@ -27,6 +27,7 @@ from pysat.formula import CNF, IDPool, WCNF
 from pysat.solvers import Solver
 from pysat.card import CardEnc, EncType
 from pysat.examples.optux import OptUx
+from pysat.examples.musx import MUSX
 from .lex import lex_compare, Comparator, standard_lex, special_less
 from .logic import MODEL
 from .logic import negate, set_equal, set_and, big_or
@@ -371,9 +372,9 @@ class Resolve:
 
         yield from islice(self._get(control, verbose=verbose), times)
 
-    def minimal_ux(self, verbose: int = 0) -> List[CONFLICT]:
+    def minimal(self, verbose: int = 0, use_ux: bool = False) -> List[CONFLICT]:
         """
-        Use OptUx to find a minimal set.
+        Use either MUSX or OptUx to find a minimal set.
         """
 
         consider = list(self._conflicts.values())
@@ -382,8 +383,8 @@ class Resolve:
         for elt in consider:
             wcnf.append([elt], weight=1)
         wcnf.extend(self._cnf.clauses)
-        optux = OptUx(wcnf,verbose=verbose)
-        answer = optux.compute()
+        minimizer = OptUx if use_ux else MUSX
+        answer = minimizer(wcnf,verbose=verbose).compute()
         backwards = {_[1]:_[0] for _ in self._conflicts.items()}
         self._cum_time += optux.oracle_time()
         # return answer
@@ -393,38 +394,6 @@ class Resolve:
         if not all((len(_) == 1 for _ in good)):
             raise ValueError("Minimal result clauses not all unit")
         return [backwards[_[0]] for _ in good]
-
-    def minimal(self, verbose: int = 0) -> List[CONFLICT]:
-        """
-        Return a minimal set of conflicts that still
-        cause the model to be UNSAT.
-
-        Use the naive method with randomization.
-
-        self._conflicts is a dict whose key is the actual conflict
-        and value is the CNF variable number.
-        """
-
-        rng = np.random.default_rng()
-
-        consider = rng.permutation(list(self._conflicts.values())).tolist()
-
-        good = set(consider)
-        bad = set()
-
-        for elt in consider:
-
-            good.remove(elt)
-
-            status = self._solve.solve(
-                assumptions = list(good) + [-elt] + list(bad))
-            self._cum_time += self._solve.time()
-            if status: # elt must be there
-                good.add(elt)
-            else:
-                bad.add(-elt)
-        rdict = {_[1]: _[0] for _ in self._conflicts.items()}
-        return [rdict[_] for _ in good]
 
     def add_conflict(self, xval: np.ndarray):
         """
@@ -441,7 +410,7 @@ class Resolve:
             return
         self._conflicts[txval] = self._pool._next()
         (self.bdd_add_conflict if self._alt else self.alt_add_conflict)(xval)
-            
+
     def bdd_add_conflict(self, xval: np.ndarray):
         """
         Add clauses that forbid A@x = 0
@@ -457,7 +426,7 @@ class Resolve:
             inequalities += list(
                 not_equal(self._pool, lits, bound, indicators[kind]))
         assump = self._conflicts[tuple(xval.tolist())]
-        
+
         self.extend([[-assump] + _ for _ in
                      inequalities + [indicators]])
 
@@ -524,7 +493,7 @@ class Resolve:
         # defined = set()
         for kind, (ind, jind) in product(range(self._mdim),
                                          combinations(range(self._dim), 2)):
-            
+
             # Z[k,i,j] <-> A[k,i] == A[k,j]
             self._cnf.extend(set_equal(zvar[kind, (ind, jind)],
                                        self._avar[kind, ind],
@@ -571,6 +540,32 @@ class Resolve:
                                              encoding = self._encoding,
                                              vpool = self._pool))
 
+def main_loop(resolver: Resolve, conflict: Conflict,
+              verbose = 0, largest = False,
+              times = 1, rtimes = 1) -> np.ndarray | None:
+    """
+    The main ping/pong loop.
+    """
+    amat_count = 0
+    conflicts = []
+    soln = None
+    for amat in resolver.get(times = rtimes, verbose = verbose):
+        amat_count += 1
+        if verbose > 1:
+            print(f"A:\n{amat}")
+        # Check validity
+        # Give A (as assumptions) to model2 to find conflicts.
+        lconf = list(conflict.get_conflicts(amat, times,
+                                            largest = largest,
+                                            verbose = verbose))
+        soln = amat # last matrix found
+        if len(lconf) == 0:
+            break
+        conflicts += lconf
+    list(map(resolver.add_conflict, conflicts))
+
+    return len(conflicts) != 0, soln
+            
 def ping_pong(dim: int, mdim: int,
               times: int = 1,
               rtimes: int = 1,
@@ -591,7 +586,7 @@ def ping_pong(dim: int, mdim: int,
         resolver_opts = dict()
     if solver_kwds is None:
         solver_kwds = dict()
-        
+
     resolver = Resolve(dim, mdim - 1,
                        solver=solver,
                        encode=encode,
@@ -610,39 +605,23 @@ def ping_pong(dim: int, mdim: int,
     if verbose > 1:
         print(f"Conflict census = {conflict.census}")
 
-    old_amat = np.zeros((mdim - 1, dim), dtype = np.int8)
     pass_no = 0
-    found_solution = False
-    while True:
+    found = False
+    amat = None
+    while not found:
         pass_no += 1
         if trace > 0 and pass_no % trace == 0:
             print(f"At pass {pass_no}, resolve time = {resolver.cum_time}")
             print(f"conflict time = {conflict.cum_time}, "
                   + f"conflicts = {resolver.num_conflicts}")
         # Add new conflicts.  At the beginning there are none
-        amat_count = 0
-        conflicts = []
-        amat = None
-        for amat in resolver.get(times = rtimes, verbose = verbose):
-            amat_count += 1
-            if verbose > 1:
-                print(f"A:\n{amat}")
-            # Check validity
-            if (old_amat == amat).all():
-                raise ValueError("A matrix didn't change!")
-            old_amat = amat.copy()
-            # Give A (as assumptions) to model2 to find conflicts.
-            lconf = list(conflict.get_conflicts(amat, times,
-                                                largest = largest,
-                                                verbose = verbose))
-            if len(lconf) == 0:
-                found_solution = True
-                break
-            conflicts += lconf
-        if found_solution or amat_count == 0:
+        found, amat = main_loop(resolver, conflict,
+                                verbose = verbose,
+                                largest = largest,
+                                times = times,
+                                rtimes = rtimes)
+        if amat is None: # It is UNSAT
             break
-        # Only do this for the side effects
-        list(map(resolver.add_conflict, conflicts))
 
     if verbose > 0:
         print(f"Final conflict time = {conflict.cum_time}, "
@@ -650,8 +629,8 @@ def ping_pong(dim: int, mdim: int,
         print(f"duplicates = {resolver.duplicates}")
         print(f"Total passes: {pass_no}, resolve time = {resolver.cum_time}.")
     if minimal > 0 and amat is None:
-        minimizer = resolver.minimal if minimal == 1 else resolver.minimal_ux
-        minimal_conflicts = minimizer(verbose=mverbose)
+        minimal_conflicts = resolver.minimal(
+            verbose=mverbose, use_ux = (minimal != 1))
         if verbose > 0:
             print(f"Final resolve time = {resolver.cum_time}")
         return minimal_conflicts
