@@ -173,6 +173,9 @@ class Conflict:
                       verbose: int = 0) -> Iterable[np.ndarray]:
         """
         Given an A matrix get up to times counterexamples to resolvability.
+
+        self._wvar[wgt] will be a selector variable to select
+        conflicts of weight wgt
         """
         assumptions = [(2 * int(amat[key]) - 1) * lit
                        for key, lit in self._avar.items()]
@@ -200,34 +203,32 @@ class Conflict:
                 self._cum_time += stime
                 if verbose > 1:
                     print(f"status Conflicts = {status} time = {stime}")
-                if not status:
-                    continue
-                found = True
-                # get counterexample
-                # forbid it in solve2
-                # add a conflict in solve1
-                model = self._solve.get_model()
-                xval = getvec(self._pool, 'X', model)
-                yval = getvec(self._pool, 'Y', model)
-                if verbose > 1:
-                    print(f"counterexample = {xval - yval}")
-                    # Check it
-                chk = amat @ (xval - yval)
-                if not (chk == 0).all():
-                    raise ValueError(f"residual = {chk}")
-                # Forbid this value
-                # Note: must convert np.int8 to int
-                forbid = ([int(1 - 2*xval[_]) * self._xvar[_] for _ in range(self._dim)]
-                          + [int(1 - 2*yval[_]) * self._yvar[_] for _ in range(self._dim)])
-                # Make this conditional on the assumptions
-                break
-
-            if not found:
+                if status: # There are no clauses of selected weights
+                    break
+            if not status:
                 return
-
-            self.append([- _ for _ in assumptions] + forbid)
+            # get counterexample
+            # forbid it in solve2
+            # add a conflict in solve1
+            model = self._solve.get_model()
+            xval = getvec(self._pool, 'X', model)
+            yval = getvec(self._pool, 'Y', model)
+            if verbose > 1:
+                print(f"counterexample = {xval - yval}")
+                # Check it
+            chk = amat @ (xval - yval)
+            if not (chk == 0).all():
+                raise ValueError(f"residual = {chk}")
+            # Forbid this value
+            # Note: must convert np.int8 to int
+            forbid = ([int(1 - 2*xval[_]) * self._xvar[_] for _ in range(self._dim)]
+                      + [int(1 - 2*yval[_]) * self._yvar[_] for _ in range(self._dim)])
+            self.append(forbid)
 
             yield xval - yval
+            # Don't find this again in the future
+            # self.append([- _ for _ in assumptions] + forbid)
+            # Since we want to avoid global duplicates this can be unconditional
 
     @property
     def census(self):
@@ -374,8 +375,12 @@ class Resolve:
         self._cum_time += optux.oracle_time()
         # return answer
         # indices are 1-origin?
-        return [backwards[consider[_ - 1]] for _ in answer]
-        
+        # To be strict we need to look at fn.soft
+        good = [wcnf.soft[_ - 1] for _ in answer]
+        if not all((len(_) == 1 for _ in good)):
+            raise ValueError("Minimal result clauses not all unit")
+        return [backwards[_[0]] for _ in good]
+
     def minimal(self, verbose: int = 0) -> List[Tuple[int,...]]:
         """
         Return a minimal set of conflicts that still
@@ -440,8 +445,8 @@ class Resolve:
                 not_equal(self._pool, lits, bound, indicators[kind]))
         assump = self._conflicts[tuple(xval.tolist())]
         
-        self._solve.append_formula([[-assump] + _ for _ in
-                                    inequalities + [indicators]])
+        self.extend([[-assump] + _ for _ in
+                     inequalities + [indicators]])
 
     def alt_add_conflict(self, xval: np.ndarray):
         """
