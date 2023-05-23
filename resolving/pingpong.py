@@ -20,7 +20,7 @@ We will also, optionally as solver (2) to provide at most r solutions.
 
 """
 from typing import Iterable, List, Tuple
-from itertools import product, chain, combinations
+from itertools import product, chain, combinations, islice
 from collections import Counter
 import numpy as np
 from pysat.formula import CNF, IDPool, WCNF
@@ -166,6 +166,58 @@ class Conflict:
                 encoding = self._encoding,
                 vpool = self._pool))
 
+    def _get_soln(self, assumptions: List[int]) -> np.ndarray | None:
+        """
+        Get a solution.
+        """
+        status = self._solve.solve(assumptions = assumptions)
+        self._cum_time += self._solve.time()
+        if not status:
+            return None
+        model = self._solve.get_model()
+        xval = getvec(self._pool, 'X', model)
+        yval = getvec(self._pool, 'Y', model)
+        # Don't ever get this solution again
+        forbid = ([int(1 - 2*xval[_]) * self._xvar[_] for _ in range(self._dim)]
+                  + [int(1 - 2*yval[_]) * self._yvar[_] for _ in range(self._dim)])
+        self.append(forbid)
+        return xval - yval
+        
+    def _get_weight(self, wgt: int, assumptions: List[int]) -> np.ndarray | None:
+        """
+        Get a a conflict, given assumptions of weight = wgt or None if there
+        is no such.
+        """
+        # Only consider those of weight = wgt
+        weights = ([self._wvar[wgt]]
+                   + [-self._wvar[_] for _ in range(2, self._dim // 2 + 1)
+                      if _ != wgt])
+
+        return self._get_soln(assumptions + weights)
+
+    def _get_all_weights(self, assumptions: List[int]) -> np.ndarray:
+        """
+        Get weights in decreasing order.
+        """
+        top = self._dim // 2
+        while top >= 2:
+            result = self._get_weight(top, assumptions)
+            if result is None:
+                top -= 1
+            else:
+                yield result
+
+    def _get_conflicts(self, assumptions: List[int]) -> Iterable[Tuple[int,...]]:
+        """
+        Get conflicts in arbitrary order.
+        """
+        assump = assumptions + [-self._wvar[_] for _ in range(2, self._dim // 2 + 1)]
+        while True:
+            result = self._get_soln(assump)
+            if result is None:
+                return
+            yield result
+
     def get_conflicts(self,
                       amat: np.ndarray,
                       times: int,
@@ -181,54 +233,8 @@ class Conflict:
                        for key, lit in self._avar.items()]
         if verbose > 2:
             print(f"assumptions = {assumptions}")
-        if largest:
-            tries = list(range(self._dim // 2, 1, -1))
-        else:
-            tries = [0]
-        for _ in range(times):
-            found = False
-            for wgt in tries:
-                # Consider only weight = wgt
-                if largest:
-                    weights = ([self._wvar[wgt]]
-                               + [-self._wvar[_]
-                                  for _ in range(2, self._dim // 2 + 1)
-                                  if _ != wgt])
-                else: # Turn off all selection constraints
-                    weights = [-self._wvar[_]
-                               for _ in range(2, self._dim // 2 + 1)]
-                status = self._solve.solve(assumptions = assumptions + weights)
-
-                stime = self._solve.time()
-                self._cum_time += stime
-                if verbose > 1:
-                    print(f"status Conflicts = {status} time = {stime}")
-                if status: # There are no clauses of selected weights
-                    break
-            if not status:
-                return
-            # get counterexample
-            # forbid it in solve2
-            # add a conflict in solve1
-            model = self._solve.get_model()
-            xval = getvec(self._pool, 'X', model)
-            yval = getvec(self._pool, 'Y', model)
-            if verbose > 1:
-                print(f"counterexample = {xval - yval}")
-                # Check it
-            chk = amat @ (xval - yval)
-            if not (chk == 0).all():
-                raise ValueError(f"residual = {chk}")
-            # Forbid this value
-            # Note: must convert np.int8 to int
-            forbid = ([int(1 - 2*xval[_]) * self._xvar[_] for _ in range(self._dim)]
-                      + [int(1 - 2*yval[_]) * self._yvar[_] for _ in range(self._dim)])
-            self.append(forbid)
-
-            yield xval - yval
-            # Don't find this again in the future
-            # self.append([- _ for _ in assumptions] + forbid)
-            # Since we want to avoid global duplicates this can be unconditional
+        getter = self._get_all_weights if largest else self._get_conflicts
+        yield from islice(getter(assumptions), times)
 
     @property
     def census(self):
