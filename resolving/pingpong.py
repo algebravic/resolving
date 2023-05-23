@@ -261,8 +261,9 @@ class Resolve:
                  encode = 'totalizer',
                  snake: bool = False,
                  maxweight: bool = True,
-                 solver_kwds: dict = dict()):
+                 solver_kwds: dict | None = None):
 
+        
         self._dim = dim
         self._mdim = mdim
         self._encoding = getattr(EncType, encode, EncType.totalizer)
@@ -279,6 +280,8 @@ class Resolve:
         else:
             self._model2()
         self._solve_name = solver
+        if solver_kwds is None:
+            solve_kwds = dict()
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
                              use_timer = True, **solver_kwds)
