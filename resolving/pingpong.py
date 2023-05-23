@@ -254,6 +254,16 @@ class Conflict:
 class Resolve:
     """
     A class to find a putative resolving matrix.
+
+    It keeps a state consisting of the global constraints on the A
+    matrix (along with symmetry breaking constraints) and all
+    conflicts that have been added so far.  Each conflict constraint
+    is made conditional on a separate variable so that a later
+    optional constraint minimizer may be run.
+
+    After constraints are added, one or more A matrices compatible
+    with the constraints may be requested.  If there are none, then
+    the problem is UNSAT.
     """
 
     def __init__(self, dim: int, mdim: int,
@@ -361,7 +371,7 @@ class Resolve:
 
         yield from islice(self._get(control, verbose=verbose), times)
 
-    def minimal_ux(self, verbose: int = 0) -> List[Tuple[int, ...]]:
+    def minimal_ux(self, verbose: int = 0) -> List[CONFLICT]:
         """
         Use OptUx to find a minimal set.
         """
@@ -384,7 +394,7 @@ class Resolve:
             raise ValueError("Minimal result clauses not all unit")
         return [backwards[_[0]] for _ in good]
 
-    def minimal(self, verbose: int = 0) -> List[Tuple[int,...]]:
+    def minimal(self, verbose: int = 0) -> List[CONFLICT]:
         """
         Return a minimal set of conflicts that still
         cause the model to be UNSAT.
@@ -572,7 +582,7 @@ def ping_pong(dim: int, mdim: int,
               minimal: int = 0,
               trace: int = 0,
               mverbose: int = 0,
-              solver_kwds: Dict | None = None) -> np.ndarray | None | List[Tuple[int,...]]:
+              solver_kwds: Dict | None = None) -> np.ndarray | None | List[CONFLICT]:
     """
     Ping Pong method.
     """
