@@ -19,7 +19,7 @@ and sum(A[k,i] * x[i], i=1,..,n) + sum(A[k,i] * ~y[i], i=1,..,n)
 We will also, optionally as solver (2) to provide at most r solutions.
 
 """
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Tuple, Optional, Dict
 from itertools import product, chain, combinations, islice
 from collections import Counter
 import numpy as np
@@ -35,6 +35,7 @@ from .symmbreak import double_lex, snake_lex
 
 CLAUSE = List[int]
 FORMULA = List[CLAUSE]
+CONFLICT = Tuple[int,...]
 
 def get_prefix(pool: IDPool, prefix: str, model: MODEL) -> List[Tuple[str, int,...]]:
     """
@@ -82,7 +83,7 @@ class Conflict:
     def __init__(self, dim: int, mdim: int,
                  solver: str = 'cd15',
                  encode: str = 'totalizer',
-                 solver_kwds: dict = dict()):
+                 solver_kwds: Dict | None = None):
 
         self._dim = dim
         self._mdim = mdim
@@ -97,6 +98,8 @@ class Conflict:
         self._wvar = {_: self._pool.id(('W', _))
                       for _ in range(2, self._dim // 2 + 1)}
         self._generate()
+        if solver_kwds is None:
+            solver_kwds = dict()
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
                              use_timer = True, **solver_kwds)
@@ -195,7 +198,7 @@ class Conflict:
 
         return self._get_soln(assumptions + weights)
 
-    def _get_all_weights(self, assumptions: List[int]) -> np.ndarray:
+    def _get_all_weights(self, assumptions: List[int]) -> Iterable[np.ndarray]:
         """
         Get weights in decreasing order.
         """
@@ -207,7 +210,7 @@ class Conflict:
             else:
                 yield result
 
-    def _get_conflicts(self, assumptions: List[int]) -> Iterable[Tuple[int,...]]:
+    def _get_conflicts(self, assumptions: List[int]) -> Iterable[np.ndarray]:
         """
         Get conflicts in arbitrary order.
         """
@@ -254,13 +257,13 @@ class Resolve:
     """
 
     def __init__(self, dim: int, mdim: int,
-                 alt_model: bool = False,
-                 alt: bool = False,
-                 nozero: bool = True,
+                 alt_model: bool = False, # Use the alternate model
+                 alt: bool = False, # Whether to use BDD for not equal
+                 nozero: bool = False, # disallow 0 column
                  solver = 'cd15',
                  encode = 'totalizer',
-                 snake: bool = False,
-                 maxweight: bool = True,
+                 snake: bool = False, # Use snake lex
+                 maxweight: bool = False, # Only use maximum weights
                  solver_kwds: dict | None = None):
 
         
@@ -281,7 +284,7 @@ class Resolve:
             self._model2()
         self._solve_name = solver
         if solver_kwds is None:
-            solve_kwds = dict()
+            solver_kwds = dict()
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
                              use_timer = True, **solver_kwds)
@@ -325,6 +328,27 @@ class Resolve:
         """ Number of duplicate conflict clauses """
         return self._duplicates
 
+    def _get(self, control: List[int], verbose: int = 0) -> Iterable[np.ndarray]:
+        """
+        Get a feasible matrix given the conflicts so far.
+        """
+        ncontrol = [-_ for _ in control]
+        while True:
+            status = self._solve.solve(assumptions = control)
+            stime = self._solve.time()
+            self._cum_time += stime
+            if verbose > 1:
+                print(f"Resolve status = {status} time = {stime}")
+            if not status:
+                return
+            model = self._solve.get_model()
+            
+            amat = extract_mat(self._pool, 'A', model)
+            self.append(ncontrol +
+                        [- (2 * int(amat[key]) - 1) * val
+                         for key, val in self._avar.items()])
+            yield amat
+        
     def get(self, verbose: int = 0, times: int = 1) -> Iterable[np.ndarray]:
         """
         Get a resolving matrix.  With each call to get we have an indicator
@@ -333,39 +357,9 @@ class Resolve:
         previously found matrices.  Only when we're looking for a minimal
         set do we have to allow all of them.
         """
-        indic = self._pool._next()
         control = list(self._conflicts.values())
-        ncontrol = [-_ for _ in self._conflicts.values()]
-        for _ in range(times):
-            status = self._solve.solve(assumptions = control)
-            stime = self._solve.time()
-            self._cum_time += stime
-            if verbose > 1:
-                print(f"Resolve status = {status} time = {stime}")
-                if not status:
-                    break
-            if not status:
-                break
-            
-            model = self._solve.get_model()
-            
-            amat = extract_mat(self._pool, 'A', model)
-            yield amat
-            # Now forbid this one
-            self.append(ncontrol +
-                [- (2 * int(amat[key]) - 1) * val
-                 for key, val in self._avar.items()])
 
-            if verbose > 1:
-                print(f"amat = {amat}")
-            # Check that A has all columns distinct
-            col_diffs = _check_diff_cols(amat)
-            if col_diffs:
-                evalues = get_prefix(self._pool, 'E', model)
-                print(f"E array = {dict(evalues)}")
-                avalues = get_prefix(self._pool, 'A', model)
-                print(f"A array = {dict(avalues)}")
-                raise ValueError(f"Columns not distinct: {col_diffs}!")
+        yield from islice(self._get(control, verbose=verbose), times)
 
     def minimal_ux(self, verbose: int = 0) -> List[Tuple[int, ...]]:
         """
@@ -573,28 +567,26 @@ def ping_pong(dim: int, mdim: int,
               verbose: int = 1,
               encode: str = 'totalizer',
               solver: str = 'cd15',
-              resolver_opts: dict = dict(),
+              resolver_opts: Dict | None = None,
               largest=False, # favor larger weight conflicts
               minimal: int = 0,
               trace: int = 0,
               mverbose: int = 0,
-              **solver_kwds) -> np.ndarray | None | List[Tuple[int,...]]:
+              solver_kwds: Dict | None = None) -> np.ndarray | None | List[Tuple[int,...]]:
     """
     Ping Pong method.
     """
 
-    resolver_opts_defaults = dict(
-        snake=False, # Use snake lex
-        alt=False, # Whether to use BDD for not equal
-        alt_model=False, # Use the alternate model
-        nozero=True, # disallow 0 column
-        maxweight=True # Only use maximum weights
-    )
+    if resolver_opts is None:
+        resolver_opts = dict()
+    if solver_kwds is None:
+        solver_kwds = dict()
+        
     resolver = Resolve(dim, mdim - 1,
                        solver=solver,
                        encode=encode,
                        solver_kwds = solver_kwds,
-                       **(resolver_opts_defaults | resolver_opts))
+                       **resolver_opts)
 
 
     if verbose > 1:
@@ -603,7 +595,7 @@ def ping_pong(dim: int, mdim: int,
     conflict = Conflict(dim, mdim - 1,
                         solver=solver,
                         encode=encode,
-                        **solver_kwds)
+                        solver_kwds = solver_kwds)
 
     if verbose > 1:
         print(f"Conflict census = {conflict.census}")
