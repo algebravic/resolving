@@ -302,6 +302,7 @@ class Resolve:
         self._cum_time = 0.0
         self._alt = alt
         self._conflicts = dict()
+        self._control = 0 # controlling variable for last found matrices
 
     def append(self, clause: CLAUSE):
         """
@@ -339,13 +340,13 @@ class Resolve:
         """ Number of duplicate conflict clauses """
         return self._duplicates
 
-    def _get(self, control: List[int], verbose: int = 0) -> Iterable[np.ndarray]:
+    def _get(self, verbose: int = 0) -> Iterable[np.ndarray]:
         """
         Get a feasible matrix given the conflicts so far.
         """
-        ncontrol = [-_ for _ in control]
+        prefix = list(self._conflicts.values()) + [self._control]
         while True:
-            status = self._solve.solve(assumptions = control)
+            status = self._solve.solve(assumptions = prefix)
             stime = self._solve.time()
             self._cum_time += stime
             if verbose > 1:
@@ -353,13 +354,13 @@ class Resolve:
             if not status:
                 return
             model = self._solve.get_model()
-            
+
             amat = extract_mat(self._pool, 'A', model)
-            self.append(ncontrol +
+            self.append([-self._control] +
                         [- (2 * int(amat[key]) - 1) * val
                          for key, val in self._avar.items()])
             yield amat
-        
+
     def get(self, verbose: int = 0, times: int = 1) -> Iterable[np.ndarray]:
         """
         Get a resolving matrix.  With each call to get we have an indicator
@@ -368,9 +369,9 @@ class Resolve:
         previously found matrices.  Only when we're looking for a minimal
         set do we have to allow all of them.
         """
-        control = list(self._conflicts.values())
+        self._control = self._pool._next()
 
-        yield from islice(self._get(control, verbose=verbose), times)
+        yield from islice(self._get(verbose=verbose), times)
 
     def minimal(self, verbose: int = 0, use_ux: bool = False) -> List[CONFLICT]:
         """
@@ -384,9 +385,10 @@ class Resolve:
             wcnf.append([elt], weight=1)
         wcnf.extend(self._cnf.clauses)
         minimizer = OptUx if use_ux else MUSX
-        answer = minimizer(wcnf,verbose=verbose).compute()
+        msolver = minimizer(wcnf,verbose=verbose)
+        answer = msolver.compute()
+        self._cum_time += msolver.oracle_time()
         backwards = {_[1]:_[0] for _ in self._conflicts.items()}
-        self._cum_time += optux.oracle_time()
         # return answer
         # indices are 1-origin?
         # To be strict we need to look at fn.soft
@@ -408,7 +410,9 @@ class Resolve:
         if txval in self._conflicts:
             self._duplicates += 1
             return
-        self._conflicts[txval] = self._pool._next()
+        assump = self._pool._next()
+        self.append([-assump, self._control])
+        self._conflicts[txval] = assump
         (self.bdd_add_conflict if self._alt else self.alt_add_conflict)(xval)
 
     def bdd_add_conflict(self, xval: np.ndarray):
@@ -418,11 +422,11 @@ class Resolve:
         inequalities = []
         indicators = [self._pool._next() for _ in range(self._mdim)]
         bound = (xval == -1).sum()
+        pos = np.arange(self._dim)[xval == 1].tolist()
+        neg = np.arange(self._dim)[xval == -1].tolist()
         for kind in range(self._mdim):
-            lits = ([self._avar[kind, _]
-                     for _ in range(self._dim) if xval[_] == 1]
-                    + [- self._avar[kind, _]
-                       for _ in range(self._dim) if xval[_] == -1])
+            lits = ([self._avar[kind, _] for _ in pos]
+                    + [- self._avar[kind, _] for _ in neg])
             inequalities += list(
                 not_equal(self._pool, lits, bound, indicators[kind]))
         assump = self._conflicts[tuple(xval.tolist())]
@@ -436,12 +440,14 @@ class Resolve:
         """
         indicators = []
         bound = (xval == -1).sum()
+        pos = np.arange(self._dim)[xval == 1].tolist()
+        neg = np.arange(self._dim)[xval == -1].tolist()
         assump = self._conflicts[tuple(xval.tolist())]
+        # This conflict forbids the last bunch of matrices found.
+        self.append([-assump, self._control])
         for kind in range(self._mdim):
-            lits = ([self._avar[kind, _]
-                     for _ in range(self._dim) if xval[_] == 1]
-                    + [- self._avar[kind, _]
-                       for _ in range(self._dim) if xval[_] == -1])
+            lits = ([self._avar[kind, _] for _ in pos]
+                    + [- self._avar[kind, _] for _ in neg])
             indic1 = self._pool._next()
             indicators.append(indic1)
             for clause in CardEnc.atmost(
@@ -458,6 +464,14 @@ class Resolve:
                 self.append([-assump, -indic2] + clause)
         self.append([-assump] + indicators)
 
+    def add_conflicts(self, conflicts: List[CONFLICT]):
+        """
+        Add the conflicts to the model, updating the conditional
+        constraints.
+        """
+        for conflict in conflicts:
+            self.add_conflict(conflict)
+    
     def _model1(self):
         """
         First model with symmetry breaking
