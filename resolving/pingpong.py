@@ -542,15 +542,13 @@ class Resolve:
 
 def main_loop(resolver: Resolve, conflict: Conflict,
               verbose = 0, largest = False,
-              times = 1, rtimes = 1) -> np.ndarray | None:
+              times = 1, rtimes = 1) -> Tuple[bool,np.ndarray | None]:
     """
     The main ping/pong loop.
     """
-    amat_count = 0
     conflicts = []
     soln = None
     for amat in resolver.get(times = rtimes, verbose = verbose):
-        amat_count += 1
         if verbose > 1:
             print(f"A:\n{amat}")
         # Check validity
@@ -564,8 +562,8 @@ def main_loop(resolver: Resolve, conflict: Conflict,
         conflicts += lconf
     list(map(resolver.add_conflict, conflicts))
 
-    return len(conflicts) != 0, soln
-            
+    return len(conflicts) == 0, soln
+
 def ping_pong(dim: int, mdim: int,
               times: int = 1,
               rtimes: int = 1,
