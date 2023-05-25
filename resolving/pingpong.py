@@ -385,7 +385,8 @@ class Resolve:
             wcnf.append([elt], weight=1)
         wcnf.extend(self._cnf.clauses)
         minimizer = OptUx if use_ux else MUSX
-        msolver = minimizer(wcnf,verbose=verbose)
+        min_opts = {('verbose' if use_ux else 'verbosity'): verbose}
+        msolver = minimizer(wcnf,**min_opts)
         answer = msolver.compute()
         self._cum_time += msolver.oracle_time()
         backwards = {_[1]:_[0] for _ in self._conflicts.items()}
@@ -444,7 +445,6 @@ class Resolve:
         neg = np.arange(self._dim)[xval == -1].tolist()
         assump = self._conflicts[tuple(xval.tolist())]
         # This conflict forbids the last bunch of matrices found.
-        self.append([-assump, self._control])
         for kind in range(self._mdim):
             lits = ([self._avar[kind, _] for _ in pos]
                     + [- self._avar[kind, _] for _ in neg])
@@ -638,7 +638,7 @@ def ping_pong(dim: int, mdim: int,
     if verbose > 0:
         print(f"Final conflict time = {conflict.cum_time}, "
               + f"conflicts={resolver.num_conflicts}")
-        print(f"duplicates = {resolver.duplicates}")
+        # print(f"duplicates = {resolver.duplicates}")
         print(f"Total passes: {pass_no}, resolve time = {resolver.cum_time}.")
     if minimal > 0 and amat is None:
         minimal_conflicts = resolver.minimal(
