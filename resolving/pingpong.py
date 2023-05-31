@@ -118,7 +118,7 @@ class Conflict:
         append a clause to both the solver and the cnf
         """
         self._cnf.extend(form)
-        self._solve.add_formula(form)
+        self._solve.append_formula(form)
         
     def _generate(self):
         """
@@ -273,7 +273,7 @@ class Resolve:
                  nozero: bool = False, # disallow 0 column
                  solver = 'cd15',
                  encode = 'totalizer',
-                 snake: bool = False, # Use snake lex
+                 snake: int = 0, # Use snake lex if > 0, 2 if Transpose
                  maxweight: bool = False, # Only use maximum weights
                  solver_kwds: dict | None = None):
 
@@ -316,7 +316,7 @@ class Resolve:
         Append a clause to both the solver and to self._cnf
         """
         self._cnf.extend(form)
-        self._solve.add_formula(form)
+        self._solve.append_formula(form)
 
     @property
     def census(self):
@@ -543,8 +543,9 @@ class Resolve:
         # Double sorted increasing
         amat = np.array([[self._avar[ind, jind] for jind in range(self._dim)]
                          for ind in range(self._mdim)], dtype=int)
-        breaker = snake_lex if self._snake else double_lex
-        self._cnf.extend(list(breaker(self._pool, amat.T)))
+        breaker = snake_lex if self._snake > 0 else double_lex
+        self._cnf.extend(list(breaker(self._pool,
+                                      amat.T if self._snake > 1 else amat)))
         card_constraint = CardEnc.equals if self._maxweight else CardEnc.atmost
         for ind in range(self._mdim):
             self._cnf.extend(card_constraint(lits =
