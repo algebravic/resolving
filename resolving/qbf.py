@@ -192,7 +192,20 @@ class QBF:
             else:
                 print(f"Bad quantifier {quantifier} at level {level}")
         print(f"Updated {updated}")
-        
+
+    def _render(self) -> Iterable[str]:
+        """
+        Output the lines for the model.
+        """
+        # Output the quantifier lines
+        yield from ((f"{quant[0]} {' '.join(map(str, quant[1]))} 0")
+                                  for quant in self._quantifiers)
+        # Output the dependency lines, if any
+        yield from ((f"d {key} {' '.join(map(str,val))} 0")
+                                for key, val in self._dependencies.items())
+        # Finally output the model
+        yield from ((' '.join(map(str, _)) + ' 0') for _ in self._model)
+
     def write(self, filename: str):
         """
         Write out in QDimacs format.
@@ -206,11 +219,5 @@ class QBF:
         nvars = max(max(support), max(self._quantified))
         with open("{}.cnf".format(filename), 'w') as fil:
             fil.write(f"p cnf {nvars} {len(self._model)}\n")
-            fil.write('\n'.join((f"{quant[0]} {' '.join(map(str, quant[1]))} 0")
-                                  for quant in self._quantifiers))
-            fil.write('\n')
-            fil.write('\n'.join((f"d {key} {' '.join(map(str,val))} 0")
-                                for key, val in self._dependencies.items()))
-            fil.write('\n')
-            fil.write('\n'.join((' '.join(map(str, _)) + ' 0') for _ in self._model))
+            fil.write('\n'.join(self._render()))
             fil.write('\n')
