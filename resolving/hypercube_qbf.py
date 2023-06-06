@@ -1,7 +1,7 @@
 """
 Write a QBF model for the hypercube.
 """
-from typing import Tuple, Iterable, List
+from typing import Tuple, Iterable, List, Dict
 from collections import Counter
 from itertools import product, chain
 import numpy as np
@@ -13,6 +13,8 @@ from .symmbreak import double_lex, snake_lex
 
 CLAUSE = List[int]
 FORMULA = Iterable[CLAUSE]
+VARDEF = Dict[int, int]
+MATDEF = Dict[Tuple[int, int], int]
 
 def large_or(pool: IDPool, formulas: Iterable[FORMULA]) -> FORMULA:
     """
@@ -27,13 +29,26 @@ def large_or(pool: IDPool, formulas: Iterable[FORMULA]) -> FORMULA:
         yield from ([-indic] + _ for _ in form)
     yield indicators
 
+def xy_vars_def(pool: IDPool, num: int) -> Tuple[VARDEF, VARDEF]:
+    """
+    Definition of X/Y vars.
+    """
+    return tuple(({ind: pool.id((stem, ind)) for ind in range(num)}
+                  for stem in ('x','y')))
+
+def mat_def(pool: IDPool, mdim: int, ndim: int, stem: str) -> MATDEF:
+    """
+    Define a matrix
+    """
+    return  {(ind, jind) : pool.id((stem, ind , jind)) for ind in range(mdim)
+             for jind in range(ndim)}
+
 def xy_pos(pool: IDPool, num: int,
            encoding: int = EncType.totalizer) -> FORMULA:
     """
     Positive restrictions for xy.
     """
-    xvars = {ind : pool.id(('x', ind)) for ind in range(num)}
-    yvars = {ind : pool.id(('y', ind)) for ind in range(num)}
+    xvars, yvars = xy_vars_def(pool, num)
     xyvars = list(xvars.values()) + list(yvars.values())
     yield from CardEnc.atleast(lits = xyvars,
                                bound = 4,
@@ -72,14 +87,10 @@ def bc_formula(pool: IDPool, num: int, bound: int) -> FORMULA:
     """
     The constraints on B and C.
     """
-    avars = {(ind, jind) : pool.id(('a', ind , jind)) for ind in range(bound-1)
-             for jind in range(num)}
-    xvars = {ind : pool.id(('x', ind)) for ind in range(num)}
-    yvars = {ind : pool.id(('y', ind)) for ind in range(num)}
-    bvars = {(ind, jind) : pool.id(('b', ind , jind)) for ind in range(bound-1)
-             for jind in range(num)}
-    cvars = {(ind, jind) : pool.id(('c', ind , jind)) for ind in range(bound-1)
-             for jind in range(num)}
+    avars = mat_def(pool, bound-1, num, 'a')
+    xvars, yvars = xy_vars_def(pool, num)
+    bvars = mat_def(pool, bound-1, num, 'b')
+    cvars = mat_def(pool, bound-1, num, 'c')
     # b = a /\ x, c = a /\ y
     for ind, jind in product(range(bound - 1), range(num)):
         yield from set_and(bvars[ind, jind], avars[ind, jind], xvars[jind])
@@ -90,10 +101,8 @@ def bc_neg(pool: IDPool, num: int, bound: int,
     """
     At least one rows has a nonzero dot product.
     """
-    bvars = {(ind, jind) : pool.id(('b', ind , jind)) for ind in range(bound-1)
-             for jind in range(num)}
-    cvars = {(ind, jind) : pool.id(('c', ind , jind)) for ind in range(bound-1)
-             for jind in range(num)}
+    bvars = mat_def(pool, bound-1, num, 'b')
+    cvars = mat_def(pool, bound-1, num, 'c')
     # There is a row which resolves (X,Y)
     for ind in range(bound - 1):
         lits = ([bvars[ind, _]
@@ -114,10 +123,8 @@ def bc_pos(pool: IDPool, num: int, bound: int,
     """
     At least one rows has a nonzero dot product.
     """
-    bvars = {(ind, jind) : pool.id(('b', ind , jind)) for ind in range(bound-1)
-             for jind in range(num)}
-    cvars = {(ind, jind) : pool.id(('c', ind , jind)) for ind in range(bound-1)
-             for jind in range(num)}
+    bvars = mat_def(pool, bound-1, num, 'b')
+    cvars = mat_def(pool, bound-1, num, 'c')
     # All rows fail to resolve (X,Y)
 
     for ind in range(bound - 1):
@@ -135,8 +142,7 @@ def xy_neg(pool: IDPool, num: int,
     """
     The conflict formulas.
     """
-    xvars = {ind : pool.id(('x', ind)) for ind in range(num)}
-    yvars = {ind : pool.id(('y', ind)) for ind in range(num)}
+    xvars, yvars = xy_vars_def(pool, num)
     # Column/row 0 is not 0
     # Constraints on the X/Y variables (universally quantified)
     # Our problem is of the form exists A forall X,Y F(X,Y,A)
@@ -195,9 +201,9 @@ def hypercube_model(num: int, bound: int,
     if dependencies:
         for ind, jind in product(range(bound - 1), range(num)):
             qbf.dependency(pool.id(('b', ind, jind)),
-                           [pool.id(('x', jind)),pool.id(('y', jind))])
+                           [pool.id(('x', jind))])
             qbf.dependency(pool.id(('c', ind, jind)),
-                           [pool.id(('x', jind)),pool.id(('y', jind))])
+                           [pool.id(('y', jind))])
     else:
         qbf.exists([pool.id(('b', ind, jind))
                     for ind, jind in product(range(bound - 1), range(num))])
@@ -252,9 +258,9 @@ def inverse_hypercube_model(num: int, bound: int,
     if dependencies:
         for ind, jind in product(range(bound - 1), range(num)):
             qbf.dependency(pool.id(('b', ind, jind)),
-                           [pool.id(('x', jind)),pool.id(('y', jind))])
+                           [pool.id(('x', jind))])
             qbf.dependency(pool.id(('c', ind, jind)),
-                           [pool.id(('x', jind)),pool.id(('y', jind))])
+                           [pool.id(('y', jind))])
     bc_restriction = list(bc_pos(pool, num, bound, encoding = encoding))
     qbf.exists(qbf.unquantified(bc_restriction))
 
