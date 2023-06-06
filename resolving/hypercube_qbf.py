@@ -29,12 +29,11 @@ def large_or(pool: IDPool, formulas: Iterable[FORMULA]) -> FORMULA:
         yield from ([-indic] + _ for _ in form)
     yield indicators
 
-def xy_vars_def(pool: IDPool, num: int) -> Tuple[VARDEF, VARDEF]:
+def vec_def(pool: IDPool, num: int, stem: str) -> VARDEF:
     """
     Definition of X/Y vars.
     """
-    return tuple(({ind: pool.id((stem, ind)) for ind in range(num)}
-                  for stem in ('x','y')))
+    return {ind: pool.id((stem, ind)) for ind in range(num)}
 
 def mat_def(pool: IDPool, mdim: int, ndim: int, stem: str) -> MATDEF:
     """
@@ -43,12 +42,25 @@ def mat_def(pool: IDPool, mdim: int, ndim: int, stem: str) -> MATDEF:
     return  {(ind, jind) : pool.id((stem, ind , jind)) for ind in range(mdim)
              for jind in range(ndim)}
 
+
+
+
+
+
+
+
+
+
+
+
 def xy_pos(pool: IDPool, num: int,
            encoding: int = EncType.totalizer) -> FORMULA:
     """
     Positive restrictions for xy.
     """
-    xvars, yvars = xy_vars_def(pool, num)
+    xvars = vec_def(pool, num, 'x')
+    yvars = vec_def(pool, num, 'y')
+
     xyvars = list(xvars.values()) + list(yvars.values())
     yield from CardEnc.atleast(lits = xyvars,
                                bound = 4,
@@ -88,7 +100,8 @@ def bc_formula(pool: IDPool, num: int, bound: int) -> FORMULA:
     The constraints on B and C.
     """
     avars = mat_def(pool, bound-1, num, 'a')
-    xvars, yvars = xy_vars_def(pool, num)
+    xvars = vec_def(pool, num, 'x')
+    yvars = vec_def(pool, num, 'y')
     bvars = mat_def(pool, bound-1, num, 'b')
     cvars = mat_def(pool, bound-1, num, 'c')
     # b = a /\ x, c = a /\ y
@@ -142,7 +155,8 @@ def xy_neg(pool: IDPool, num: int,
     """
     The conflict formulas.
     """
-    xvars, yvars = xy_vars_def(pool, num)
+    xvars = vec_def(pool, num, 'x')
+    yvars = vec_def(pool, num, 'y')
     # Column/row 0 is not 0
     # Constraints on the X/Y variables (universally quantified)
     # Our problem is of the form exists A forall X,Y F(X,Y,A)
@@ -156,7 +170,7 @@ def xy_neg(pool: IDPool, num: int,
     # This formula is all of the xy variables are 0
     xyvars = list(xvars.values()) + list(yvars.values())
     yield CardEnc.atmost(lits = xyvars,
-                         bound = 2,
+                         bound = 3,
                          encoding = encoding,
                          vpool = pool).clauses
     # (X,Y) sums to 0
@@ -190,25 +204,25 @@ def hypercube_model(num: int, bound: int,
     # The B and C variables are auxilliary.
     encoding = getattr(EncType, encode, EncType.totalizer)
     qbf = QBF()
+    xvars = vec_def(pool, num, 'x')
+    yvars = vec_def(pool, num, 'y')
+    avars = mat_def(pool, bound-1, num, 'a')
+    bvars = mat_def(pool, bound-1, num, 'b')
+    cvars = mat_def(pool, bound-1, num, 'c')
 
-    qbf.exists([pool.id(('a', ind, jind))
-                for ind, jind in product(range(bound - 1), range(num))])
+    qbf.exists(list(avars.values()))
     a_restriction = list(a_pos(pool, num, bound, encoding = encoding, snake = snake))
     qbf.exists(qbf.unquantified(a_restriction))
-    qbf.forall([pool.id(('x', jind)) for jind in range(num)])
-    qbf.forall([pool.id(('y', jind)) for jind in range(num)])
+    qbf.forall(list(xvars.values()))
+    qbf.forall(list(yvars.values()))
     # B and C depend on X and Y, so they must be quantified after.
     if dependencies:
         for ind, jind in product(range(bound - 1), range(num)):
-            qbf.dependency(pool.id(('b', ind, jind)),
-                           [pool.id(('x', jind))])
-            qbf.dependency(pool.id(('c', ind, jind)),
-                           [pool.id(('y', jind))])
+            qbf.dependency(bvars[ind, jind], [xvars[jind]])
+            qbf.dependency(cvars[ind, jind], [yvars[jind]])
     else:
-        qbf.exists([pool.id(('b', ind, jind))
-                    for ind, jind in product(range(bound - 1), range(num))])
-        qbf.exists([pool.id(('c', ind, jind))
-                    for ind, jind in product(range(bound - 1), range(num))])
+        qbf.exists(list(bvars.values()))
+        qbf.exists(list(cvars.values()))
 
     nxy_restriction = list(large_or(pool, xy_neg(pool, num, encoding = encoding)))
     bc_def = list(bc_formula(pool, num, bound))
@@ -245,22 +259,25 @@ def inverse_hypercube_model(num: int, bound: int,
     encoding = getattr(EncType, encode, EncType.totalizer)
     qbf = QBF()
 
-    qbf.forall([pool.id(('a', ind, jind))
-                for ind, jind in product(range(bound - 1), range(num))])
+    xvars = vec_def(pool, num, 'x')
+    yvars = vec_def(pool, num, 'y')
+    avars = mat_def(pool, bound-1, num, 'a')
+    bvars = mat_def(pool, bound-1, num, 'b')
+    cvars = mat_def(pool, bound-1, num, 'c')
+
+    qbf.forall(list(avars.values()))
     a_restriction = list(a_pos(pool, num, bound, encoding = encoding, snake = snake))
     qbf.exists(qbf.unquantified(a_restriction))
-    qbf.exists([pool.id(('x', jind)) for jind in range(num)])
-    qbf.exists([pool.id(('y', jind)) for jind in range(num)])
+    qbf.exists(list(xvars.values()))
+    qbf.exists(list(yvars.values()))
     xy_restriction = list(xy_pos(pool, num, encoding = encoding))
     qbf.exists(qbf.unquantified(xy_restriction))
     bc_def = list(bc_formula(pool, num, bound))
     qbf.exists(qbf.unquantified(bc_def))
     if dependencies:
         for ind, jind in product(range(bound - 1), range(num)):
-            qbf.dependency(pool.id(('b', ind, jind)),
-                           [pool.id(('x', jind))])
-            qbf.dependency(pool.id(('c', ind, jind)),
-                           [pool.id(('y', jind))])
+            qbf.dependency(bvars[ind, jind], [xvars[jind]])
+            qbf.dependency(cvars[ind, jind], [yvars[jind]])
     bc_restriction = list(bc_pos(pool, num, bound, encoding = encoding))
     qbf.exists(qbf.unquantified(bc_restriction))
 
