@@ -35,7 +35,10 @@ def xy_pos(pool: IDPool, num: int,
     xvars = {ind : pool.id(('x', ind)) for ind in range(num)}
     yvars = {ind : pool.id(('y', ind)) for ind in range(num)}
     xyvars = list(xvars.values()) + list(yvars.values())
-    yield xyvars # Forbid 0
+    yield from CardEnc.atleast(lits = xyvars,
+                               bound = 4,
+                               encoding = encoding,
+                               vpool = pool).clauses
     xnyvars = list(xvars.values()) + [-_ for _ in yvars.values()]
     yield from CardEnc.equals(lits = xnyvars,
                               bound = num,
@@ -65,8 +68,7 @@ def a_pos(pool: IDPool, num: int, bound: int,
                                   encoding = encoding,
                                   vpool = pool).clauses
 
-def bc_formula(pool: IDPool, num: int, bound: int,
-               encoding: int = EncType.totalizer) -> Iterable[FORMULA]:
+def bc_formula(pool: IDPool, num: int, bound: int) -> FORMULA:
     """
     The constraints on B and C.
     """
@@ -83,24 +85,50 @@ def bc_formula(pool: IDPool, num: int, bound: int,
         yield from set_and(bvars[ind, jind], avars[ind, jind], xvars[jind])
         yield from set_and(cvars[ind, jind], avars[ind, jind], yvars[jind])
 
+def bc_neg(pool: IDPool, num: int, bound: int,
+           encoding: int = EncType.totalizer) -> Iterable[FORMULA]:
+    """
+    At least one rows has a nonzero dot product.
+    """
+    bvars = {(ind, jind) : pool.id(('b', ind , jind)) for ind in range(bound-1)
+             for jind in range(num)}
+    cvars = {(ind, jind) : pool.id(('c', ind , jind)) for ind in range(bound-1)
+             for jind in range(num)}
     # There is a row which resolves (X,Y)
-    # rcnf is a list of formulas
-    # At least one of them will be satsified
-    rcnf = []
     for ind in range(bound - 1):
         lits = ([bvars[ind, _]
                  for _ in range(num) ]
                 + [- cvars[ind, _]
                    for _ in range(num)])
-        rcnf.append(CardEnc.atmost(
+        yield CardEnc.atmost(
             lits = lits, bound = num - 1,
             encoding = encoding,
-            vpool = pool).clauses)
-        rcnf.append(CardEnc.atleast(
+            vpool = pool).clauses
+        yield CardEnc.atleast(
             lits = lits, bound = num + 1,
             encoding = encoding,
-            vpool = pool).clauses)
-    yield from large_or(pool, rcnf)
+            vpool = pool).clauses
+
+def bc_pos(pool: IDPool, num: int, bound: int,
+           encoding: int = EncType.totalizer) -> FORMULA:
+    """
+    At least one rows has a nonzero dot product.
+    """
+    bvars = {(ind, jind) : pool.id(('b', ind , jind)) for ind in range(bound-1)
+             for jind in range(num)}
+    cvars = {(ind, jind) : pool.id(('c', ind , jind)) for ind in range(bound-1)
+             for jind in range(num)}
+    # All rows fail to resolve (X,Y)
+
+    for ind in range(bound - 1):
+        lits = ([bvars[ind, _]
+                 for _ in range(num) ]
+                + [- cvars[ind, _]
+                   for _ in range(num)])
+        yield from CardEnc.equals(
+            lits = lits, bound = num,
+            encoding = encoding,
+            vpool = pool).clauses
 
 def xy_neg(pool: IDPool, num: int,
            encoding: int = EncType.totalizer) -> Iterable[FORMULA]:
@@ -120,7 +148,11 @@ def xy_neg(pool: IDPool, num: int,
     # We want at leasat one of the formulas to be satisfied.
     # indic -> ~(\/ xy[i]) == indic -> /\ ~xy[i]
     # This formula is all of the xy variables are 0
-    yield [[- _] for _ in xvars.values()] + [[- _] for _ in yvars.values()]
+    xyvars = list(xvars.values()) + list(yvars.values())
+    yield CardEnc.atmost(lits = xyvars,
+                         bound = 2,
+                         encoding = encoding,
+                         vpool = pool).clauses
     # (X,Y) sums to 0
     xnyvars = list(xvars.values()) + [-_ for _ in yvars.values()]
     yield CardEnc.atmost(lits = xnyvars,
@@ -171,17 +203,63 @@ def hypercube_model(num: int, bound: int,
                     for ind, jind in product(range(bound - 1), range(num))])
         qbf.exists([pool.id(('c', ind, jind))
                     for ind, jind in product(range(bound - 1), range(num))])
-    
-    # xy_restriction = list(xy_pos(pool, num, encoding = encoding))
+
     nxy_restriction = list(large_or(pool, xy_neg(pool, num, encoding = encoding)))
-    bc_restriction = list(bc_formula(pool, num, bound, encoding = encoding))
+    bc_def = list(bc_formula(pool, num, bound))
+    bc_restriction = list(large_or(
+        pool, bc_neg(pool, num, bound, encoding = encoding)))
     qbf.exists(qbf.unquantified(nxy_restriction))
+    qbf.exists(qbf.unquantified(bc_def))
     qbf.exists(qbf.unquantified(bc_restriction))
 
     cnf = CNF()
+    # Exists A such that Forall X F(X,A)
+    # F(X,A) = ((a restriction) /\ (bc_def) /\ bc_restriction) \/ (nxy_restriction))
     cnf.extend(list(
-        large_or(pool, [a_restriction + bc_restriction,
-                        nxy_restriction])))
+        large_or(pool, [a_restriction + bc_def + bc_restriction,
+                  nxy_restriction])))
+    if verbose > 0:
+        print(f"Census = {Counter(map(len,cnf.clauses))}")
+    qbf.add_model(cnf)
+    return qbf, pool
+
+def inverse_hypercube_model(num: int, bound: int,
+                            dependencies: bool = False,
+                            snake: bool = False,
+                            verbose: int = 0,
+                            encode: str = 'totalizer') -> Tuple[QBF, IDPool]:
+    """
+    For the UNSAT version:
+    Forall A Exists X F(A,X)
+    where A is an m by n matrix (with symmetry breaking constraints)
+    X is a test vetctor, and F(A,X) is true if A@X = 0
+    """
+    pool = IDPool()
+    # The B and C variables are auxilliary.
+    encoding = getattr(EncType, encode, EncType.totalizer)
+    qbf = QBF()
+
+    qbf.forall([pool.id(('a', ind, jind))
+                for ind, jind in product(range(bound - 1), range(num))])
+    a_restriction = list(a_pos(pool, num, bound, encoding = encoding, snake = snake))
+    qbf.exists(qbf.unquantified(a_restriction))
+    qbf.exists([pool.id(('x', jind)) for jind in range(num)])
+    qbf.exists([pool.id(('y', jind)) for jind in range(num)])
+    xy_restriction = list(xy_pos(pool, num, encoding = encoding))
+    qbf.exists(qbf.unquantified(xy_restriction))
+    bc_def = list(bc_formula(pool, num, bound))
+    qbf.exists(qbf.unquantified(bc_def))
+    if dependencies:
+        for ind, jind in product(range(bound - 1), range(num)):
+            qbf.dependency(pool.id(('b', ind, jind)),
+                           [pool.id(('x', jind)),pool.id(('y', jind))])
+            qbf.dependency(pool.id(('c', ind, jind)),
+                           [pool.id(('x', jind)),pool.id(('y', jind))])
+    bc_restriction = list(bc_pos(pool, num, bound, encoding = encoding))
+    qbf.exists(qbf.unquantified(bc_restriction))
+
+    cnf = CNF()
+    cnf.extend(a_restriction + bc_def + bc_restriction + xy_restriction)
     if verbose > 0:
         print(f"Census = {Counter(map(len,cnf.clauses))}")
     qbf.add_model(cnf)
