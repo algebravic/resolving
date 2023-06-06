@@ -238,7 +238,7 @@ def inverse_hypercube_model(num: int, bound: int,
     For the UNSAT version:
     Forall A Exists X F(A,X)
     where A is an m by n matrix (with symmetry breaking constraints)
-    X is a test vetctor, and F(A,X) is true if A@X = 0
+    X is a test vector, and F(A,X) is true if A@X = 0
     """
     pool = IDPool()
     # The B and C variables are auxilliary.
