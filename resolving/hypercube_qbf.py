@@ -190,7 +190,6 @@ def xy_neg(pool: IDPool, num: int,
     yield from ([[xvars[ind]], [yvars[ind]]] for ind in range(num))
 
 def hypercube_model(num: int, bound: int,
-                    invert: bool = False,
                     dependencies: bool = False,
                     snake: bool = False,
                     verbose: int = 0,
