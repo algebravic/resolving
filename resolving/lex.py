@@ -86,7 +86,8 @@ def lex_less(pool: IDPool,
     
 def standard_lex(pool: IDPool,
                  op1: List[int],
-                 op2: List[int]) -> Iterable[List[int]]:
+                 op2: List[int],
+                 strict: bool = True) -> Iterable[List[int]]:
     """
     Lexicographic <
     """
@@ -98,7 +99,8 @@ def standard_lex(pool: IDPool,
     # lita <= litb: ~lita /\ litb
     for ind, (lit1, lit2) in enumerate(zip(op1, op2)):
         yield equals[: ind] + [-lit1, lit2]
-    yield equals # make it strict
+    if strict:
+        yield equals # make it strict
 
 def special_less(pool: IDPool,
                  lit1: CLAUSE,

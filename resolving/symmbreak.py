@@ -4,7 +4,7 @@ Implement snake lex
 from typing import Iterable, List
 import numpy as np
 from pysat.formula import IDPool
-from .logic import CLAUSE
+from .logic import CLAUSE, FORMULA
 # from .lex import standard_lex, lex_less
 from .lex import standard_lex as lexc
 
@@ -23,6 +23,23 @@ def double_lex(pool: IDPool,
         yield from lexc(pool,
                         list(map(int, mat[:, jind])),
                         list(map(int, mat[:, jind+1])))
+
+def un_double_lex(pool: IDPool,
+                  mat: np.ndarray) -> Iterable[FORMULA]:
+    """
+    The Double Lex symmetry breaking constraint.
+    """
+    lexd = lambda p,a,b: lexc(p,a,b,strict=False)
+
+    mdim, ndim = mat.shape
+    for ind in range(mdim - 1):
+        yield lexd(pool,
+                   list(map(int, mat[ind+1])),
+                   list(map(int, mat[ind])))
+    for jind in range(ndim - 1):
+        yield lexd(pool,
+                   list(map(int, mat[:, jind+1])),
+                   list(map(int, mat[:, jind])))
 
 def zig_zag(mat: np.ndarray, par: int) -> Iterable[int]:
     """

@@ -9,7 +9,7 @@ from pysat.formula import CNF, IDPool
 from pysat.card import CardEnc, EncType
 from .logic import set_and
 from .qbf import QBF
-from .symmbreak import double_lex, snake_lex
+from .symmbreak import double_lex, snake_lex, un_double_lex
 
 CLAUSE = List[int]
 FORMULA = Iterable[CLAUSE]
@@ -41,17 +41,6 @@ def mat_def(pool: IDPool, mdim: int, ndim: int, stem: str) -> MATDEF:
     """
     return  {(ind, jind) : pool.id((stem, ind , jind)) for ind in range(mdim)
              for jind in range(ndim)}
-
-
-
-
-
-
-
-
-
-
-
 
 def xy_pos(pool: IDPool, num: int,
            encoding: int = EncType.totalizer) -> FORMULA:
@@ -95,6 +84,28 @@ def a_pos(pool: IDPool, num: int, bound: int,
                                   encoding = encoding,
                                   vpool = pool).clauses
 
+def a_neg(pool: IDPool, num: int, bound: int,
+          snake: bool = False,
+          encoding: int = EncType.totalizer) -> FORMULA:
+    """
+    The Negative restrictions on the A matrix.
+    """
+    avars = {(ind, jind) : pool.id(('a', ind , jind)) for ind in range(bound-1)
+             for jind in range(num)}
+    # Column/row 0 is not 0
+    # Some row can be 0
+    yield from ([[-avars[ind,_]] for _ in range(num)] for ind in range(bound - 1))
+    # Double lex, or snake lex for the a variables
+    amat = np.array([[avars[ind, jind] for jind in range(num)]
+                     for ind in range(bound - 1)], dtype=int)
+    # breaker = snake_lex if snake else double_lex
+    yield from map(list,un_double_lex(pool, amat.T))
+    for ind in range(bound - 1):
+        yield CardEnc.atleast(lits = [avars[ind, _] for _ in range(num)],
+                             bound = 1 + num // 2,
+                             encoding = encoding,
+                             vpool = pool).clauses
+
 def bc_formula(pool: IDPool, num: int, bound: int) -> FORMULA:
     """
     The constraints on B and C.
@@ -112,7 +123,7 @@ def bc_formula(pool: IDPool, num: int, bound: int) -> FORMULA:
 def bc_neg(pool: IDPool, num: int, bound: int,
            encoding: int = EncType.totalizer) -> Iterable[FORMULA]:
     """
-    At least one rows has a nonzero dot product.
+    At least one row has a nonzero dot product.
     """
     bvars = mat_def(pool, bound-1, num, 'b')
     cvars = mat_def(pool, bound-1, num, 'c')
@@ -265,7 +276,9 @@ def inverse_hypercube_model(num: int, bound: int,
     cvars = mat_def(pool, bound-1, num, 'c')
 
     qbf.forall(list(avars.values()))
-    a_restriction = list(a_pos(pool, num, bound, encoding = encoding, snake = snake))
+    a_restriction = list(large_or(pool,
+                                  list(a_neg(pool, num, bound,
+                                             encoding = encoding, snake = snake))))
     qbf.exists(qbf.unquantified(a_restriction))
     qbf.exists(list(xvars.values()))
     qbf.exists(list(yvars.values()))
@@ -281,7 +294,8 @@ def inverse_hypercube_model(num: int, bound: int,
     qbf.exists(qbf.unquantified(bc_restriction))
 
     cnf = CNF()
-    cnf.extend(a_restriction + bc_def + bc_restriction + xy_restriction)
+    cnf.extend(large_or(pool, [a_restriction,
+                               bc_def + bc_restriction + xy_restriction]))
     if verbose > 0:
         print(f"Census = {Counter(map(len,cnf.clauses))}")
     qbf.add_model(cnf)

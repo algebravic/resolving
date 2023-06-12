@@ -216,7 +216,7 @@ class QBF:
         if not set(self._quantified.keys()).issubset(support):
             alone = set(self._quantified.keys()).difference(support)
             print(f"Warning: variables not in model {alone}")
-        nvars = max(max(support), max(self._quantified))
+        nvars = max(max(support), max(self._quantified.keys()))
         with open("{}.cnf".format(filename), 'w') as fil:
             fil.write(f"p cnf {nvars} {len(self._model)}\n")
             fil.write('\n'.join(self._render()))
