@@ -1,8 +1,8 @@
 Use MAXSAT to find minimal resolving sets of a graph
 ====================================================
 Let $G$ be a connected undirected graph, and let $d(u,v)$ denote the
-minimum distance between nodes $u$ and $v$.  We say that a vertex $x
-\in V(G)$ *resolves* the pair $(u,v) \in V(G) \times V(G)$ if $d(u,x)
+minimum distance between nodes $u$ and $v$.  We say that a vertex
+$`x \in V(G)`$ *resolves* the pair $(u,v) \in V(G) \times V(G)$ if $d(u,x)
 \ne d(v,x)$.  A *resolving set* for $G$ is a subset $S \subseteq V(G)$
 such that every pair of distinct vertices is resolved by some element
 of $S$.  We would like to find a minimum cardinality resolving set.
