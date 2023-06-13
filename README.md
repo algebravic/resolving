@@ -6,8 +6,8 @@ minimum distance between nodes $u$ and $v$.  We say that a vertex $x
 \ne d(v,x)$.  A *resolving set* for $G$ is a subset $S \subseteq V(G)$
 such that every pair of distinct vertices is resolved by some element
 of $S$.  We would like to find a minimum cardinality resolving set.
-We may use MAXSAT for this.  Define variables $`x_s`$ for all $s \in
-V(G)$ as an indicator of being in the minimal resolving set.  Define
+We may use MAXSAT for this.  Define variables $`x_s`$ for all
+$`s \in V(G)`$ as an indicator of being in the minimal resolving set.  Define
 sets $`A_{u,v} = \{s \in V(G): s \text{ resolves } (u,v)\}`$.  Then the
 clauses are $`\bigvee_{x \in A _ {u,v} x_s}`$.  We may also want to cut
 down the search by using automorphisms of $G$.  Because automorphisms
