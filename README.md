@@ -9,7 +9,7 @@ of $S$.  We would like to find a minimum cardinality resolving set.
 We may use MAXSAT for this.  Define variables $`x_s`$ for all $s \in
 V(G)$ as an indicator of being in the minimal resolving set.  Define
 sets $`A_{u,v} = \{s \in V(G): s \text{ resolves } (u,v)\}`$.  Then the
-clauses are $`\bigvee_{x \in A _ {u,v} x_s`$.  We may also want to cut
+clauses are $`\vee_{x \in A _ {u,v} x_s`$.  We may also want to cut
 down the search by using automorphisms of $G$.  Because automorphisms
 leave the distance invariant, if $S$ is a resolving set, and $\sigma
 \in \text{Aut}(G)$ then $\sigma(S)$ is also resolvong. Let $R \subset
