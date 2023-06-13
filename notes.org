@@ -1,5 +1,6 @@
 #+Title: Metric Dimension
 #+Latex_header: \DeclareMathOperator{\wt}{wt}
+#+Latex_header: \newcommand{\RR}{\mathbb{R}}
 * <2023-03-23 Thu> Introduction
 Let $G$ denote a finite graph (directed or undirected). If $u,v \in
 V(G)$ are two vertices of $G$ define $d(u,v)$ as being the length of
@@ -624,7 +625,157 @@ a(n) is asymptotic to d*3^n/sqrt(n) with d around 0.5.. - Benoit
 Cloitre, Nov 02 2002, d = sqrt(3/Pi)/2 = 0.4886025119... - Alec
 Mihailovs (alec(AT)mihailovs.com), Feb 24 2005
 
+* <2023-05-12 Fri> Inclusion-Exclusion
+Suppose that we have a finite set $A$ of cardinality $n$, and a
+collection of subsets $S_i \subseteq A$, each satisfying
+$|S_i|/|A| \ge \alpha > \frac 1 2$. We wish to give a lower bound to
+the a set $C$ of indices such that $\bigcap_{j \in C} S_i =
+\emptyset$.  Let $T_i = A \backslash S_i$.
+Let $\chi$ denote the characteristic function.
+$|S_i \cap S_j| = \sum_{x \in A} \chi_i(x) \chi_j(x) = \sum_x
+(\ch_i(x) - \alpha) \chi_j(x) + \alpha\sum_x \chi_j(x)$
 
+Lovasz Local Lemma?  The events are indexed by 0/1/-1 vectors summing
+to 0.  If we have a random 0/1 vector, the probability that dotting
+that with the event vector will be $2^{-n}$ times $\sum_{j=0}^k\binom{n}{2j}
+\binom{2j}{j}$, where the event vector has $k$ 1's and $k$ -1's.  So
+which other events are conditionally independent.
 
+I think that independence is just linear independence.
 
+If $v_1, \dots, v_r$ are 0/1/-1 vectors let $S(v_i)$ denotes the set
+of all 0/1 vectors in the whose dot product with all the $v_i$ are 0.
 
+Case: $k$-vectors.  Call a set of indices a *sector* if all of the
+columns corresponding to those indices are equal, and that subset is
+maximal with respect to that property.  
+
+* More symmetries?
+
+Let $A$ be a feasible $m \times n$ matrix.  We know that any
+permutation of the rows and/or columns of $A$ is also feasible.  In
+addition, for any row $c$ the matrix $C \oplus A$ is feasible, where
+$C$ is the $m \times n$ matrix all of whose rows are equal to $c$.  We
+would like $c$ to be one of the rows of $A$, so that one of the rows
+of $C \oplus A$ is the all 0 row.  Among all of these matrices, we'd
+like to choose the one which is lexicographically minimal.  This seems
+too complicated. Knuth (in volume 4.6, section 7.2.2.2) points out
+that it is only necessary to find an *endomorphism*.  That is, if
+$x := x_1, \dots, x_n$ are boolean variables, then $\tau: \{0,1\}^n
+\rightarrow \{0,1\}^n$ is an *endomorphism* of a formula $F$ if
+whenever $x$ satisfies $F$ then so does $\tau(x)$.  Notice that it is
+not necessary to specify any behavior for $\tau(x)$ when $x$ does
+*not* satisfy $F$.  He points out that it is then valid to add the
+constraints $x \le \tau(x)$, where $\le$ is any total order (most
+likely lex).
+
+I conjecture that there is a feasible $A$ if and only if there is a
+feasible $A$ all of whose nonzero rows have weight $\lfloor n/2
+\rfloor$.  Here's a try: Let $c$ be a row whose weight is $< \lfloor
+n/2 \rfloor$.   We need to show that if $x$ is a balanced $\{0, \pm
+1\}$ vector such that $c \cdot x \ne 0$, then there is a position is
+$c$ containing a 0, so that $c'$, obtained from $c$ by changing that
+to a 1, has the property that $c' \cdot x \ne 0$.  It really reduces
+to the case that $c \cdots x = 1$, since $-x$ is also a test vector.
+So now this means that we can find a position where $c$ contains a 0,
+but $x$ contains a 0 or a 1.  And we need to do this for all $x$ such
+that $c \cdot x = 1$.  Note that the only nonzero elements of such an
+$x$ that matter, are those under the support of $c$.  Suppose that
+under that support there are $s$ 1's and $s-1$ -1's.  This means that
+$2s-1 \le r$, where $r$ is the weight $c$.  So this can't work since,
+if there's at least 1, -1 left outside of the support, it can go into
+every coordinate position.  So an alternative would be to show that
+the *number* of resolved $x$'s never decreases.  In particular, this
+would show that for every good $x$ that's killed, at least one bad $x$
+will be made good.  So, the situation is this: there are $s$ 1's and
+$s-1$ -1's under the support of $c$, and $j$ is an index outside of
+the support of $c$ such that there are $x$, when restricted to $c$ has
+the pattern given, but $x_j = -1$.  Since $x$ is balanced, its sum
+outside of the support of $c$ is $-1$.  The vectors that are bad of
+$c$ are those with $t$ 1's and $t$ -1's under the support of $c$.  All
+we have to do is to show that there is one such with a $\pm 1$ in
+position $j$.  If $2s-1 < r$ then we can always move a -1 from outside
+of the support of $c$ to the inside of the support of $c$, since $r
+\le n/2$.  More specifically, there is always an $x$ with maximal
+weight: $a$ 1's and $a$ -1's where $a = \lfloor n / 2 \rfloor$.
+position under the support of $c$.
+
+We want to show that for every $c$, such that $\wt(c) < \lfloor n/2
+\rfloor$, there is a map $f$ from the set $S := \{x : c \cdot x = 1\}$ to
+the set $T := \{x : c \cdot x = 0\}$ with the property that if $x_j =
+-1, x \in S$ for $c_j = 0$ then $f(x)_j \ne 0$.
+
+Here's a strategy: if the weight of $x$ is large enough, there will
+always be a guarantee of a $+1$ outside of the support of $c$ in
+addition to the $-1$.  We can then consider the vector that swaps
+those two.  So we only have the case that the only nonzeros outside of
+the support of $c$ are $-1$'s.  Since, by choice, this means that
+there is precisely one $-1$.  The extreme case happens if the support
+of $c$ has size 1.  When we set a position outside the support of $c$
+from 0 to 1 we actually make a lot of bad vectors good: Any vector
+whose support is disjoint from $c$, and any vector which isn't
+balanced in $c \cup \{j\}$.  So we just need to calculate the
+difference between the number of balanced vectors in $c \cup \{j\}$
+and the unbalanced vectors in $c \cup \{j\}$.
+
+Let $B(r)$ be the number of balanced vectors of length $r$.
+At the beginning there are $B(n) - B(r)$ good vectors.
+After setting $r \leftarrow r+1$ there are $B(n) - B(r+1)$ good
+vectors.  So as long as $B(r+1) \le B(r)$ we've won.  But this ignores
+the interaction with the other rows, since it is not true that the set
+of good vectors is increasing, just their number.   We partition the
+sets of columns into $P_1 \cup P_2 \cup \dots \cup P_s$ so that the
+columns in each $P_i$ are constant (i.e. all have the same value).
+Changing a 0 to a 1 in some position, $j$, will remove one column from the
+part containing $j$ and either make a new part of size 1 or merge it
+into another part.
+
+A part is "pure" if all the elements are = 1, otherwise it's
+"impure".  If all parts are impure then the set of bad vectors must
+all be balanced within in each part (since all 0's kills everything).
+Is this true?
+
+* A False theorem
+
+If $m$ is a positive integer, denotes by $[m] = \{1, \dots, m\}$.  If
+$U$ is a finite set, and $S_1, \dots, S_m \subseteq$.  If $T \subseteq
+[m]$, denote by $B_m[V,T] = \bigcap_{j \in T} \cap \bigcap_{j \in
+[m]\backslash T} (V \cap S_j) \left( V \cap (V \backslash S_j)\right)$.  If $x:U
+\rightarrow A$, where $A$ is an additive abelian group, and $S
+\subseteq U$, denote by $x(S) = \sum_{a \in S} x(a)$.
+
+Proposition: Let $U$ be a finite set, $S_1, \dots, S_m \subseteq U$,
+and $x:U \rightarrow A$, where $A$ is an additive abelian group.  Then
+$x(U) = 0$ and $x(S_j) = 0$ for all $1 \le j \le m$ if and only if
+$x(B_m[U,T]) = 0$ for all $T \subseteq [m]$.
+
+Proof: The "only if" part is straightforward, since, for all $j$ we
+have $S_j = \bigcup_{T \subset [m], j \in T} B_m[U,T]$, where the
+union is disjoint.  For the "if" part we prove the statement by
+induction on $m$.  If $m=1$, note that $x(U) = x(U \backslash S_1) +
+x(S_1) = x(B_1[U,\emptyset]) + x(B_1[U,\{1\}])$. If $m > 1$, if $T
+\subseteq [m-1]$, by induction, we have $x(B_{m-1}[U,T]) = 0$.
+We have $x(B_{m-1}[U,T]) = x(B_{m-1}[U,T] \cap S_m) + x(B_{m-1}[U,T]
+\backslash S_m)$. [This is what is wrong: it is not necessarily true
+that the first term on the right hand side is 0].
+
+Perhaps we can apply it to the case where the universe is $S_m$ and
+the subsets are $S_m \cap S_1, \dots, S_m \cap S_{m-1}$.
+
+[0000]
+[1100]
+[1010]
+
+x_1 + x_2 + x_3 + x_4 = 0
+x_1 + x_2                     =  0
+x_1           + x_3          = 0
+
+x_3 + x_4 = 0
+x_1 + x_2 = 0
+x_2 - x_3  = 0
+
+==> x_1 = -x_2 = -x_3 = x_4
+
+What I'd like to show is that if a nonzero row has weight $< \lfloor
+n/2 \rfloor$, that there is a position in that row containing a 0,
+which we can make a 1, but not allow more 0 sums in the other rows.
