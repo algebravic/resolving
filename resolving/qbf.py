@@ -14,8 +14,8 @@ putative resolving set.
 Define U[i,j] = X[i,j] xor Y[j], for i,j
        V[i,j] = X[i,j] xor Z[j]
 
-We have constraints \/_i Y[i] \/ \/_i Z[i] (rule out 0)
-                    ~Y[i]\/~Z[i] for all i (not simulatenously 1)
+We have constraints |_i Y[i] | |_i Z[i] (rule out 0)
+                    ~Y[i]|~Z[i] for all i (not simulatenously 1)
                     sum_j U[i,j] + sum_j ~V[i,j] = N for all i
 
 We also need symmetry breaking constaints for the X[i,j]:
@@ -28,11 +28,11 @@ if sum_j X[i,j] == sum_j X[i+1,j] then X[i] < (lex) X[i+1]
 For 0 <= i < k < N, 0 <= r < B-1, E[i,k,r] is true
 if and only if X[s,i] == X[s,k] for 0 <= s <= r.
 
-Then we want E[i,k,r] ==> ~(X[r,i] == 0 /\ X[r,k] == 1)
+Then we want E[i,k,r] ==> ~(X[r,i] == 0 & X[r,k] == 1)
 (this is the prime symmetry breaking).
 
 Inductively, we have E[i,k,0] = 1 for all i,k
-E[i,k, r + 1] = E[i,k,r] /\ (X[r,i] == X[r,k])
+E[i,k, r + 1] = E[i,k,r] & (X[r,i] == X[r,k])
 
 """
 
@@ -140,59 +140,6 @@ class QBF:
         self.exists(list(not_quant))
         print(f"# unquantified = {len(not_quant)}")
 
-    def full_quantify(self):
-        """
-        Determine quantification levels for unbound variables.
-
-        For every bound variable, determine its level.
-        For every bound variable determine its tentative level
-        as being the maximum of the levels of the bound variables present
-        in any clause containing it or its negation.
-
-        Then, if its tentative level is at forall level, put it into
-        and existential level at one level further down (perhaps merging).
-        If its tentative level is at an existential level, then merge it into
-        that level.  I think that that is correct.
-        """
-
-        levels = dict()
-        not_quant = dict()
-        for level, (_, variables) in enumerate(self._quantifiers):
-            for variable in variables:
-                levels[variable] = level
-        # Now go through all the clauses
-        for clause in self._model:
-            quants = set(map(abs, clause)).intersection(set(self._quantified.keys()))
-            unquants = set(map(abs, clause)).difference(quants)
-            if len(quants) == 0:
-                continue
-            tlevel = max([levels[_] for _ in quants])
-            for elt in unquants:
-                if elt in not_quant:
-                    not_quant[elt] = max(not_quant[elt], tlevel)
-                else:
-                    not_quant[elt] = tlevel
-        # Now go through the not_quant variables assigning it to a level
-        updated = dict()
-        for elt, level in not_quant.items():
-            quantifier = self._quantifiers[level][0]
-            if quantifier == 'a':
-                # bump to the next level
-                if len(self._quantifiers) <= level + 1:
-                    self._quantifiers.append(('e', set()))
-                self._quantifiers[level + 1][1].update([elt])
-                if level + 1 not in updated:
-                    updated[level + 1] = 0
-                updated[level + 1] += 1
-            elif quantifier == 'e':
-                self._quantifiers[level][1].update([elt])
-                if level not in updated:
-                    updated[level] = 0
-                updated[level] += 1
-            else:
-                print(f"Bad quantifier {quantifier} at level {level}")
-        print(f"Updated {updated}")
-
     def _render(self) -> Iterable[str]:
         """
         Output the lines for the model.
@@ -212,12 +159,14 @@ class QBF:
         """
 
         # First validate
+        # Make sure everything is quantified
+        self.push_down()
         support = set(chain(*(map(abs, _) for _ in self._model)))
         if not set(self._quantified.keys()).issubset(support):
             alone = set(self._quantified.keys()).difference(support)
             print(f"Warning: variables not in model {alone}")
-        nvars = max(max(support), max(self._quantified.keys()))
-        with open("{}.cnf".format(filename), 'w') as fil:
+        nvars = max(chain(support, self._quantified.keys()))
+        with open(f"{filename}.cnf", 'w', encoding='utf8') as fil:
             fil.write(f"p cnf {nvars} {len(self._model)}\n")
             fil.write('\n'.join(self._render()))
             fil.write('\n')

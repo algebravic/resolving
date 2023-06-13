@@ -33,8 +33,8 @@ def lex_compare(pool: IDPool,
     whose value = 1 => G, 0 => L
     There will be a different replica of E for every
     time step (an initial value at time 0 is always true).
-    The three possible values are E for equal, (-E /\ G) for greater
-    And (-E /\ -G) for less than.
+    The three possible values are E for equal, (-E & G) for greater
+    And (-E & -G) for less than.
     """
 
     ineq = pool._next() # 1 = greater, 0 = less
@@ -44,12 +44,12 @@ def lex_compare(pool: IDPool,
     for elt1, elt2 in zip(op1, op2):
 
         nxt_equal = pool._next()
-        # E' <==> (E /\ x1 /\ x2) \/ (E /\ -x1 /\ -x2)
-         #     =   E /\ (x1 \/ -x2) /\ (-x1 \/ x2)
-        # -E' <== (E /\ x1 /\ - x2)
-        # G  <== (E /\ x1 /\ - x2)
-        # -G  <== (E /\ - x1 /\ x2)
-        # -E'  <== (E /\ - x1 /\ x2)
+        # E' <==> (E & x1 & x2) | (E & -x1 & -x2)
+        #     =   E & (x1 | -x2) & (-x1 | x2)
+        # -E' <== (E & x1 & - x2)
+        # G  <== (E & x1 & - x2)
+        # -G  <== (E & - x1 & x2)
+        # -E'  <== (E & - x1 & x2)
         yield from ([-equal, elt1, elt2, nxt_equal],
                     [-equal, -elt1, -elt2, nxt_equal],
                     [-equal, -elt1, elt2, ineq],
@@ -82,8 +82,9 @@ def lex_compare(pool: IDPool,
 def lex_less(pool: IDPool,
              op1: List[int],
              op2: List[int]) -> Iterable[List[int]]:
+    """ Lexicographic <lex"""
     yield from lex_compare(pool, op1, op2, Comparator.LESS)
-    
+
 def standard_lex(pool: IDPool,
                  op1: List[int],
                  op2: List[int],
@@ -96,7 +97,7 @@ def standard_lex(pool: IDPool,
         lit = pool._next()
         yield from set_xor(lit, lit1, lit2)
         equals.append(lit)
-    # lita <= litb: ~lita /\ litb
+    # lita <= litb: ~lita & litb
     for ind, (lit1, lit2) in enumerate(zip(op1, op2)):
         yield equals[: ind] + [-lit1, lit2]
     if strict:
