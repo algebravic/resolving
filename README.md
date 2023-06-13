@@ -11,8 +11,9 @@ $`s \in V(G)`$ as an indicator of being in the minimal resolving set.  Define
 sets $`A_{u,v} = \{s \in V(G): s \text{ resolves } (u,v)\}`$.  Then the
 clauses are $`\bigvee_{x \in A _ {u,v} x_s}`$.  We may also want to cut
 down the search by using automorphisms of $G$.  Because automorphisms
-leave the distance invariant, if $S$ is a resolving set, and $`\sigma
-\in \text{Aut}(G)`$ then $\sigma(S)$ is also resolving. Let $R \subset
-\text{Aut}(G)$.  Fix a total order on subsets of $V(G)$ (such as
+leave the distance invariant, if $S$ is a resolving set, and
+$`\sigma \in \text{Aut}(G)`$ then $\sigma(S)$ is also resolving.
+Let $R \subset \text{Aut}(G)$.
+Fix a total order on subsets of $V(G)$ (such as
 lexicographic order on the indicator vector). We would like any
 solution to satisfy $S \le \sigma(S)$ for all $\sigma \in R$.
