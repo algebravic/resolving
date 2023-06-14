@@ -58,7 +58,7 @@ bound to the maximum.  Suppose that $A_{i,j}$ is the $i$-th bit of the
 $j$-th word in $S$.  Suppose that $x$ is the unknown centroid.
 
 Form
-\begin{displaymath}
+$$
 \begin{split}
 \sum_j \sum_i (x_i - A_{i,j})^2 & = \sum_i \sum_j (x_i + A_{i,j} -
 2 x_i A_{i,j}) \\
@@ -66,7 +66,7 @@ Form
 A_{i,j}) x_i \\
 & = \sum_{i,j} A_{i,j} - 2\sum_i (\sum_j (A_{i,j} - 1/2) - x_i).
 \end{split}
-\end{displaymath}
+$$
 
 ** Stabilizer by the hyperoctahedral group
 The hyperoctahedral group is the group of automorphisms of $Q_n$.
@@ -201,50 +201,40 @@ d(\rho(x), \rho(y))$.
 Note that we have $\sigma \psi u = e$ and $\rho \psi u = u$,
 $\sigma \phi v = v, \rho \phi v = 0$.
 
-1) $\wt(\sigma(x)) = \wt(\sigma(y))$ and $\rho x \ne \rho y$.  Let $u \in S$ resolve $(\rho(x),
-   \rho(y))$.  Then
-   \begin{displaymath}
-   \begin{aligned}
+1) $\wt(\sigma(x)) = \wt(\sigma(y))$ and $\rho x \ne \rho y$.  Let $u
+   \in S$ resolve  $(\rho(x),  \rho(y))$.  Then
+$$ \begin{aligned}
    d(\psi(u), x) - d(\psi(u), y) &= d(\sigma \psi u, \sigma x) + d(\rho \psi u, \rho  x)
                                                      -(d(\sigma \psi u, \sigma y) + d(\rho \psi u, \rho x)) \\
                                                &= d(e, \sigma x)  + d(u, \rho x) - (d(e, \sigma y)  + d(u, \rho y)) \\
                                                & = d(u, \rho x) - d(u, \rho y)
-  \end{aligned}
-   \end{displaymath}
-   By hypothesis there is a $v \in T$ which resolves $(\rho x,
-   \rho y)$.
+  \end{aligned}$$
+By hypothesis there is a $v \in T$ which resolves $(\rho x,  \rho y)$.
    
 2) $\wt(\rho(x)) = \wt(\rho(y))$ and $\sigma x \ne \sigma y$.  For $v \in T$
-   \begin{displaymath}
-   \begin{aligned}
+$$ \begin{aligned}
    d(\phi(v), x) - d(\phi(v), y) &= d(\sigma \phi u, \sigma x) + d(\rho \phi u, \rho  x)
                                                      -(d(\sigma \phi u, \sigma y) + d(\rho \phi u, \rho x)) \\
                                                &= d(v, \sigma x)  + d(0, \rho x) - (d(v, \sigma y)  + d(0, \rho y)) \\
                                                & = d(v, \sigma x) - d(v, \sigma y)
-  \end{aligned}
-   \end{displaymath}
-   By hypothesis there is a $v \in T$ which resolves $(\sigma x,
-   \sigma y)$.
+  \end{aligned}$$
+By hypothesis there is a $v \in T$ which resolves $(\sigma x,  \sigma y)$.
 3) In the remaining cases either $\wt \sigma x \ne \wt \sigma y$ or
    $\wt \rho x \ne \wt \rho y$.  I assert that either 0, or $\psi 0$
    resolve $(x,y)$.  Namely
-   \begin{displaymath}
-   \begin{aligned}
+$$\begin{aligned}
    d(0, x) - d(0, y) &= d(\sigma 0, \sigma x) + d(\rho 0, \rho  x)
                                                      -(d(\sigma 0, \sigma y) + d(\rho 0, \rho x)) \\
                                                &= d(0, \sigma x)  + d(0, \rho x) - (d(0, \sigma y)  + d(0, \rho y)) \\
                                                & = (\wt \sigma x - \wt \sigma y) + (\wt \rho x - \wt \rho y)
-  \end{aligned}
-   \end{displaymath}
-   and
-   \begin{displaymath}
-   \begin{aligned}
+  \end{aligned}$$
+and
+$$\begin{aligned}
    d(\psi 0, x) - d(\psi 0, y) &= d(\sigma \psi 0, \sigma x) + d(\rho 0, \rho  x)
                                                      -(d(\sigma \psi 0, \sigma y) + d(\rho \psi 0, \rho x)) \\
                                                &= d(e, \sigma x)  + d(0, \rho x) - (d(e, \sigma y)  + d(0, \rho y)) \\
                                                &= -(\wt \sigma x - \wt \sigma y) + (\wt \rho x - \wt \rho y)
-   \end{aligned}
-   \end{displaymath}
+   \end{aligned}$$
 
 * More efficient generation of hitting sets
 
@@ -299,15 +289,13 @@ Then $\#U = w_1 + w_3 + z_1 + z_3$,
 $\#U' = w_1 + w_2 + z_1 + z_2$.
 $\#U = 2 w_1 + 2 w_3$,
 $\#U' = 2 w_1 + 2 w_2 + 2 y$ with $y \ne 0$
-\begin{displaymath}
-A =
+$$A =
 \begin{pmatrix}
 1 & 0 & 1 & 1 & 0 & 1 & 0\\
 1 & 1 & 0 & 1 & 1 & 0 & 0\\
 2 & 0 & 2 & 0 & 0 & 0 & 0\\
 2 & 2 & 0 & 0 & 0 & 0 & 2
-\end{pmatrix}
-\end{displaymath}
+\end{pmatrix}$$
 Eliminating:
 Elimnate $w_1$:
 (a) $\#U - \#U'$ = w_3 - w_2 + z_3 - z_2$
@@ -333,9 +321,8 @@ We're given A partition $[r,s,s]$ of $n=r + 2s$ corresponding to
  assignments which are inequivalent under permutations preserving the
  partition, we should put all the 1's first, before the 0's.  The
  number of assignments that yield 0 is then
-\begin{displaymath}
-2^r \sum_{j=0}^s \binom{s}{j}^2.
-\end{displaymath}
+$$2^r \sum_{j=0}^s \binom{s}{j}^2.$$
+
 Recall that if $f(x) = \sum_{j=0}^s \binom{s}{j}x^j = (1+x)^s$, then
 $f(x) ^ 2 = \sum_{j=0}^{2s} (\sum_{i=0}^{\min{j,s}} \binom{s}{i}
 \binom{s}{j-i}) x^j$.  The coefficient of $x^s$ in this is
@@ -521,7 +508,7 @@ $Q^n$.   Denote by $\oplus$ the operation on the set $\{0,1\}$ given
 by $0 \oplus 0 = 1 \oplus 1 = 0$, and $0 \oplus 1 = 1 \oplus 0 = 1$.
 We note that for $x,y \in \{0,1\}$ we have $(-1)^{x \oplus y} =
 (-1)^{x+y}$.  We also have $(-1)^x = 1 - 2x$.  We extend the $\oplus$
-operation to $n$-tuples coordinatewise.
+operation to $n$ tuples coordinatewise.
 
 Notation: if $A$ is a 0/1 matrix, or $v$ a 0/1 vector, denote by $A'$
 (resp. $v'$) the matrix whose $(i,j)$ entry is $(-1)^{A_{i,j})$
@@ -538,13 +525,12 @@ $0 \ne \sum_i (1-2z_i)(1-2u_i) - (1-2z_i)(1-2v_i) =
 $\sum_i (u_i - v_i) = 2\sum_i z_i (u_i - v_i)$
 Let $A$ denote the matrix whose rows are the $z_i$.
 Then
-\begin{displaymath}
-B := 
+$$B := 
 \begin{bmatrix}
 1 & 1 & \dots & 1 \\
 & & -2A \\
-\end{bmatrix}
-\end{displaymath}
+\end{bmatrix}$$
+
 Then $A$ is a sensing matrix if and only if $2A x = e^T x$ for all vectors
 $x \ne 0$ whose coordinates are in $\{0,-1,1\}$, $e$ is the all 1's vector.
 
@@ -594,8 +580,8 @@ Let $S$ be a finite set.  The *Hamming distance* on the set $S^n$ is
 defined by:
 $d((a_1, \dots, a_n), (b_1, \dots, b_n)) = \#\{1 \le i \le n: a_i \ne b_i\}$
 
-The $n$-th order Hamming graph over $S$ is a graph whose vertices are
-labeled by distinct $n$-tuples of elements of $S$, with an edge
+The $n$ th order Hamming graph over $S$ is a graph whose vertices are
+labeled by distinct $n$ tuples of elements of $S$, with an edge
 between two vertices when the Hamming distance between their labels is
 1.
 
@@ -772,21 +758,25 @@ that the first term on the right hand side is 0].
 Perhaps we can apply it to the case where the universe is $S_m$ and
 the subsets are $S_m \cap S_1, \dots, S_m \cap S_{m-1}$.
 
-#+begin_export ascii
-[0000]
-[1100]
-[1010]
+$$\begin{bmatrix}
+0&0&0&0 \\
+1&1&0&0 \\
+1&0&1&0
+\end{bmatrix}$$
 
-x_1 + x_2 + x_3 + x_4 = 0
-x_1 + x_2                     =  0
-x_1           + x_3          = 0
+$$\begin{array}{ccccc}
+x_1 &+ x_2 &+ x_3 &+ x_4 = &0 \\
+x_1 &+ x_2 &           &         =  &0 \\
+x_1 &          &+ x_3  &         = &0 
+\end{array}$$
 
-x_3 + x_4 = 0
-x_1 + x_2 = 0
-x_2 - x_3  = 0
+$$\begin{array}{ccc}
+x_3 &+ x_4 &= 0 \\
+x_1 &+ x_2 &= 0 \\
+x_2 &- x_3  &= 0 \\
+\end{array}$$
 
-==> x_1 = -x_2 = -x_3 = x_4
-#+end_export
+$$\Rightarrow x_1 = -x_2 = -x_3 = x_4$$
 
 What I'd like to show is that if a nonzero row has weight $< \lfloor
 n/2 \rfloor$, that there is a position in that row containing a 0,
