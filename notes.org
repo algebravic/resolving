@@ -291,10 +291,14 @@ an $X$ exists with $X \subseteq U \cup U'$.
 So let $w_1 = \#(X \cap (U \cap U'))$, $w_2 = \#(X \cap (\overline{U}
 \cap U'))$, $w_3 = \#(X \cap (U \cap \overline{U'}))$.
 Then $\#(X \cap U) = w_1 + w_3$, $\#(X \cap U') = w_1 + w_2$.
-Similarly let $z_1 = \#(\overline{X} \cap (U \cap U'))$, $z_2 = \#(\overline{X} \cap (\overline{U}
-\cap U'))$, $z_3 = \#(\overline{X} \cap (U \cap \overline{U'}))$.
-Then $\#U = w_1 + w_3 + z_1 + z_3$, $\#U' = w_1 + w_2 + z_1 _+ z_2$.
-$\#U = 2 w_1 + 2 w_3$, $\#U' = 2 w_1 + 2 w_2 + 2 y$ with $y \ne 0$
+Similarly let
+$z_1 = \#(\overline{X} \cap (U \cap U'))$,
+$z_2 = \#(\overline{X} \cap (\overline{U} \cap U'))$,
+$z_3 = \#(\overline{X} \cap (U \cap \overline{U'}))$.
+Then $\#U = w_1 + w_3 + z_1 + z_3$,
+$\#U' = w_1 + w_2 + z_1 + z_2$.
+$\#U = 2 w_1 + 2 w_3$,
+$\#U' = 2 w_1 + 2 w_2 + 2 y$ with $y \ne 0$
 \begin{displaymath}
 A =
 \begin{pmatrix}
@@ -305,8 +309,10 @@ A =
 \end{pmatrix}
 \end{displaymath}
 Eliminating:
-Elimnate $w_1$: (a) $\#U - \#U'$ = w_3 - w_2 + z_3 - z_2$
-(b) $\#U = 2 z_1 + 2 z_3 - 2 w_3$, (c) $\#U' = 2 z_1 + 2 z_2 - 2 w_2 - y$.
+Elimnate $w_1$:
+(a) $\#U - \#U'$ = w_3 - w_2 + z_3 - z_2$
+(b) $\#U = 2 z_1 + 2 z_3 - 2 w_3$,
+(c) $\#U' = 2 z_1 + 2 z_2 - 2 w_2 - y$.
 Eliminate $z_1$: (b) - (c)
 (d) $\#U - \#U' = 2 z_3 + 2 w_2 - 2 w_3 - 2 z_2 + 2 y$.
 Add (a) + (1/2) (d): $\#U - \#U' = 2 z_3 - 2 z_2 +  y$
@@ -396,17 +402,17 @@ This looks like a possible Skolem function: Given a boolean formula
 $\phi(X,Y)$, where we want $\forall X \exists Y \phi(X,Y)$, is there a
 boolean function $F(X)$ such that $\phi(X,F(X))$ is a tautology?
 
-$E(X,Y,Y') := \phi(X,Y) \vee \neg \phi(X,Y') \vee (Y' \LeftRightArrow F(X))$
+$E(X,Y,Y') := \phi(X,Y) \vee \neg \phi(X,Y') \vee (Y' \Leftrightarrow F(X))$
 If $E$ is UNSAT, things are good, otherwise it produces a
 counterexample.  How to repair?  They use MAXSAT.  Hard clauses
 $E(X,Y,Y') := \phi(X,Y) \vee \neg \phi(X,Y')$.
-soft $Y' \LeftRightArrow F(X)$
+soft $Y' \Leftrightarrow F(X)$
 
 The other SAT solver will have the initial "bare bones" problem with
 successive conflict clauses.
 
 Another aside: If $n$ is large it's probably better to use Hermite
-normal form of the putative $A$ matrix to find it's kernel.  We then
+normal form of the putative $A$ matrix to find its kernel.  We then
 have a lattice which will contain all possible countexamples.  One
 could aggresively reduce this.
 
@@ -563,7 +569,7 @@ there exists an $m \times n$ normalized sensing matrix.
 Definition: A 0/1 matrix, $A$ is *subsensing* if none of its rows is 0
 and $Ax \ne 0$ for all $x \in \{0,-1,1\}$ such that $e^T x = 0$.
 
-Corollary: The metric dimensioinm of $Q^n$ is $\ge m$ if and only if
+Corollary: The metric dimension of $Q^n$ is $\ge m$ if and only if
 there exists an $(m-1) \times n$ subsensing matrix.
 
 Proof: Let $A$ be a normalized sensing matrix.  
@@ -617,6 +623,7 @@ Let $F(X) = \sum_{j=0}^{\lfloor n/2 \rfloor} \binom{n}{2j} X^{j}$.
 and $G(X) = \sum_{j=0}^{n} \binom{2j}{j} (2X)^j$.
 Note that $2 F(X) = (1 + \sqrt{X})^n + (1 - \sqrt{X})^n$
 
+#+begin_export ascii
 From OEIS:
 
 A002426		Central trinomial coefficients: largest coefficient of (1 + x + x^2)^n. 
@@ -624,6 +631,7 @@ A002426		Central trinomial coefficients: largest coefficient of (1 + x + x^2)^n.
 a(n) is asymptotic to d*3^n/sqrt(n) with d around 0.5.. - Benoit
 Cloitre, Nov 02 2002, d = sqrt(3/Pi)/2 = 0.4886025119... - Alec
 Mihailovs (alec(AT)mihailovs.com), Feb 24 2005
+#+end_export
 
 * <2023-05-12 Fri> Inclusion-Exclusion
 Suppose that we have a finite set $A$ of cardinality $n$, and a
@@ -659,9 +667,11 @@ $C$ is the $m \times n$ matrix all of whose rows are equal to $c$.  We
 would like $c$ to be one of the rows of $A$, so that one of the rows
 of $C \oplus A$ is the all 0 row.  Among all of these matrices, we'd
 like to choose the one which is lexicographically minimal.  This seems
-too complicated. Knuth (in volume 4.6, section 7.2.2.2) points out
-that it is only necessary to find an *endomorphism*.  That is, if
-$x := x_1, \dots, x_n$ are boolean variables, then $\tau: \{0,1\}^n
+too complicated.
+
+For SAT problems Knuth (in volume 4.6, section 7.2.2.2) points out
+that it is only necessary to find an *endomorphism*.  That is, if $x
+:= x_1, \dots, x_n$ are boolean variables, then $\tau: \{0,1\}^n
 \rightarrow \{0,1\}^n$ is an *endomorphism* of a formula $F$ if
 whenever $x$ satisfies $F$ then so does $\tau(x)$.  Notice that it is
 not necessary to specify any behavior for $\tau(x)$ when $x$ does
@@ -738,7 +748,7 @@ Is this true?
 * A False theorem
 
 If $m$ is a positive integer, denotes by $[m] = \{1, \dots, m\}$.  If
-$U$ is a finite set, and $S_1, \dots, S_m \subseteq$.  If $T \subseteq
+p$U$ is a finite set, and $S_1, \dots, S_m \subseteq$.  If $T \subseteq
 [m]$, denote by $B_m[V,T] = \bigcap_{j \in T} \cap \bigcap_{j \in
 [m]\backslash T} (V \cap S_j) \left( V \cap (V \backslash S_j)\right)$.  If $x:U
 \rightarrow A$, where $A$ is an additive abelian group, and $S
@@ -762,6 +772,7 @@ that the first term on the right hand side is 0].
 Perhaps we can apply it to the case where the universe is $S_m$ and
 the subsets are $S_m \cap S_1, \dots, S_m \cap S_{m-1}$.
 
+#+begin_export ascii
 [0000]
 [1100]
 [1010]
@@ -775,6 +786,7 @@ x_1 + x_2 = 0
 x_2 - x_3  = 0
 
 ==> x_1 = -x_2 = -x_3 = x_4
+#+end_export
 
 What I'd like to show is that if a nonzero row has weight $< \lfloor
 n/2 \rfloor$, that there is a position in that row containing a 0,
