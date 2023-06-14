@@ -34,6 +34,7 @@ from .logic import negate, set_equal, set_and, big_or
 from .bdd import not_equal
 from .symmbreak import double_lex, snake_lex
 
+
 CLAUSE = List[int]
 FORMULA = List[CLAUSE]
 CONFLICT = Tuple[int,...]
@@ -42,9 +43,7 @@ def get_prefix(pool: IDPool, prefix: str, model: MODEL) -> List[Tuple[str, int,.
     """
     Get all prefixes which are defined.
     """
-    
     name_val = [(pool.obj(abs(_)), int(_ > 0)) for _ in model]
-    
     return [(_[0][1:], _[1])
             for _ in name_val if isinstance(_[0], tuple) and _[0][0] == prefix]
 
@@ -100,7 +99,7 @@ class Conflict:
                       for _ in range(2, self._dim // 2 + 1)}
         self._generate()
         if solver_kwds is None:
-            solver_kwds = dict()
+            solver_kwds = {}
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
                              use_timer = True, **solver_kwds)
@@ -112,14 +111,14 @@ class Conflict:
         """
         self._cnf.append(clause)
         self._solve.add_clause(clause)
-        
+
     def extend(self, form: FORMULA):
         """
         append a clause to both the solver and the cnf
         """
         self._cnf.extend(form)
         self._solve.append_formula(form)
-        
+
     def _generate(self):
         """
         The Conflict formula
@@ -186,7 +185,7 @@ class Conflict:
                   + [int(1 - 2*yval[_]) * self._yvar[_] for _ in range(self._dim)])
         self.append(forbid)
         return xval - yval
-        
+
     def _get_weight(self, wgt: int, assumptions: List[int]) -> np.ndarray | None:
         """
         Get a a conflict, given assumptions of weight = wgt or None if there
@@ -289,19 +288,20 @@ class Resolve:
                        for _ in product(range(self._mdim),range(self._dim))}
         self._nozero = nozero
         self._duplicates = 0
+        self._weight_restriction()
         if alt_model:
             self._model1()
         else:
             self._model2()
         self._solve_name = solver
         if solver_kwds is None:
-            solver_kwds = dict()
+            solver_kwds = {}
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
                              use_timer = True, **solver_kwds)
         self._cum_time = 0.0
         self._alt = alt
-        self._conflicts = dict()
+        self._conflicts = {}
         self._control = 0 # controlling variable for last found matrices
 
     def append(self, clause: CLAUSE):
@@ -471,19 +471,19 @@ class Resolve:
         """
         for conflict in conflicts:
             self.add_conflict(conflict)
-    
-    def _model1(self):
+    def _weight_restriction(self):
         """
-        First model with symmetry breaking
+        Restrict the weights of the rows to be <= n/2.
+        Optionally make first column nonzero
         """
-        # Non zero first row
-        # Everything is increasing so others are nonzero
+        for ind in range(self._mdim):
+            self._cnf.append([self._avar[ind, _] for _ in range(self._dim)])
         if self._nozero:
-            self._cnf.append([self._avar[0, _] for _ in range(self._dim)])
-        for kind in range(self._mdim - 1):
-            self._cnf.extend(list(special_less(self._pool,
-                [self._avar[kind, _] for _ in range(self._dim)],
-                [self._avar[kind + 1, _] for _ in range(self._dim)])))
+            self._cnf.append([self._avar[_,0] for _ in range(self._mdim)])
+        # for kind in range(self._mdim - 1):
+        #     self._cnf.extend(list(special_less(self._pool,
+        #         [self._avar[kind, _] for _ in range(self._dim)],
+        #         [self._avar[kind + 1, _] for _ in range(self._dim)])))
         card_constraint = CardEnc.equals if self._maxweight else CardEnc.atmost
         for kind in range(self._mdim):
             self._cnf.extend(card_constraint(lits =
@@ -492,43 +492,40 @@ class Resolve:
                                              bound = self._dim // 2,
                                              encoding = self._encoding,
                                              vpool = self._pool))
+
+    def _model1(self):
+        """
+        First model with symmetry breaking
+        """
+        # Non zero first row
+        # Everything is increasing so others are nonzero
         # Create the column constraints
         # Row -1 everything is equal
         # E[k,i,j] = (A[:k+1,i] == A[:k+1,j]).all()
         evar = {_: self._pool.id(('E',) + _)
-                for _ in product(range(-1, self._mdim),
-                                 combinations(range(self._dim), 2))}
-        zvar = {_: self._pool.id(('Z',) + _)
                 for _ in product(range(self._mdim),
-                                 combinations(range(self._dim), 2))}
-        self._cnf.extend([[evar[-1, _]]
-                           for _ in combinations(range(self._dim), 2)])
-        # The remaining rows
-        # defined = set()
-        for kind, (ind, jind) in product(range(self._mdim),
-                                         combinations(range(self._dim), 2)):
+                                 range(self._dim - 1))}
+        for kind, ind in product(range(self._mdim),
+                                 range(self._dim-1)):
 
-            # Z[k,i,j] <-> A[k,i] == A[k,j]
-            self._cnf.extend(set_equal(zvar[kind, (ind, jind)],
+            # E[k,i] <-> (A[k,i] == A[k,i+1])
+            self._cnf.extend(set_equal(evar[kind, ind],
                                        self._avar[kind, ind],
-                                       self._avar[kind, jind]))
-            # E[k,i,j] <-> Z[k,i,j] /\ E[k-1,i,j]
-            # defined.add((kind, ind, jind))
-            self._cnf.extend(set_and(evar[kind, (ind, jind)],
-                                     evar[kind - 1, (ind, jind)],
-                                     zvar[kind, (ind, jind)]))
-            # E[k-1,i,j] /\ A[k,i] -> A[k,j]
-            # Shift all 1's in a sector to the left
-            self._cnf.append([-evar[kind-1, (ind, jind)],
-                              -self._avar[kind, ind],
-                              self._avar[kind, jind]])
+                                       self._avar[kind, ind + 1]))
+            # E[k-1,i,j] & A[k,i] -> A[k,i+1]
+            # Shift all 1's in a sector to the right
+            self._cnf.append([-evar[jind, ind] for jind in range(kind)]
+                             + [-self._avar[kind, ind], self._avar[kind, ind+1]])
         # Distinct columns
-        # req = {(mdim - 1, ind, jind) for jind in range(1, dim) for ind in range(jind)}
-        # print(f"req = {sorted(req)}")
-        # if not req.issubset(defined):
-        #    raise ValueError(f"Not defined {req.difference(defined)}")
-        self._cnf.extend([[-evar[self._mdim - 1, _]]
-                           for _ in combinations(range(self._dim), 2)])
+        self._cnf.extend([[-evar[jind,ind] for jind in range(self._mdim)]
+                           for ind in range(self._dim-1)])
+        # Lex increasing rows
+        for ind in range(self._mdim-1):
+            self._cnf.extend(standard_lex(self._pool,
+                                          [self._avar[ind, jind]
+                                           for jind in range(self._dim)],
+                                          [self._avar[ind+1, jind]
+                                           for jind in range(self._dim)]))
 
     def _model2(self):
         """
@@ -537,23 +534,12 @@ class Resolve:
 
         # Non zero first row
         # Everything is increasing so others are nonzero
-        self._cnf.append([self._avar[0, _] for _ in range(self._dim)])
-        if self._nozero:
-            self._cnf.append([self._avar[_, 0] for _ in range(self._mdim)])
         # Double sorted increasing
         amat = np.array([[self._avar[ind, jind] for jind in range(self._dim)]
                          for ind in range(self._mdim)], dtype=int)
         breaker = snake_lex if self._snake > 0 else double_lex
         self._cnf.extend(list(breaker(self._pool,
                                       amat.T if self._snake > 1 else amat)))
-        card_constraint = CardEnc.equals if self._maxweight else CardEnc.atmost
-        for ind in range(self._mdim):
-            self._cnf.extend(card_constraint(lits =
-                                             [self._avar[ind, _]
-                                              for _ in range(self._dim)],
-                                             bound = self._dim // 2,
-                                             encoding = self._encoding,
-                                             vpool = self._pool))
 
 def main_loop(resolver: Resolve, conflict: Conflict,
               verbose = 0, largest = False,
@@ -596,9 +582,9 @@ def ping_pong(dim: int, mdim: int,
     """
 
     if resolver_opts is None:
-        resolver_opts = dict()
+        resolver_opts = {}
     if solver_kwds is None:
-        solver_kwds = dict()
+        solver_kwds = {}
 
     resolver = Resolve(dim, mdim - 1,
                        solver=solver,
@@ -643,7 +629,7 @@ def ping_pong(dim: int, mdim: int,
         print(f"Total passes: {pass_no}, resolve time = {resolver.cum_time}.")
     if minimal > 0 and amat is None:
         minimal_conflicts = resolver.minimal(
-            verbose=mverbose, use_ux = (minimal != 1))
+            verbose=mverbose, use_ux = minimal != 1)
         if verbose > 0:
             print(f"Final resolve time = {resolver.cum_time}")
         return minimal_conflicts
