@@ -29,7 +29,7 @@ def compatible(num: int, wgt: int) -> Iterable[Tuple[int, ...]]:
 
 
 
-    def symmetry_breaking_clauses(num: int,
+def symmetry_breaking_clauses(num: int,
                               degree: int,
                               pool: IDPool) -> Iterable[List[int]]:
     """
