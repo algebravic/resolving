@@ -85,7 +85,6 @@ def a_pos(pool: IDPool, num: int, bound: int,
                                   vpool = pool).clauses
 
 def a_neg(pool: IDPool, num: int, bound: int,
-          snake: bool = False,
           encoding: int = EncType.totalizer) -> FORMULA:
     """
     The Negative restrictions on the A matrix.
@@ -255,7 +254,6 @@ def hypercube_model(num: int, bound: int,
 
 def inverse_hypercube_model(num: int, bound: int,
                             dependencies: bool = False,
-                            snake: bool = False,
                             verbose: int = 0,
                             encode: str = 'totalizer') -> Tuple[QBF, IDPool]:
     """
@@ -278,7 +276,7 @@ def inverse_hypercube_model(num: int, bound: int,
     qbf.forall(list(avars.values()))
     a_restriction = list(large_or(pool,
                                   list(a_neg(pool, num, bound,
-                                             encoding = encoding, snake = snake))))
+                                             encoding = encoding))))
     qbf.exists(qbf.unquantified(a_restriction))
     qbf.exists(list(xvars.values()))
     qbf.exists(list(yvars.values()))
