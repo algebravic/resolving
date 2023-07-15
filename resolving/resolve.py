@@ -2,17 +2,14 @@
 Use MAXSAST to find a minimal cardinality resolving set for a finite
 unidirected connected graph G.
 """
-from itertools import combinations, product, chain
-from typing import Set, Tuple, List, Hashable, Iterable, Union
+from typing import Set, Tuple, List
 from functools import partial
-import numpy as np
 import networkx as nx
 from pysat.formula import CNF, WCNF, IDPool
 from pysat.card import CardEnc, EncType
 from pysat.solvers import Solver
 from pysat.examples.rc2 import RC2, RC2Stratified
 from pysat.examples.hitman import Hitman
-from pysat.examples.optux import OptUx
 from .metric import MetricDimension
 from .generate import symmetry_breakers
 from .timeit import Timer

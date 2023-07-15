@@ -19,8 +19,8 @@ and sum(A[k,i] * x[i], i=1,..,n) + sum(A[k,i] * ~y[i], i=1,..,n)
 We will also, optionally as solver (2) to provide at most r solutions.
 
 """
-from typing import Iterable, List, Tuple, Optional, Dict
-from itertools import product, chain, combinations, islice
+from typing import Iterable, List, Tuple, Dict
+from itertools import product, islice
 from collections import Counter
 import numpy as np
 from pysat.formula import CNF, IDPool, WCNF
@@ -28,9 +28,9 @@ from pysat.solvers import Solver
 from pysat.card import CardEnc, EncType
 from pysat.examples.optux import OptUx
 from pysat.examples.musx import MUSX
-from .lex import lex_compare, Comparator, standard_lex, special_less
+from .lex import lex_compare, Comparator, standard_lex
 from .logic import MODEL
-from .logic import negate, set_equal, set_and, big_or
+from .logic import set_equal, set_and
 from .bdd import not_equal
 from .symmbreak import double_lex, snake_lex
 

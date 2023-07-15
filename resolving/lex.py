@@ -3,7 +3,7 @@ Lexicographic CNF
 """
 from typing import List, Iterable
 from enum import Enum
-from pysat.formula import CNF, IDPool
+from pysat.formula import IDPool
 from pysat.card import CardEnc, EncType
 from .logic import set_xor, implies, CLAUSE
 

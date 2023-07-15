@@ -3,7 +3,7 @@ Write a QBF model for the hypercube.
 """
 from typing import Tuple, Iterable, List, Dict
 from collections import Counter
-from itertools import product, chain
+from itertools import product
 import numpy as np
 from pysat.formula import CNF, IDPool
 from pysat.card import CardEnc, EncType

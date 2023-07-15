@@ -1,7 +1,7 @@
 """
 Routines for dealing with integer partitions.
 """
-from typing import List, Tuple, Iterable, Dict
+from typing import Tuple, Iterable, Dict
 from operator import __mul__
 from functools import cache, reduce
 from itertools import product

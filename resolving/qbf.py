@@ -36,7 +36,7 @@ E[i,k, r + 1] = E[i,k,r] & (X[r,i] == X[r,k])
 
 """
 
-from typing import List, Tuple, Set, Iterable
+from typing import List, Set, Iterable
 from itertools import chain
 from pysat.formula import CNF
 from pysat.solvers import Solver
