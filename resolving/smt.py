@@ -2,10 +2,10 @@
 Solve the metric dimension of the hypercube using SMT.
 """
 from typing import Iterable, Callable, List, Tuple
-from itertools import chain
+from itertools import chain, product
 from random import randint
 from pysmt.shortcuts import Symbol, ForAll, Exists, And, Or, Not, Int
-from pysmt.shortcuts import Equals, NotEquals, LE, GE, GT, LT, Plus 
+from pysmt.shortcuts import Equals, NotEquals, LE, GE, GT, LT, Plus, BVExtract 
 from pysmt.shortcuts import is_sat, get_model, get_unsat_core
 from pysmt.typing import INT, BVType
 from pysmt.fnode import FNode
@@ -129,16 +129,45 @@ def smt_bv_setup(num: int, mnum: int,
 
     return avars, xvars, a_cond, x_cond, resolved
 
+def transpose_matrix(avars) -> FNode:
+    """
+    Given a list of bitvectors, create new variables
+    representing the transpose.
+
+    This is the 'naive' method.
+    """
+    widths = set(map(_check_width, avars))
+    if len(widths) != 1:
+        raise ValueError("All variables must be the same width")
+    num = widths.pop()
+    mnum = len(avars)
+    bvars = [Symbol(f'b_{num}_{ind}', BVType(mnum))
+             for ind in range(num)]
+    formula = []
+    for ind, jind in product(range(mnum), range(num)):
+        formula.append(BVExtract(avars[ind], jind, jind).Equals(
+                          BVExtract(bvars[jind], ind, ind)))
+    return bvars, And(formula)
+
 def smt_bv_model(num: int, mnum: int,
                  pop_fun: FUN = popcount,
+                 transpose: bool = True,
                  reverse: bool = True):
     avars, xvars, a_cond, x_cond, resolved = smt_bv_setup(
         num, mnum, pop_fun = pop_fun)
-
-    outer, inner = (Exists, ForAll) if reverse else (ForAll, Exists)
-    phi = resolved if reverse else Not(resolved)
-    return outer(avars, a_cond & inner(xvars, x_cond & phi))
-    # return outer(avars, inner(xvars, a_cond & x_cond & phi))
+    if transpose:
+        bvars, b_cond = transpose_matrix(avars)
+        b_ord = And(*(_[0] < _[1] for _ in zip(bvars[:-1], bvars[1:])))
+        avars += bvars
+        a_cond = And(a_cond, b_cond, b_ord)
+    if reverse:
+        return Exists(avars, And(
+            a_cond, ForAll(
+                xvars, Or(Not(x_cond), resolved))))
+    else:
+        return ForAll(avars, Or(
+            Not(a_cond), Exists(
+                xvars, And(x_cond, Not(resolved)))))
 
 def check_bv_model(num: int, mnum: int,
                    avalues: List[int],
