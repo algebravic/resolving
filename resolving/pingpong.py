@@ -578,7 +578,36 @@ def ping_pong(dim: int, mdim: int,
               mverbose: int = 0,
               solver_kwds: Dict | None = None) -> np.ndarray | None | List[CONFLICT]:
     """
-    Ping Pong method.
+    Test if the a set of size m is a resolving set for the
+    n-dimensional hypercube.  If it is, return such a set.  If not,
+    return none.
+
+    There are two cooperating SAT solvers: the Resolver, and
+    Conflictor.  The resolver produces a putative resolving set given
+    the current set of constraints.  This is then handed to the
+    Conflictor, which either finds one or more constraints that the
+    current solution does not satisfy, or states that there are none,
+    in which case, the putative solution is a real solution.  In the
+    former case the new constraints are added to the Resolver.  This
+    back and forth continues until either a solution is found, or the
+    Resolver produces UNSAT, in which case there is no resolving set.
+
+    See classes Resolve for the Resolver and Conflict for the Conflictor.
+
+    Input:
+       dim: the dimension of the hypercube.
+       mdim: the size of the putative resolving set.
+       times: How many counterexamples for the putative resolving set.
+       rtimes: How many putative resolving sets should be generated.
+       verbose: Level of verbosity.
+       encode: The encoding method for cardinality constraints.
+       solver: The SAT solver to use.
+       resolver_opts: a dictionary of options for the Resolver (cf. class)
+       minimal: For Unsat the method of finding a minimal set of constraints.
+       trace: the number of iterations for tracing.
+       mverbose: The verbosity level of the minimal set solver.
+       solver_kwds: options for the SAT solver.
+
     """
 
     if resolver_opts is None:
