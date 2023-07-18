@@ -1,6 +1,7 @@
 #+Title: Metric Dimension
 #+Latex_header: \DeclareMathOperator{\wt}{wt}
 #+Latex_header: \newcommand{\RR}{\mathbb{R}}
+#+Latex_header: \DeclareMathOperator{\ker}{ker}
 * <2023-03-23 Thu> Introduction
 Let $G$ denote a finite graph (directed or undirected). If $u,v \in
 V(G)$ are two vertices of $G$ define $d(u,v)$ as being the length of
@@ -781,3 +782,57 @@ $$\Rightarrow x_1 = -x_2 = -x_3 = x_4$$
 What I'd like to show is that if a nonzero row has weight $< \lfloor
 n/2 \rfloor$, that there is a position in that row containing a 0,
 which we can make a 1, but not allow more 0 sums in the other rows.
+* <2023-07-17 Mon> Inclusion-Exclusion
+In the ping-pong method, a possible resolving set, $A$, is proposed,
+and the constrainer tries to look for one or more balanced $0, \pm 1$
+vectors whose dot product with at least one row of $A$ is 0.  The
+question is, what is the best such vector to use?  Right now, I give a
+bound on the number of such vectors, and have the constrainer yield
+that many vectors (or less, if that's all there are).  Perhaps we
+should find a vector which maximizes the number of rows which are
+annihilated by such vectors.
+
+On the converse side, given a possible row of $A$ one can easily
+calculate the number of balanced vectors annihiliated by that vector.
+It only depends on the weight of the vector.  In a more complicated
+calculation, one can calculate the number of vectors that are
+annihilated by two different rows.  So, by inclusion-exclusion, one
+can explictitly calculate the number of vectors annihilated by at
+least one such row.  For any number of rows, $r$ one can make this
+calculation, but now there are approximately $2^r$ cases.  Actually
+more.
+
+On a related note, one can calculate the lower bounds given by
+Pippenger as a sum of binomial coefficients, to, perhaps, get a
+stronger lower bound than the asymptotic analysis provides.
+
+Another question: empirically, I've noticed that only a fairly small
+set of balanced vectors is sufficient to prove that there is no $m
+\times n$ array $A$ which is resolving.  For example, for $n=10$ and
+$m=6$, there are about 86000 balanced vectors, but a set of about 300
+is sufficient.  The question is: is there a graph derived from the
+balanced vectors, so that a sufficient set corresponds to a vertex
+cover of that graph?  In particular, is there a relation $R(v,w)$ so
+that every set that resolves $v$ will also resolve $w$?  This would
+mean that if $Av \ne 0$ then $Aw \ne 0$.  Taking the contrapositive
+(which is easier to work with), if $Aw \eq 0$ then $A v \eq 0$?  In
+linear algebra terms, we have $\dim \ker([v]) + \dim \ker([w])$.
+Actually, linear algebra is not really the correct thing.  In terms of
+sets we have the following: $v$ and $w$ correspond to pair of sets,
+$v_1, v_2$ and $w_1, w_2$.  Satisfying the following:
+
+1) $\# v_1 = \# v_2$ (same for $w$)
+2) $v_1 \cap v_2 = \emptyset$
+3) $v_1, v_2 \ne \emptyset$.
+
+Given such a $v$ is there a $w$ satisfying the following:
+
+$\forall s$ such that $\#(v_1 \cap s) = \#(v_2 \cap s)$
+is it true that $\#(w_1 \cap s) = \#(w_2 \cap s)$.
+
+We can try to calculate this.  Fix $v$ and then pose the calculation:
+
+$\exists (w_1, w_2), \phi(w_1, w_2) \& \psi(w_1, w_2, v_1, v_2)
+\forall s $\#(v_1\cap s) = \#(v_2 \cap s) \& \#(w_1 \cap s) = \#(w_2
+\cap s) $, where $\phi(w_1, w_2)$ encodes being balanced, and $\psi$
+encodes being $w$ different from $v$.
