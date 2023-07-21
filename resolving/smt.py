@@ -5,7 +5,8 @@ from typing import Iterable, Callable, List, Tuple
 from itertools import chain, product
 from random import randint
 from pysmt.shortcuts import Symbol, ForAll, Exists, And, Or, Not, Int
-from pysmt.shortcuts import Equals, NotEquals, LE, GE, GT, LT, Plus, BVExtract 
+from pysmt.shortcuts import Equals, NotEquals, LE, GE, GT, LT, Plus, BVExtract, AllDifferent
+from pysmt.shortcuts import BVNot, BVConcat
 from pysmt.shortcuts import is_sat, get_model, get_unsat_core
 from pysmt.typing import INT, BVType
 from pysmt.fnode import FNode
@@ -84,7 +85,8 @@ def popcount(xexpr: FNode) -> FNode:
     return x5 & (0x0000003F & mask)
 
 def smt_bv_setup(num: int, mnum: int,
-                 pop_fun: FUN = popcount):
+                 pop_fun: FUN = popcount,
+                 concat: bool = False):
     """
     Use bitvector for the model.
 
@@ -113,7 +115,10 @@ def smt_bv_setup(num: int, mnum: int,
     xvars = [Symbol(f'x_{num}_{_}', BVType(num)) for _ in range(2)]
     
     disjoint_x = (xvars[0] & xvars[1]).Equals(0)
-    equal_card = pop_fun(xvars[0]).Equals(pop_fun(xvars[1]))
+    if concat:
+        equal_card = pop_fun(BVConcat(xvars[0], BVNot(xvars[1]))).Equals(num)
+    else:
+        equal_card = pop_fun(xvars[0]).Equals(pop_fun(xvars[1]))
     # This is implied by disjx but might be hard to deduce
     x_restrict = And(*(And(pop_fun(_) <= num // 2,
                            _.NotEquals(0))
@@ -123,9 +128,16 @@ def smt_bv_setup(num: int, mnum: int,
     x_cond = And([disjoint_x , x_restrict , equal_card , x_ord])
 
     # Linking of the x variables and a variables
-    resolved = Or(*(pop_fun(_ &  xvars[0]).
-                    NotEquals(pop_fun(_ & xvars[1]))
-                  for _ in avars))
+    if concat:
+        resolved = Not(And(*(
+            pop_fun(BVConcat(
+                _ & xvars[0], BVNot(_ & xvars[1]))).
+            Equals(num) for _ in avars)))
+    else:
+        resolved = Not(And(*(
+            pop_fun(_ &  xvars[0]).
+            Equals(pop_fun(_ & xvars[1]))
+            for _ in avars)))
 
     return avars, xvars, a_cond, x_cond, resolved
 
@@ -141,7 +153,7 @@ def transpose_matrix(avars) -> FNode:
         raise ValueError("All variables must be the same width")
     num = widths.pop()
     mnum = len(avars)
-    bvars = [Symbol(f'b_{num}_{ind}', BVType(mnum))
+    bvars = [Symbol(f'b_{mnum}_{num}_{ind}', BVType(mnum))
              for ind in range(num)]
     formula = []
     for ind, jind in product(range(mnum), range(num)):
@@ -152,14 +164,16 @@ def transpose_matrix(avars) -> FNode:
 def smt_bv_model(num: int, mnum: int,
                  pop_fun: FUN = popcount,
                  transpose: bool = True,
+                 concat: bool = False,
                  reverse: bool = True):
     avars, xvars, a_cond, x_cond, resolved = smt_bv_setup(
-        num, mnum, pop_fun = pop_fun)
+        num, mnum, pop_fun = pop_fun, concat = concat)
     if transpose:
         bvars, b_cond = transpose_matrix(avars)
         b_ord = And(*(_[0] < _[1] for _ in zip(bvars[:-1], bvars[1:])))
         avars += bvars
         a_cond = And(a_cond, b_cond, b_ord)
+        x_cond = And(x_cond, pop_fun(xvars[0]) >= 2, pop_fun(xvars[1]) >= 2)
     if reverse:
         return Exists(avars, And(
             a_cond, ForAll(
