@@ -504,6 +504,27 @@ sortedcontainers = ">=2.3.0,<3.0.0"
 toposort = ">=1.5,<2.0"
 
 [[package]]
+name = "pycddlib"
+version = "2.1.6"
+description = "pycddlib is a Python wrapper for Komei Fukuda's cddlib."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "pycddlib-2.1.6-cp310-cp310-win32.whl", hash = "sha256:d2344b906e419f0962494f7924fc0728761141d9aa5638170c9758a716b0c1dd"},
+    {file = "pycddlib-2.1.6-cp310-cp310-win_amd64.whl", hash = "sha256:8694788ef538b8de3ff8fac5336cfb3d74982b99df320831c0bd45c065dfe684"},
+    {file = "pycddlib-2.1.6-cp36-cp36m-win32.whl", hash = "sha256:17ca70aad02860fab5adf23a37a6c3b8b5d3b3fd77df911ba95cc9bb88f0b018"},
+    {file = "pycddlib-2.1.6-cp36-cp36m-win_amd64.whl", hash = "sha256:dcd1af77f631b616f47200a47fb76f5c14ece19c3fbc0dc78d698573ca1d6ad1"},
+    {file = "pycddlib-2.1.6-cp37-cp37m-win32.whl", hash = "sha256:33f1c1055c7e136fefb0d078dc0fd4e95281c72279ef845fa0936e81be612795"},
+    {file = "pycddlib-2.1.6-cp37-cp37m-win_amd64.whl", hash = "sha256:928ac4446688df470f99806c10c367b5fdb428794d1dd292c0225ce672f25c87"},
+    {file = "pycddlib-2.1.6-cp38-cp38-win32.whl", hash = "sha256:ed9ac52cdee9efd0a68e446d8d56e3b6d7e42970546662f7572af6c096dd86e2"},
+    {file = "pycddlib-2.1.6-cp38-cp38-win_amd64.whl", hash = "sha256:306352d02eb9c74dcf496abb270f488d80bef448399583a825242c177f3de38b"},
+    {file = "pycddlib-2.1.6-cp39-cp39-win32.whl", hash = "sha256:67ff183f64af588fd273eca1875f2f7e3c7c60b11963af58c8f298bcbbb23695"},
+    {file = "pycddlib-2.1.6-cp39-cp39-win_amd64.whl", hash = "sha256:615bdc7f8e27f3b3ba687a8dd39c24ceb7b94718d227db43c4c2fb13c4d11acd"},
+    {file = "pycddlib-2.1.6.tar.gz", hash = "sha256:c7c87c0992edb608e999c84b3977bdc36035e651bed4ef089427f3b0e840aa3d"},
+]
+
+[[package]]
 name = "pydot"
 version = "1.4.2"
 description = "Python interface to Graphviz's Dot"
@@ -780,4 +801,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4.0"
-content-hash = "28c886d5c3edd33e95359d82b5f84f41ca70ac7c3cea65ff32251837fa244473"
+content-hash = "159cd57ec95a056954796c080accc5f465189abcc73cb0184a5142153e9ffd99"
