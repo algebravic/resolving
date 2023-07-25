@@ -105,8 +105,10 @@ def smt_bv_setup(num: int, mnum: int,
     # Since they are ordered, we only need say that the first is nonzero
     # However, putting in the explicit condition helps
     # Every element of A must be nonzero and have weight <= n/2
-    a_restrict = And(*(And(_.NotEquals(0), (pop_fun(_) <= num // 2))
-                       for _ in avars))
+    a_nonzero = And(*map(lambda _: _.NotEquals(0), avars))
+    a_half_weight = And(*map(lambda _: pop_fun(_) <= num // 2,
+                             avars))
+    a_restrict = And(a_nonzero, a_half_weight)
     # Order doesn't matter, so break symmetry by making them increasing
     a_ord = And(*(_[0] < _[1] for _ in zip(avars[:-1], avars[1:])))
     a_cond = And(a_restrict, a_ord)
@@ -120,26 +122,30 @@ def smt_bv_setup(num: int, mnum: int,
     else:
         equal_card = pop_fun(xvars[0]).Equals(pop_fun(xvars[1]))
     # This is implied by disjx but might be hard to deduce
-    x_restrict = And(*(And(pop_fun(_) <= num // 2,
-                           _.NotEquals(0))
-                       for _ in xvars))
+    x_nonzero = And(*map(lambda _: _.NotEquals(0), xvars))
+    x_half_weight = And(*map(lambda _: pop_fun(_) <= num // 2,
+                             xvars))
+
+    x_restrict = And(x_nonzerp, x_half_weight)
+
     x_ord = xvars[0] < xvars[1] # A simple symmetry breaker
 
     x_cond = And([disjoint_x , x_restrict , equal_card , x_ord])
 
     # Linking of the x variables and a variables
     if concat:
-        resolved = Not(And(*(
+        unresolved = And(*(
             pop_fun(BVConcat(
-                _ & xvars[0], BVNot(_ & xvars[1]))).
-            Equals(num) for _ in avars)))
+                _ & xvars[0],
+                BVNot(_ & xvars[1]))).
+            Equals(num) for _ in avars))
     else:
-        resolved = Not(And(*(
-            pop_fun(_ &  xvars[0]).
-            Equals(pop_fun(_ & xvars[1]))
-            for _ in avars)))
+        unresolved = And(*(
+            pop_fun(
+                _ &  xvars[0]).Equals(pop_fun(_ & xvars[1]))
+            for _ in avars))
 
-    return avars, xvars, a_cond, x_cond, resolved
+    return avars, xvars, a_cond, x_cond, unresolved
 
 def transpose_matrix(avars) -> FNode:
     """
@@ -166,29 +172,32 @@ def smt_bv_model(num: int, mnum: int,
                  transpose: bool = True,
                  concat: bool = False,
                  reverse: bool = True):
-    avars, xvars, a_cond, x_cond, resolved = smt_bv_setup(
+    avars, xvars, a_cond, x_cond, unresolved = smt_bv_setup(
         num, mnum, pop_fun = pop_fun, concat = concat)
     if transpose:
         bvars, b_cond = transpose_matrix(avars)
-        b_ord = And(*(_[0] < _[1] for _ in zip(bvars[:-1], bvars[1:])))
+        b_ord = And(*(_[0] < _[1]
+                      for _ in zip(bvars[:-1], bvars[1:])))
         avars += bvars
         a_cond = And(a_cond, b_cond, b_ord)
-        x_cond = And(x_cond, pop_fun(xvars[0]) >= 2, pop_fun(xvars[1]) >= 2)
+        x_cond = And(x_cond,
+                     pop_fun(xvars[0]) >= 2,
+                     pop_fun(xvars[1]) >= 2)
     if reverse:
         return Exists(avars, And(
             a_cond, ForAll(
-                xvars, Or(Not(x_cond), resolved))))
+                xvars, Or(Not(x_cond), Not(unresolved)))))
     else:
         return ForAll(avars, Or(
             Not(a_cond), Exists(
-                xvars, And(x_cond, Not(resolved)))))
+                xvars, And(x_cond, unresolved))))
 
 def check_bv_model(num: int, mnum: int,
                    avalues: List[int],
                    pop_fun: FUN = popcount,
                    quantified: bool = False):
 
-    avars, xvars, a_cond, x_cond, resolved = smt_bv_setup(
+    avars, xvars, a_cond, x_cond, unresolved = smt_bv_setup(
         num, mnum, pop_fun = pop_fun)
 
     a_check = And(a_cond, *[_[0].Equals(_[1])
@@ -196,9 +205,10 @@ def check_bv_model(num: int, mnum: int,
     if not is_sat(a_check):
         return ('a_check', None)
     if quantified:
-        formula = ForAll(xvars, And(a_check, x_cond, resolved))
+        formula = ForAll(xvars, And(a_check,
+                                    Or(Not(x_cond), Not(unresolved))))
     else:
-        formula = And(a_check, x_cond, Not(resolved))
+        formula = And(a_check, x_cond, unresolved)
     model = get_model(formula)
     if quantified:
         return 'resolved' if model else 'unresolved'
