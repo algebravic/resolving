@@ -349,7 +349,7 @@ class Resolve:
             status = self._solve.solve(assumptions = prefix)
             stime = self._solve.time()
             self._cum_time += stime
-            if verbose > 1:
+            if verbose > 2:
                 print(f"Resolve status = {status} time = {stime}")
             if not status:
                 return
@@ -550,7 +550,7 @@ def main_loop(resolver: Resolve, conflict: Conflict,
     conflicts = []
     soln = None
     for amat in resolver.get(times = rtimes, verbose = verbose):
-        if verbose > 1:
+        if verbose > 2:
             print(f"A:\n{amat}")
         # Check validity
         # Give A (as assumptions) to model2 to find conflicts.
@@ -642,6 +642,8 @@ def ping_pong(dim: int, mdim: int,
             print(f"At pass {pass_no}, resolve time = {resolver.cum_time}")
             print(f"conflict time = {conflict.cum_time}, "
                   + f"conflicts = {resolver.num_conflicts}")
+            print(f"resolver census = {resolver.census}")
+            print(f"conflictor census = {conflict.census}")
         # Add new conflicts.  At the beginning there are none
         found, amat = main_loop(resolver, conflict,
                                 verbose = verbose,
