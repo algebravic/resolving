@@ -7,11 +7,13 @@ has weight m, and the second has weight r and is disjoint
 from the first.
 is of the form m * (1,) + (n-m) * (0,)
 """
-from typing import Iterable, Tuple, Callable
+from typing import Iterable, Tuple, Callable, List
 from itertools import product, combinations
 import numpy as np
 from cdd import Matrix, RepType, Polyhedron
+
 VEC = Tuple[int, ...]
+CLAUSE = List[int]
 
 def constant_weight(num: int, mnum: int) -> Iterable[VEC]:
     if num >= 0 and mnum == 0:
@@ -45,6 +47,23 @@ def balanced(num: int) -> Iterable[VEC]:
                 vec = np.zeros(num, dtype=np.int8)
                 vec[place] = 2 * np.array(signs, dtype=np.int8) - 1
                 yield tuple(vec.tolist())
+
+def unbalanced_local(mnum: int) -> Iterable[VEC]:
+
+    num = 2 * mnum
+    for first in range(mnum + 1):
+        for second in range(mnum + 1):
+            if first != second:
+                yield (first * (1,) + (mnum - first) * (0,)
+                       + second * (1,) + (mnum - second) * (0,))
+                
+def unbalanced(mnum: int) -> Iterable[VEC]:
+
+    num = 2 * mnum
+    for first in product(range(2), repeat=mnum):
+        for second in product(range(2), repeat=mnum):
+            if sum(first) != sum(second):
+                yield first + second
                     
 def equal_points(num: int) -> Iterable[VEC]:
 
@@ -63,3 +82,27 @@ def make_poly(num: int,
                  number_type='fraction')
     mat.rep_type = RepType.GENERATOR
     return Polyhedron(mat)
+
+def get_cutoffs(poly: Polyhedron) -> Iterable[Tuple[int, List[int]]]:
+    """
+    Get the cardinality constraints of the form:
+    card(lits) >= bound
+    """
+    mat = poly.get_inequalities()
+    lin = mat.lin_set
+    for ind in range(mat.row_size):
+        if ind in lin:
+            continue
+        coeffs = set(mat[ind][1:])
+        if not coeffs.issubset([0,1,-1]):
+            continue
+        bound = (len([_ for _ in mat[ind][1:] if _ == -1])
+                 - mat[ind][0])
+        lhs = [(2*int(elt > 0) - 1) * (indx + 1)
+               for indx, elt in enumerate(mat[ind][1:])
+               if elt != 0]
+        if len(lhs) > 1:
+            yield (bound, lhs)
+        
+
+                                              
