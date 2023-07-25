@@ -14,6 +14,7 @@ We have I(M; m) >= H(M) = n. But I(M;m) <= H(m) <= sum_i H(M_i).
 
 Note that without loss of generality, we may assume that d_i <= floor(n/2).
 """
+from typing import List
 import numpy as np
 from sympy import binomial
 
@@ -46,3 +47,37 @@ def lower_bound(dim: int) -> float:
     set may be taken to have weight <= n/2.
     """
     return int(np.ceil(dim / binary_entropy( dim // 2)))
+
+def unresolved(num: int, knum: int) -> int:
+    """
+    Calculate the number of equal weight pairs of vectors
+    that are unresolved by a vector of weight k.
+    Input:
+       num: the length of the bit vectors
+       knum: the weight that we're testing.
+    Output:
+       The number of pairs of nonzero 0/1 vectors of equal weight
+       which have the same weight when intersected with
+       a vector of weight k.
+
+    Method:
+       For each weight w, the weight of that in the first k
+       coordinates is v <= w
+       such that 2 * v <= k, we count it in binom(k,v)*binom(k-v,v)
+       ways (we'll later divide by 2).  To that we must multiply
+       by binom(n-k, w-v) * binom(n-k-w+v,w-v)
+       and sum over all (v,w), with 0 <= v <= w, 1 <= w.
+    """
+    return sum(binomial(knum, vnum)
+               * binomial(knum - vnum, vnum)
+               * binomial(num - knum, wnum - vnum)
+               * binomial(num - knum - wnum + vnum, wnum - vnum)
+               for wnum in range(1, (num // 2) + 1)
+               for vnum in range(min(wnum, knum // 2) +1)) // 2
+
+def unresolved_table(num: int) -> List[int]:
+    """
+    Table of number of unresolved elements for weights
+    in [0, floor(n/2)].
+    """
+    return [unresolved(num, _) for _ in range((num // 2) + 1)]
