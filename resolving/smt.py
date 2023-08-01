@@ -4,15 +4,27 @@ Solve the metric dimension of the hypercube using SMT.
 from typing import Iterable, Callable, List, Tuple
 from itertools import chain, product
 from random import randint
+from math import log, ceil
 from pysmt.shortcuts import Symbol, ForAll, Exists, And, Or, Not, Int
 from pysmt.shortcuts import Equals, NotEquals, LE, GE, GT, LT, Plus, BVExtract, AllDifferent
-from pysmt.shortcuts import BVNot, BVConcat
+from pysmt.shortcuts import BVNot, BVConcat, BVToNatural, BVZero, BVZExt
 from pysmt.shortcuts import is_sat, get_model, get_unsat_core
 from pysmt.typing import INT, BVType
 from pysmt.fnode import FNode
 from pysmt.typing import _BVType
 
 FUN = Callable[[FNode], FNode]
+
+class TempName:
+
+    ordinal = 0
+
+    @staticmethod
+    def name() -> str:
+
+        tname = f'tmp_{TempName.ordinal}'
+        TempName.ordinal += 1
+        return tname
 
 def _check_width(xexpr: FNode) -> int:
     """
@@ -32,7 +44,8 @@ def naive_popcount(xexpr: FNode) -> FNode:
     Naive Computation one bit at a time.
     """
     width = _check_width(xexpr)
-    return (xexpr & 1) + sum((xexpr >> _) & 1 for _ in range(1,width))
+    nwidth = ceil(log(width + 1)/log(2))
+    return sum((BVZExt(BVExtract(xexpr,_,_), nwidth-1) for _ in range(width)))
 
 def popcount(xexpr: FNode) -> FNode:
     """
@@ -105,7 +118,7 @@ def smt_bv_setup(num: int, mnum: int,
     # Since they are ordered, we only need say that the first is nonzero
     # However, putting in the explicit condition helps
     # Every element of A must be nonzero and have weight <= n/2
-    a_nonzero = And(*map(lambda _: _.NotEquals(0), avars))
+    a_nonzero = And(*map(lambda _: _.NotEquals(BVZero(num)), avars))
     a_half_weight = And(*map(lambda _: pop_fun(_) <= num // 2,
                              avars))
     a_restrict = And(a_nonzero, a_half_weight)
@@ -116,17 +129,17 @@ def smt_bv_setup(num: int, mnum: int,
     # The two x variables, and their conditions
     xvars = [Symbol(f'x_{num}_{_}', BVType(num)) for _ in range(2)]
     
-    disjoint_x = (xvars[0] & xvars[1]).Equals(0)
+    disjoint_x = (xvars[0] & xvars[1]).Equals(BVZero(num))
     if concat:
         equal_card = pop_fun(BVConcat(xvars[0], BVNot(xvars[1]))).Equals(num)
     else:
         equal_card = pop_fun(xvars[0]).Equals(pop_fun(xvars[1]))
     # This is implied by disjx but might be hard to deduce
-    x_nonzero = And(*map(lambda _: _.NotEquals(0), xvars))
+    x_nonzero = And(*map(lambda _: _.NotEquals(BVZero(num)), xvars))
     x_half_weight = And(*map(lambda _: pop_fun(_) <= num // 2,
                              xvars))
 
-    x_restrict = And(x_nonzerp, x_half_weight)
+    x_restrict = And(x_nonzero, x_half_weight)
 
     x_ord = xvars[0] < xvars[1] # A simple symmetry breaker
 
