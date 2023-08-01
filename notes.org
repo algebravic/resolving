@@ -836,3 +836,145 @@ $\exists (w_1, w_2), \phi(w_1, w_2) \& \psi(w_1, w_2, v_1, v_2)
 \forall s $\#(v_1\cap s) = \#(v_2 \cap s) \& \#(w_1 \cap s) = \#(w_2
 \cap s) $, where $\phi(w_1, w_2)$ encodes being balanced, and $\psi$
 encodes being $w$ different from $v$.
+
+* <2023-07-21 Fri> Points for the talk
++ Relation to compressed sensing: recall that *compressed sensing*
+  asks to recover a vector from the values of an undetermined linear
+  linear operator acting on the the vector, along with *side
+  information*, such as sparsity, or limits on the sizes of
+  coordinates.
++ In this case, the metric dimension problem can be recast as follows:
+FInd an $m \times n$ 0/1 matrix so that the the sums of all subsets of
+columns of length $\lfloor n/2 \rfloor$ are distinct. We'll discuss
+how that comes about.
++ In the case of metric dimension, we've shown that to test if the
+  metric dimension of the $n$ dimensional hypercube is $\ge m$.  It
+  suffices to produce an $(m-1) \times n$ 0/1 matrix, $A$, all of whose
+  rows are nonzero, such that $Ax \ne 0$ for all nonzero $x$ whose coordinates
+  are 0/1/-1 and $e^T x$, where $e$ denotes the all 1's vector.  The
+  *sensing matrix* in this case will be the matrix, $A'$, obtained by
+  adjoining a row of 1's to the top of $A$.  In this case, every
+  $n$ dimensional 0/1 vector, $y$, is uniquely determined by $A' y$.
++ There is a closely related concept of a *separable matrix* which has
+  applications in *group testing* and *cryptographic fingerprinting*.
+  It's a 0/1 matrix with the property that the logical OR of all
+  subsets of columns of length $\lfloor n/2 \rfloor$ are distinct.
++ The problem may be posed as a 2-level quantified formula:
+$\forall a , f(a) \exists x, (\neg g(x) \vee \neg phi(a,x))$,
+where $f(a)$ is a predicate restricting $a$ values (this will be used
+in symmetry-breaking), $g(x)$ is a predicate on the $x$ values
+defining the allowed values, and $\phi(a,x)$ is a predicate which says
+when the $a$ values, corresponding to a putative matrix, do not
+resolve the $x$ values.  We solve this sort of problem by having two
+cooperating SAT solvers.  One, which we call the *resolver* contains
+$f(a)\wege \neg phi(a,x_1) \wedge \dots \wedge, \neg \phi(x,a_t)$, for some values
+$x_1, \dots, x_t$.  At the beginning, $t=0$.  The resolver finds one,
+or more solutions.  If there are none, the problem is UNSAT,  If it
+finds solutions, it the passes them to the *conflictor* which has
+$g(x) \wedge \phi(x,a)$.  It then adjoins (via assumptions) each of
+the solutions passed to it, and produces one more $x_i$ to give back
+to the resolver. 
+
+In this problem, we make heavy use of *cardinality constraints*
+involved in calculating the Hamming weights of various 0/1 vectors.
+
+* <2023-07-24 Mon> Symmetries
+
+The problem, after reductions, is the following:
+
+We're given $m < n$ positive integers.  We wish to find (or to prove
+that there is no such) an $m \times n$ matrix $A$ whose entries are
+all in 0/1, and rows all nonzero, with the following property: For all
+*balanced* 0/1/-1 vectors $x$, we have $Ax \ne 0$.  Here balanced
+means that the vector is nonzero and the sum of its coordinates is 0.
+This has a fairly straightforward expression in SMT in terms of
+bitvectors as a "exists/forall" problem.  However, the solution set
+has a large group of symmetries.  Here are the symmetries:
+
+1) If $A$ has the desired property, then any permutation of its rows
+   also has the desired property.
+2) If $A$ has the desired property, then any permutation of its
+   columns has the desired property.  This follows from the fact that
+   any permutation of coordinates of a balanced vector is also
+   balanced.
+3) If $A$ has the desired property, then if we complement any rows of
+   $A$, it has the desired property.  This follows from the fact that
+   the sum of coordinates of a balanced vector is 0.
+
+Altogether this yields $2^m m! n!$ symmetries.  The symmetries
+described in (3) are easily taken care of, by, for example,
+restricting the weight of each row of $A$ to be $\le n/2$.
+
+First, there is a simple observation that we can assume that all of
+the rows of $A$ are distinct.  Thus we can break the symmetries in (1)
+by requiring that the rows of $A$ are strictly increasing in some
+convenient total order.  We might choose lexicographic order (but some
+other choices might work better).
+
+There is a fairly large literature about breaking symmetries given in
+matrices with conditions (1) and (2).  One might proceed as follows:
+first sort the rows of $A$, then sort the columns of $A$.  However,
+this might "mess up" the sorted order of $A$.  One can continue
+alternating the sorts.  It is not immediately clear that this process
+terminates, but it does!  However, it is *not true* that two distinct
+"doubly sorted" matrices can't be equivalent under row/column
+permutations.  In fact, there can be a large number of such classes
+[give reference].
+
+* Ping Pong
+
+The problem at hand can be described in the following way: we have two
+set of variables, the $a$ variables, which describe the matrix $A$,
+and the $x$ variables which describe the balanaced vectors.  In
+addition, there is condition $\phi(a,x)$ which must be satisfied.  We
+also have restricted predicate, $f(a)$ on the $a$ variables, and a
+restricted predicate, $g(x)$ on the $x$ variables.  The predicate
+$f(a)$ will be used for symmetry breaking.  That is, it will restrict
+our consideration of the $a$ variables to be representatives in some
+class under symmetry.  The predicate $g(x)$ will describe the balanced
+vectors.  We find it convenient, in terms of bitvectors, to describe
+the $x$ vector as a pair of vectors $x1$ and $x2$, such that $x1 \& x2
+= 0$, and $w(x1) = w(x2)$, where $w$ is the *Hamming weight* of a 0/1
+vector - the sum of its elements. The problem may then be described
+as:
+
+$\exists x, f(x) \wedge \forall g(x) \Rightarrow \phi(a,x)$.
+
+The *ping pong* method instantiates two SAT solvers: the *resolver*
+and the *conflictor*.  Since SAT solving solves a $\exists$ problem,
+we rewrite the above as
+
+$\exists x, f(x) \wedge \neg (\exists g(x) \wedge \neg \phi(a,x))$.
+
+The resolver keeps the formula $f(a) \wedge \phi(a,x_1) \wedge \dots
+\wedge \phi(a,x_t)$, where $x_1, \dots, x_t$ are specific values of
+the $x$ variables supplied by the conflictor.  At the beginning, $t=0$
+(i.e. there are no $\phi(x,a)$ conjuncts).  At each stage the resolver
+either finds a value of the $a$ variables satisfying its clauses, or
+reports that there is none.  In the latter case the whole problem is
+UNSAT.  In the former case the resolver then passes one, or more, $a$
+variable values to the conflictor.    For each such, the conflictor
+either finds one or more values of $x$ variables satisfying its
+clauses, or reports that there are none.  In the latter case the whole
+problem is SAT.  In the former case, the values are passed to the
+resolver to add more $\phi(a,x_i)$ clauses.  This must eventually
+terminate, since there are only al finite number of balanced vectors.
+
+The upshot is that the above architecture was implemented using the
+=Python= library =python-sat= and the SAT solver =cadical 1.53=.  It
+can show that the problem with $m=6$ and $n=10$ is UNSAT in 5 seconds
+on an Apple M2 laptop.  By contrast, the best performance for an SMT
+solver on this problem is 75 seconds for =boolector= on the same
+laptop, using the same symmetry breaking constraints.
+
+As a comment, the overall structure of resolver/conflictor is the same
+sort of architecture used in a number solvers.  The input is normally
+presented in either =SMTLIB= format or =QDIMACS= (or others).  The solvers
+then need to extract things like the predicates $f(a)$ and $g(x)$ plus
+the specification $\phi(a,x)$ from the input specification.
+
+The symmetries may be broken in a number of ways for this problem.  As
+an aside, symmetry breaking is a highly researched area.  On the
+negative side, it is shown that the general problem of total symmetry
+breaking is NP-hard.  
+
