@@ -2,3 +2,12 @@
 *~
 /ltximg/
 *flymake.py
+*.aux
+*.bbl
+*.log
+*.blg
+*.pdf
+*.nav
+/doc/*.snm
+*.toc
+*.out
