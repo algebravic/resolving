@@ -1,0 +1,110 @@
+\documentclass{beamer}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{hyperref}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\FF}{\mathbb{F}}
+\usetheme{AnnArbor}
+\setbeamertemplate{footline}[frame number]
+\title{Resolving the Hypercube}
+\author{Victor S. Miller}
+\institute{SRI International, Computer Science Laboratory \\
+Menlo Park, CA USA}
+\date{27 June 2023}
+\begin{document}
+\begin{frame}[plain]
+  \maketitle
+\end{frame}
+\sectionmark{Metric Dimension}
+\begin{frame}
+  \frametitle{GPS}
+  \begin{itemize}
+  \item How does GPS work?
+  \item Measure the distance from two (or more) satellites.
+  \item Uniquely determines location (up to error).
+  \item General: How many distance measurements in $n$ dimensions are
+    necessary to determine position?
+  \item In general $n+1$ (for GPS we know we're on the earth).
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Discrete Analogue: Resolving Sets}
+  \begin{itemize}
+  \item Introduced by Slater, and Harary and Melter.
+  \item Yields a concept of dimension for finite graphs.
+  \item Applications
+    \begin{itemize}
+    \item Coin-weighing.
+    \item Network discovery and verification.
+    \item Multiuser coding and CDMA.
+    \item Compressed Genotyping.
+    \item Group Testing.
+    \item Robot Navigation.
+    \item Drug Discovery.
+    \item Mastermind and Wordle.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Metric Dimension}
+  \begin{itemize}
+  \item Like GPS: A vertex \emph{resolves} a pair of vertices if their
+    distance to the vertex is different.
+  \item Resolving set: some vertex will resolve any pair.
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Resolving and Metric Dimension}
+  \begin{itemize}
+  \item $G$: graph.
+  \item $d_G(x,y)$ - length of shortest path from $x$ to $y$.
+  \item $s \in V(G)$ \emph{resolves} $x \ne y \in V(G)$ if $d_G(s,x)
+    \ne d_G(s,y)$.
+  \item $S \subseteq V(G)$: \emph{resolving set} if every pair of
+    nodes is resolved by some element of $S$.
+  \item \emph{Metric Dimension}: Smallest size of a resolving set.
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Calculation}
+  \begin{itemize}
+  \item Formulate as a \emph{minimal hitting set} problem.
+  \item $\mathcal{S} : S_1, \dots, S_m \subseteq U$, sets.
+  \item \emph{Hitting set} for $\mathcal{S}$ is $X \subset U$
+    such that $X \cap S_i \ne \emptyset$ for all $i$.
+  \item \emph{Minimal hitting set}: size of smallest hitting set.
+  \item For metric dimension: $S_{\{x,y\}} := \{ s : d(s,x) \ne
+    d(s,y)\}$.
+  \item Minimal hitting set: either ILP or Max Sat.
+  \item Issue: There can be $\frac 1 2 \#V(G)^2$ hitting sets.
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{The Hypercube}
+  \begin{itemize}
+  \item Vertices: $n$-tuples of 0/1.
+  \item Edges: Nodes differ in one coordinate.
+  \item Metric Dimension: only known exactly for $n \le 10$.
+  \item Heuristics: Calculate good upper bound.
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Dimension in Metric Spaces}
+  \begin{itemize}
+  \item $V$: a real vector space.
+  \item $s \in V$ \emph{resolves} $x \ne y$ if
+    $d(s,x) \ne d(s,y)$.
+  \item Smallest $S \subset \RR^n$ resolving all pairs
+    has cardinality $n+1$.
+  \item Like GPS.
+  \item Define dimension in any metric space.
+  \item Undirected graphs: $d(x,y)=$ length of shortest path
+    from $x$ to $y$.
+  \end{itemize}
+\end{frame}
+
+\end{document}
