@@ -2,6 +2,7 @@
 #+Latex_header: \DeclareMathOperator{\wt}{wt}
 #+Latex_header: \newcommand{\RR}{\mathbb{R}}
 #+Latex_header: \DeclareMathOperator{\ker}{ker}
+#+Latex_header: \DeclareMathOperator{\Tr}{Tr}
 * <2023-03-23 Thu> Introduction
 Let $G$ denote a finite graph (directed or undirected). If $u,v \in
 V(G)$ are two vertices of $G$ define $d(u,v)$ as being the length of
@@ -977,4 +978,77 @@ The symmetries may be broken in a number of ways for this problem.  As
 an aside, symmetry breaking is a highly researched area.  On the
 negative side, it is shown that the general problem of total symmetry
 breaking is NP-hard.  
+
+* <2023-08-01 Tue> Group Representations
+Question: Can we use group representations to systematically generated
+symmetry breaking constraints?  More specifically, we have the
+generalized Fourier expansion, where $g \in G$, and $G$ is the group
+in question, and $f$ is a complex valued function (or real valued):
+$f(g) = \sum_{\rho}  \langle \pho(g), A_\rho \rangle$,
+where $A_\rho = \frac{1}{|G|} \sum_{g \in G} \rho(g) f(g)$,
+and the $\rho$ that occur are representatives of each class of
+irreducible repersentations.  Here $\langle A, B \rangle := \Tr(A^*
+B)$, and $\rho$ is unitary.  We can truncate the above series to get a
+good approximation to $f(g)$.  For symmetry breaking which functions
+$f$ should we use?
+
+Many of the symmetry breaking proposals use the function:
+$f(g) := \sum_{i=0}^{N-1} 2^i x_i^g$, where $x_i$ are the boolean
+variables encoding the problem.  We are interested in finding $g$ so
+that $f(g) = \min_{h \in G} f(h)$.  More generally, if $g$ acts on
+literals, we encode $x_i$ in $\pm 1$, and so $x_i^g$ will be a sign
+times some $x_j$.  So we can get linear functions by projecting onto
+the irreducible invariant subspaces.
+
+* <2023-08-02 Wed> Notes for the talk
+** General Metric Spaces
+Recall that a metric space, $S$ is a set with a map $d : S \times S
+\rightarrow \RR_{\ge 0}$ such that
+1) For all $x \in S$, $d(x,x) = 0$.
+2) For all $x \ne y \in S$, $d(x,y) = d(y,x) > 0$.
+3) For all $x,y,z \in S$, $d(x,y) \le d(x,z) + d(z,y)$ (The "triangle
+   inequality")
+
+Note that if $G$ is a simple, connected, undirected graph, then
+$d_G(x,y) = d(x,y)$, the length of the shortest path from vertices $x$
+to $y$, in $G$ is a metric.
+
+A subset $A \subseteq S$ is *resolving* if for all $x \ne y \in S$,
+there is a $z \in S$ such that $d(x,z) \ne d(y,z)$.
+
+The *metric dimension* of $S$ is the cardinality of the smallest
+resolving set in $S$.
+
+In Garey and Johnson ("Computers and Intractability") they mention
+that finding the metric dimension of a general graph is NP-complete.
+
+** Metric dimension of $n$-dimensional Euclidean space
+The metric dimension of $\RR^n$ under the Euclidean norm is $n+1$.  We
+can see this as follows: Let $H$ be an affine subspace of dimension
+$n-1$.  Then $H$ is of the form $\{ x \in \RR^n : a^T x = b\}$, for
+some $a \in \RR^n$ with $||a|| = 1$, and $b \in \RR$.  Let $c \ne 0$.
+Then the points $(b \pm c)a$ have the same distance from any point in
+$H$, and thus cannot be resolved by them.  Namely, if $x \in H$, then
+\begin{displaymath}
+\begin{aligned}  ||x - (b+c) a||^2 & = ||x||^2 - 2(b+c) b + (b+c)^2 ||a||^2 
+\\ & = ||x||^2 +b^2 + 2bc + c^2 - 2bc - 2b^2
+\\ & = ||x||^2 - b^2 - c^2 $. 
+\end{aligned}
+\end{displaymath}
+Thus $(b+c)a$
+and $(b-c)a$ have the same distance from any point in $H$.
+If $x^{(1)}, \dots, x^{(n)} \in \RR^n$, there is some affine space
+$H$, as above, containing all $x^{(i)}$ showing that they can't be a
+metric basis.  Namely, let $a \in \RR^n$ with $||a||=1$ satisfy
+$\langle x^{(i)} - x^{(1)}, a \rangle = 0$ for $i=2, \dots, n$.  Such
+an $a$ exists, since there are only $n-1$ such conditions.  Then we
+may take $H = \{x \in \RR^n : a^T x = - \langle x^{(1)}, a \rangle \}$.
+
+On the other hand, the $n+1$ points $e^{(i)}$, and $0$, where
+$e^{(i)}$ is the unit vector with 1 in the $i$-th coordinate and 0
+elsewhere, do constitute a metric basis.  Namely $||x - e^{(i)}||^2
+= ||x||^2 + 1 - 2 x_i$.  Thus, knowing $||x||^2 = ||x-0||^2$ and
+$||x-e^{(i)}||^2$ detemines $x_i$ for all $i$, and thus determines
+$x$.
+
 
