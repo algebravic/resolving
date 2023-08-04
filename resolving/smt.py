@@ -26,7 +26,7 @@ class TempName:
         TempName.ordinal += 1
         return tname
 
-def _check_width(xexpr: FNode) -> int:
+def _check_width(xexpr: FNode, maxwidth: int = 32) -> int:
     """
     Check to make sure that the input is a bitvector expression
     and that the bitvector width is <= 32.
@@ -35,15 +35,15 @@ def _check_width(xexpr: FNode) -> int:
         width = xexpr.bv_width()
     except AssertionError:
         width = None
-    if width is None or width > 32:
-        raise ValueError("Only allow bitvecs of length <= 32")
+    if width is None or (maxwidth > 0 and width > maxwidth):
+        raise ValueError(f"Only allow bitvecs of length <= {maxwidth}")
     return width
 
 def naive_popcount(xexpr: FNode) -> FNode:
     """
     Naive Computation one bit at a time.
     """
-    width = _check_width(xexpr)
+    width = _check_width(xexpr, maxwidth = 0)
     nwidth = ceil(log(width + 1)/log(2))
     return sum((BVZExt(BVExtract(xexpr,_,_), nwidth-1) for _ in range(width)))
 
