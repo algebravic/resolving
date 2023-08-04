@@ -103,6 +103,3 @@ def get_cutoffs(poly: Polyhedron) -> Iterable[Tuple[int, List[int]]]:
                if elt != 0]
         if len(lhs) > 1:
             yield (bound, lhs)
-        
-
-                                              
