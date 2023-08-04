@@ -75,6 +75,19 @@ def getvec(pool: IDPool, prefix: str, model: MODEL) -> np.ndarray:
                                           
     return np.array([_[1] for _ in values], dtype=np.int8)
 
+def makevec(pool: IDPool, prefix: str, size: int) -> Dict[int, int]:
+    """
+    Make a vector of values.
+    """
+    return {_ : pool.id((prefix, _)) for _ in range(size)}
+
+def makemat(pool: IDPool, prefix: str, dim1: int, dim2: int) -> Dict[Tuple[int, int], int]:
+    """
+    Make a matrix of values.
+    """
+    return {_ : pool.id((prefix, _)) for _ in product(range(dim1),
+                                                      range(dim2))}
+
 class Conflict:
     """
     A class to find vectors not distinguished by a matrix.
@@ -83,6 +96,7 @@ class Conflict:
     def __init__(self, dim: int, mdim: int,
                  solver: str = 'cd15',
                  encode: str = 'totalizer',
+                 bound: bool = True,
                  solver_kwds: Dict | None = None):
 
         self._dim = dim
@@ -90,13 +104,14 @@ class Conflict:
         self._encoding = getattr(EncType, encode, EncType.totalizer)
         self._cnf = CNF()
         self._pool = IDPool()
-        self._avar = {_ : self._pool.id(('A',) + _)
-                      for _ in product(range(mdim), range(dim))}
-        self._xvar = {_: self._pool.id(('X', _)) for _ in range(self._dim)}
-        self._yvar = {_: self._pool.id(('Y', _)) for _ in range(self._dim)}
+
+        self._avar = makemat(self._pool, 'A', self._mdim, self._dim)
+        self._xvar = makevec(self._pool, 'X', self._dim)
+        self._yvar = makevec(self._pool, 'Y', self._dim)
         # Assumption variables to find largest weight conflict
         self._wvar = {_: self._pool.id(('W', _))
                       for _ in range(2, self._dim // 2 + 1)}
+        self._bound = bound
         self._generate()
         if solver_kwds is None:
             solver_kwds = {}
@@ -137,7 +152,7 @@ class Conflict:
         # Support (even) is >= 4
         self._cnf.extend(CardEnc.atleast(
             lits = xlits + ylits,
-            bound = 4,
+            bound = 4 if self._bound else 2,
             encoding = self._encoding,
             vpool = self._pool))
         # sum_i (x[i] - y[i]) = 0
@@ -149,11 +164,8 @@ class Conflict:
         self._cnf.extend(list(lex_compare(self._pool,
                                           ylits, xlits,
                                           Comparator.LESS)))
-
-        bvar = {_: self._pool.id(('B',) + _) for _ in product(range(self._mdim),
-                                                           range(self._dim))}
-        cvar = {_: self._pool.id(('C',) + _) for _ in product(range(self._mdim),
-                                                           range(self._dim))}
+        bvar = makemat(self._pool, 'B', self._mdim, self._dim)
+        cvar = makemat(self._pool, 'C', self._mdim, self._dim)
         for kind in range(self._mdim):
             for ind in range(self._dim):
                 self._cnf.extend(set_and(bvar[kind, ind],
@@ -274,6 +286,7 @@ class Resolve:
                  encode = 'totalizer',
                  snake: int = 0, # Use snake lex if > 0, 2 if Transpose
                  maxweight: bool = False, # Only use maximum weights
+                 firstweight: bool = False,
                  solver_kwds: dict | None = None):
 
         
@@ -288,7 +301,11 @@ class Resolve:
                        for _ in product(range(self._mdim),range(self._dim))}
         self._nozero = nozero
         self._duplicates = 0
-        self._weight_restriction()
+        self._firstweight = firstweight
+        if firstweight:
+            self._setfirst()
+        else:
+            self._weight_restriction()
         if alt_model:
             self._model1()
         else:
@@ -471,6 +488,23 @@ class Resolve:
         """
         for conflict in conflicts:
             self.add_conflict(conflict)
+
+    def _setfirst(self):
+        """
+        Make the last column all 1's.  An alternative
+        to weight_restriction
+        Note: this must the last column because of lex
+        ordering.
+        """
+        self._cnf.extend([[self._avar[_, 0]] for _ in range(self._mdim)])
+        # all other columns cannot be all 1's
+        for ind in range(1, self._dim):
+            self._cnf.append([-self._avar[_, ind]
+                              for _ in range(1, self._mdim)])
+        
+        for ind in range(self._mdim):
+            self._cnf.append([self._avar[ind, _] for _ in range(self._dim)])
+        
     def _weight_restriction(self):
         """
         Restrict the weights of the rows to be <= n/2.
@@ -537,6 +571,8 @@ class Resolve:
         # Double sorted increasing
         amat = np.array([[self._avar[ind, jind] for jind in range(self._dim)]
                          for ind in range(self._mdim)], dtype=int)
+        if self._firstweight:
+            amat = amat[:, 1:] # avoid first column
         breaker = snake_lex if self._snake > 0 else double_lex
         self._cnf.extend(list(breaker(self._pool,
                                       amat.T if self._snake > 1 else amat)))
@@ -549,6 +585,7 @@ def main_loop(resolver: Resolve, conflict: Conflict,
     """
     conflicts = []
     soln = None
+    found = False
     for amat in resolver.get(times = rtimes, verbose = verbose):
         if verbose > 2:
             print(f"A:\n{amat}")
@@ -557,13 +594,15 @@ def main_loop(resolver: Resolve, conflict: Conflict,
         lconf = list(conflict.get_conflicts(amat, times,
                                             largest = largest,
                                             verbose = verbose))
-        soln = amat # last matrix found
-        if len(lconf) == 0:
+        soln = amat
+        if len(lconf) == 0: # amat is a solution!
+            found = True
             break
         conflicts += lconf
-    list(map(resolver.add_conflict, conflicts))
+    if not found:
+        list(map(resolver.add_conflict, conflicts))
 
-    return len(conflicts) == 0, soln
+    return found, soln
 
 def ping_pong(dim: int, mdim: int,
               times: int = 1,
@@ -628,6 +667,7 @@ def ping_pong(dim: int, mdim: int,
     conflict = Conflict(dim, mdim - 1,
                         solver=solver,
                         encode=encode,
+                        bound = resolver_opts.get('snake', 0) == 0,
                         solver_kwds = solver_kwds)
 
     if verbose > 1:
@@ -642,9 +682,12 @@ def ping_pong(dim: int, mdim: int,
             print(f"At pass {pass_no}, resolve time = {resolver.cum_time}")
             print(f"conflict time = {conflict.cum_time}, "
                   + f"conflicts = {resolver.num_conflicts}")
-            print(f"resolver census = {resolver.census}")
-            print(f"conflictor census = {conflict.census}")
+            if verbose > 1:
+                print(f"resolver census = {resolver.census}")
+                print(f"conflictor census = {conflict.census}")
         # Add new conflicts.  At the beginning there are none
+        # found = True, means that problem is SAT, then amat is the solution
+        # amat is None means problem is UNSAT
         found, amat = main_loop(resolver, conflict,
                                 verbose = verbose,
                                 largest = largest,
@@ -664,4 +707,8 @@ def ping_pong(dim: int, mdim: int,
         if verbose > 0:
             print(f"Final resolve time = {resolver.cum_time}")
         return minimal_conflicts
+    if amat is not None:
+        check = list(conflict.get_conflicts(amat, 1))
+        print(f"Final check: {len(check) == 0}")
+
     return amat
