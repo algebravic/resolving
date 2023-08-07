@@ -81,3 +81,13 @@ def unresolved_table(num: int) -> List[int]:
     in [0, floor(n/2)].
     """
     return [unresolved(num, _) for _ in range((num // 2) + 1)]
+
+def balanced(num: int) -> int:
+    """
+    The number of nonzero vectors with coordinates in 0/1/-1
+    whose sum of coordinates is 0.
+    """
+
+    return sum(binomial(num, knum)
+               * binomial(num - knum, knum)
+               for knum in range(1, num // 2 + 1)) // 2
