@@ -33,7 +33,7 @@ def johnson_graph(num: int, knum: int) -> nx.Graph:
     """
     Nodes are 0/1 n-tuples of weight k.
     Two nodes are joined by an edge if their
-    intersection as weight k-1
+    and has weight k-1
     """
     _validate(num, knum)
     gph = nx.Graph()
@@ -46,7 +46,7 @@ def kneser_graph(num: int, knum: int) -> nx.Graph:
     """
     Nodes are 0/1 n-tuples of weight k.
     Two nodes are joined by an edge if their
-    intersection as weight k-1
+    and is 0
     """
     _validate(num, knum)
     gph = nx.Graph()
