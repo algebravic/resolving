@@ -1025,7 +1025,7 @@ that finding the metric dimension of a general graph is NP-complete.
 ** Metric dimension of $n$-dimensional Euclidean space
 The metric dimension of $\RR^n$ under the Euclidean norm is $n+1$.  We
 can see this as follows: Let $H$ be an affine subspace of dimension
-$n-1$.  Then $H$ is of the form $\{ x \in \RR^n : a^T x = b\}$, for
+$n-1$.  Then $H$ is of the form $\{ x \in \RR^n : \langle a,  x \rangle = b\}$, for
 some $a \in \RR^n$ with $||a|| = 1$, and $b \in \RR$.  Let $c \ne 0$.
 Then the points $(b \pm c)a$ have the same distance from any point in
 $H$, and thus cannot be resolved by them.  Namely, if $x \in H$, then
@@ -1050,5 +1050,3 @@ elsewhere, do constitute a metric basis.  Namely $||x - e^{(i)}||^2
 = ||x||^2 + 1 - 2 x_i$.  Thus, knowing $||x||^2 = ||x-0||^2$ and
 $||x-e^{(i)}||^2$ detemines $x_i$ for all $i$, and thus determines
 $x$.
-
-
