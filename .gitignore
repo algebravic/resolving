@@ -11,3 +11,4 @@
 /doc/*.snm
 *.toc
 *.out
+/doc/ltximg/

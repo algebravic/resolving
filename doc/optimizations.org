@@ -1,0 +1,83 @@
+#+Title: Optimizations for the metric dimension of the hypercube
+
+* Translations
+Let $V$ denote $\{0,1\}$, and $\oplus$ denote elementwise exclusive
+or, $e$ denote the vector of dimension $n$ all whose coordinates
+are 1.  If $v \in V^n$, denote by, $w(v)$ its Hamming weight and by
+$R(v)$ the set of pairs of vectors resolved by $x$.  That is $R(v) =
+\{ (x,y) : x \ne y, w(v \oplus x) != w(v \oplus y) \}$.
+1) If $v \in V^n$, then $R(v \oplus e) = R(v)$.  Thus, without loss of
+   generality, we may assume that any vector in the resolving set has
+   weight $\le n/2$.
+2) If $S$ is a resolving set, and $v \in V^n$, then $S \oplus v = \{u
+   \oplus v : u \in S\}$ is also a resolving set.  Thus, without loss
+   of generality we may assume that $0 \in S$.
+
+So from now on, implictly assume that $0 \in S$ and only consider the
+nonzero members.
+
+From now one we write the nonzero elements of $S$ as an $m \times n$
+matrix $A$ whose rows are the elements of $S$
+
+Note that $0$ resolves all pairs of distinct vectors of different
+weights.  So we may assume that the pairs to be considered have the
+same weight.  A short calculation shows that $v \in V^n$ resolves
+$(x,y)$ of the same weight if and only if $v \cdot (x-y) \ne 0$, where
+that calculation is done over the reals.  Thus we only need to
+consider vectors of the form $x-y$.  These will exactly be nonzero
+vectors whose coordinates are in $\{0,1,-1\}$ and the sum of the all
+the coordinates is 0.  We can represent such a vector as a pair of 0/1
+vectors $(x,y)$ so that $x_i$ and $y_i$ can't be 1 at the same time,
+and $w(x) = w(y)$.  There is an additional symmetry since $x-y$ and
+$y-x$ both occur: the first nonzero element of $x-y$ should be 1.
+Also resolving all  pairs $(x,y)$ with $w(x) = w(y) = 1$ is exactly
+equivalent to all columns of the $A$ matrix being distinct.  We can
+omit those pairs and require that $w(x) = w(y) \ge 2$.
+
+Since $S$ is a set, we can permute any of the rows of $A$, so, a
+symmetry break would be make sure that the rows strictly increase in
+lexicographic order.  Additionally, since the set of pairs $(x,y)$ is
+invariant under permuting the coordinates, and, as above, they must be
+distinct, we can also add the constraint that the columns are
+lexicographically stricltly increasing.
+
+There are other symmetry breaking constraints that I found, but, for
+some reason they seemed to slow things down.  I'll discuss them later.
+
+* More symmetry breaking constraints
+
+The set of pairs $(x,y)$ is invariant under permuting coordinates.
+Therefore, so is the set possible set of $A$ matrices.  As before, the
+all 0 vector may be assumed to be in the resolving set, so we don't
+explicitly represent it.  Imagine building up the $A$ matrix one row
+at a time.  Since we may permute the columns in any way, without loss
+of generality we may assume that the first row has the form
+$0^r 1^s$, where $r+s=n$.  That is the first $r$ entries are 0 and the
+remaining $s$ are 1.  In filling out the second row, we are free to
+permute the first $r$ columns among themselves, the the last $s$
+columns among themseves.  Therefore, we may assume that the second row
+has the form $0^t 1^u 0^v 1^w$, where $t+u=r$ and $v+w=s$.  In
+general, by induction, when adding the next row we are free to permute
+columns which have equal values.    We also will build them up so that
+all equal columns will be adjacent to one another.  Accordingly, we
+can define variables $e(r,i)$ meaning that the column consisting of
+the first $r$ rows of column $i$ is equal to the column consisting of
+the first $r$ rows of columns $i+1$.  These are defined (1-origin) for
+$1 \le r \le m$ and $1 \le i \le n-1$.  They can be defined
+inductively by $c(r,i) = c(r-1,i) & (a(r,i) == a(r,i+1))$.  Call the a
+set of columns a "region" if all of those columns through row $r-1$
+are equal.  We want to have the 1's in a region moved the "right".  We
+can do this by the constraint $((a(r,i) & c(r-1,i)) => a(r,i+1))$.
+Notice that, since the constraints implied by resolving pairs $(x,y)$
+where $x$ and $y$ have weight 1 are exactly equivalent to the columns
+of $a$ being distinct, that setting $c(m,i)$ to false for all $1 \le i
+\le n-1$ will guarantee this.
+
+The above should take care of the symmetries of the columns.  To take
+care of the symmetries of the rows, I think that lexicographic
+ordering is valid.  It also might be useful to have a hybrid ordering:
+that the weights of the rows are nondecreasing, and ties are broken
+lexicographically.  The latter are more involved.  I'm not sure which
+will work better.
+
+* Resolving vectors
