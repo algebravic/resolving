@@ -2,7 +2,7 @@
 Use MAXSAST to find a minimal cardinality resolving set for a finite
 unidirected connected graph G.
 """
-from typing import Set, Tuple, List
+from typing import Set, Tuple, List, Any
 from functools import partial
 import networkx as nx
 from pysat.formula import CNF, WCNF, IDPool
@@ -88,6 +88,21 @@ def get_answer(soln: List[int] | None,
 
     pos = [pool.obj(_) for _ in soln if _ > 0]
     return {_[1] for _ in pos if _ is not None and _[0] == 'x'}
+
+def resolve_maxsat(gph: nx.Graph, **kwds) -> List[Any] | None:
+    """Test if a graph has the indicated metric dimension
+
+    Args:
+    gph: A networkx Graph
+    dim: The asserted metric dimension
+    """
+    cnf = WCNF()
+    pool = resolving_model(gph, cnf)
+    for node in gph.nodes:
+        cnf.append([-pool.id(('x', node))], weight=1)
+    soln = solve_maxsat(cnf, **kwds)
+    return get_answer(soln, pool) if soln is not None else None
+
 
 def resolve_hypercube_maxsat(num: int,
                              symm: int = 1,
