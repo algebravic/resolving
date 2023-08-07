@@ -1,13 +1,9 @@
-"""
-Simple timing.
-"""
+"""Simple timing"""
 
 import time
 
 class Timer:
-    """
-    Simple timing context
-    """
+    """Simple timing context"""
 
     def __init__(self, name):
         self._name = name

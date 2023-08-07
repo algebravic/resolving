@@ -96,8 +96,7 @@ def popcount(xexpr: BitVecRef) -> BitVecRef:
 
 def z3_bv_setup(num: int, mnum: int,
                  pop_fun: FUN = popcount):
-    """
-    Use bitvector for the model.
+    """Use bitvector for the model.
 
     Inputs:
     num: the size of the bitvectors

@@ -6,8 +6,16 @@ from typing import Iterable, List, Tuple
 from itertools import product, chain
 
 def compatible_pairs(num: int, wgt: int, wgt2: int) -> Iterable[Tuple[int, ...]]:
-    """
-    Generate compatible pairs.
+    """Generate compatible pairs.
+
+    Parameters
+    ----------
+    num: the dimension of the hypercube
+    wgt, wgt2: The Hamming weights of the pair elements
+
+    Yields
+    ------
+       A sequence of compatible pairs.
 
     The first required element will be wgt * (1,) + (num - wgt) * (0,)
     The second will be i * (0,) + wgt2 * (1,) + (num - i - j) * (0,)
@@ -18,7 +26,8 @@ def compatible_pairs(num: int, wgt: int, wgt2: int) -> Iterable[Tuple[int, ...]]
         return
 
     yield from (ind * (0,) + wgt2 * (1,) + (num - ind - wgt2) * (0,)
-                for ind in range(int(wgt == wgt2), min(wgt, num - wgt2) + 1))
+                for ind in range(
+                    int(wgt == wgt2), min(wgt, num - wgt2) + 1))
 
 def compatible(num: int, wgt: int) -> Iterable[Tuple[int, ...]]:
     """
@@ -34,6 +43,14 @@ def symmetry_breaking_clauses(num: int,
                               pool: IDPool) -> Iterable[List[int]]:
     """
     Generate symmetry breaking clauses for the Hypercube.
+
+    PARAMETERS:
+    num: the dimension of the hypercube
+    degree: the depth of the symmetry breaking tree
+    pool: The IDPool being used for this SAT instance
+
+    YIELDS:
+    A sequence of clauses
 
     Note that is S is a resolving set and sigma is an automorphism of G
     then sigma(S) is resolving.

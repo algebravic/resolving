@@ -1,6 +1,4 @@
-"""
-Routines for dealing with integer partitions.
-"""
+"""Routines for dealing with integer partitions."""
 from typing import Tuple, Iterable, Dict
 from operator import __mul__
 from functools import cache, reduce
@@ -12,6 +10,13 @@ PARTITION = Tuple[int, ...]
 def partitions_sub(num: int, bnd: int) -> Iterable[PARTITION]:
     """
     All partitions of num with parts >= bnd.
+
+    :param num: the degree of partition
+    :type num: int
+    :param bnd: a lower bound for the size of the parts
+    :type bnd: int
+    :returns: All partitions satisfying the constraint
+    :rtype: Iterable[PARTITION]
     """
     if num == 0:
         yield tuple()
@@ -25,15 +30,11 @@ def partitions_sub(num: int, bnd: int) -> Iterable[PARTITION]:
                 yield (part,) + elt
 
 def partitions(num: int) -> Iterable[PARTITION]:
-    """
-    Unrestricted partitions.
-    """
+    """Unrestricted partitions"""
     yield from partitions_sub(num, 1)
 
 def multiplicity(part: PARTITION) -> Dict[int, int]:
-    """
-    Multiplicity representation of a partition.
-    """
+    """Multiplicity representation of a partition"""
     return Counter(part)
 
 @cache
