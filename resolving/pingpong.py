@@ -94,21 +94,26 @@ class Conflict:
     """
 
     def __init__(self, dim: int, mdim: int,
+                 verbose: int = 0,
                  solver: str = 'cd15',
                  encode: str = 'totalizer',
+                 smallest: bool = False,
                  bound: bool = True,
                  solver_kwds: Dict | None = None):
 
         self._dim = dim
         self._mdim = mdim
+        self._verbose = verbose
         self._encoding = getattr(EncType, encode, EncType.totalizer)
+        self._getter = (self._get_all_weights if smallest
+                        else self._get_conflicts)
         self._cnf = CNF()
         self._pool = IDPool()
 
         self._avar = makemat(self._pool, 'A', self._mdim, self._dim)
         self._xvar = makevec(self._pool, 'X', self._dim)
         self._yvar = makevec(self._pool, 'Y', self._dim)
-        # Assumption variables to find largest weight conflict
+        # Assumption variables to find smallest weight conflict
         self._wvar = {_: self._pool.id(('W', _))
                       for _ in range(2, self._dim // 2 + 1)}
         self._bound = bound
@@ -142,6 +147,11 @@ class Conflict:
         xlits = [self._xvar[_] for _ in range(self._dim)]
         ylits = [self._yvar[_] for _ in range(self._dim)]
         self._cnf.extend([[-_[0], - _[1]] for _ in zip(xlits, ylits)])
+        # Conditional clause to only allow one weight
+        self._cnf.extend(CardEnc.atmost(lits = self._wvar.values(),
+                                        bound = 1,
+                                        encoding = EncType.ladder,
+                                        vpool = self._pool))
         for wgt in range(2, self._dim // 2 + 1):
             self._cnf.extend(list(([- self._wvar[wgt]] + clause
                              for clause in CardEnc.equals(
@@ -195,30 +205,18 @@ class Conflict:
         # Don't ever get this solution again
         forbid = ([int(1 - 2*xval[_]) * self._xvar[_] for _ in range(self._dim)]
                   + [int(1 - 2*yval[_]) * self._yvar[_] for _ in range(self._dim)])
-        self.append(forbid)
+        self.append([-_ for _ in assumptions] + forbid)
         return xval - yval
-
-    def _get_weight(self, wgt: int, assumptions: List[int]) -> np.ndarray | None:
-        """
-        Get a a conflict, given assumptions of weight = wgt or None if there
-        is no such.
-        """
-        # Only consider those of weight = wgt
-        weights = ([self._wvar[wgt]]
-                   + [-self._wvar[_] for _ in range(2, self._dim // 2 + 1)
-                      if _ != wgt])
-
-        return self._get_soln(assumptions + weights)
 
     def _get_all_weights(self, assumptions: List[int]) -> Iterable[np.ndarray]:
         """
-        Get weights in decreasing order.
+        Get weights in increasing order.
         """
-        top = self._dim // 2
-        while top >= 2:
-            result = self._get_weight(top, assumptions)
+        bot = 2
+        while bot <= self._dim // 2:
+            result = self._get_soln(assumptions + [self._wvar[bot]])
             if result is None:
-                top -= 1
+                bot += 1
             else:
                 yield result
 
@@ -226,7 +224,8 @@ class Conflict:
         """
         Get conflicts in arbitrary order.
         """
-        assump = assumptions + [-self._wvar[_] for _ in range(2, self._dim // 2 + 1)]
+        # Turn off specific weights
+        assump = assumptions + [-_ for _ in self._wvar.values()]
         while True:
             result = self._get_soln(assump)
             if result is None:
@@ -235,9 +234,7 @@ class Conflict:
 
     def get_conflicts(self,
                       amat: np.ndarray,
-                      times: int,
-                      largest: bool = False, # Find largest weight
-                      verbose: int = 0) -> Iterable[np.ndarray]:
+                      times: int) -> Iterable[np.ndarray]:
         """
         Given an A matrix get up to times counterexamples to resolvability.
 
@@ -246,10 +243,10 @@ class Conflict:
         """
         assumptions = [(2 * int(amat[key]) - 1) * lit
                        for key, lit in self._avar.items()]
-        if verbose > 2:
+        if self._verbose > 2:
             print(f"assumptions = {assumptions}")
-        getter = self._get_all_weights if largest else self._get_conflicts
-        yield from islice(getter(assumptions), times)
+
+        yield from islice(self._getter(assumptions), times)
 
     @property
     def census(self):
@@ -279,6 +276,7 @@ class Resolve:
     """
 
     def __init__(self, dim: int, mdim: int,
+                 verbose: int = 0,
                  alt_model: bool = False, # Use the alternate model
                  alt: bool = False, # Whether to use BDD for not equal
                  nozero: bool = False, # disallow 0 column
@@ -292,6 +290,7 @@ class Resolve:
         
         self._dim = dim
         self._mdim = mdim
+        self._verbose = verbose
         self._encoding = getattr(EncType, encode, EncType.totalizer)
         self._snake = snake
         self._maxweight = maxweight
@@ -319,7 +318,7 @@ class Resolve:
         self._cum_time = 0.0
         self._alt = alt
         self._conflicts = {}
-        self._control = 0 # controlling variable for last found matrices
+        self._controls = [] # controlling variable for last found matrices
 
     def append(self, clause: CLAUSE):
         """
@@ -357,28 +356,7 @@ class Resolve:
         """ Number of duplicate conflict clauses """
         return self._duplicates
 
-    def _get(self, verbose: int = 0) -> Iterable[np.ndarray]:
-        """
-        Get a feasible matrix given the conflicts so far.
-        """
-        prefix = list(self._conflicts.values()) + [self._control]
-        while True:
-            status = self._solve.solve(assumptions = prefix)
-            stime = self._solve.time()
-            self._cum_time += stime
-            if verbose > 2:
-                print(f"Resolve status = {status} time = {stime}")
-            if not status:
-                return
-            model = self._solve.get_model()
-
-            amat = extract_mat(self._pool, 'A', model)
-            self.append([-self._control] +
-                        [- (2 * int(amat[key]) - 1) * val
-                         for key, val in self._avar.items()])
-            yield amat
-
-    def get(self, verbose: int = 0, times: int = 1) -> Iterable[np.ndarray]:
+    def get(self) -> Iterable[np.ndarray]:
         """
         Get a resolving matrix.  With each call to get we have an indicator
         variable which can activate the forbidden clause.  During the main
@@ -386,11 +364,28 @@ class Resolve:
         previously found matrices.  Only when we're looking for a minimal
         set do we have to allow all of them.
         """
-        self._control = self._pool._next()
+        # control is used to turn on/off counterexamples
+        control = self._pool._next()
+        prefix = (list(self._conflicts.values())
+                  + self._controls + [control])
+        self._controls.append(-control)
+        while True:
+            status = self._solve.solve(assumptions = prefix)
+            stime = self._solve.time()
+            self._cum_time += stime
+            if self._verbose > 2:
+                print(f"Resolve status = {status} time = {stime}")
+            if not status:
+                return
+            model = self._solve.get_model()
 
-        yield from islice(self._get(verbose=verbose), times)
+            amat = extract_mat(self._pool, 'A', model)
+            self.append([-control] +
+                        [- (2 * int(amat[key]) - 1) * val
+                         for key, val in self._avar.items()])
+            yield amat
 
-    def minimal(self, verbose: int = 0, use_ux: bool = False) -> List[CONFLICT]:
+    def minimal(self, mverbose: int = 0, use_ux: bool = False) -> List[CONFLICT]:
         """
         Use either MUSX or OptUx to find a minimal set.
         """
@@ -402,7 +397,7 @@ class Resolve:
             wcnf.append([elt], weight=1)
         wcnf.extend(self._cnf.clauses)
         minimizer = OptUx if use_ux else MUSX
-        min_opts = {('verbose' if use_ux else 'verbosity'): verbose}
+        min_opts = {('verbose' if use_ux else 'verbosity'): mverbose}
         msolver = minimizer(wcnf,**min_opts)
         answer = msolver.compute()
         self._cum_time += msolver.oracle_time()
@@ -425,15 +420,17 @@ class Resolve:
         for the UNSAT case.
         """
         txval = tuple(xval.tolist())
+        if self._verbose > 2:
+            print(f"+conflict = {txval}")
         if txval in self._conflicts:
             self._duplicates += 1
             return
         assump = self._pool._next()
-        self.append([-assump, self._control])
+        # self.append([-assump, - self._controls[-1]])
         self._conflicts[txval] = assump
-        (self.bdd_add_conflict if self._alt else self.alt_add_conflict)(xval)
+        (self._bdd_add_conflict if self._alt else self._add_conflict)(xval)
 
-    def bdd_add_conflict(self, xval: np.ndarray):
+    def _bdd_add_conflict(self, xval: np.ndarray):
         """
         Add clauses that forbid A@x = 0
         """
@@ -452,7 +449,7 @@ class Resolve:
         self.extend([[-assump] + _ for _ in
                      inequalities + [indicators]])
 
-    def alt_add_conflict(self, xval: np.ndarray):
+    def _add_conflict(self, xval: np.ndarray):
         """
         Add clauses that forbid A@x = 0
         """
@@ -479,15 +476,10 @@ class Resolve:
                     encoding = self._encoding,
                     vpool = self._pool).clauses:
                 self.append([-assump, -indic2] + clause)
+            # Both cannot be true
+            self.append([-indic1, -indic2])
+        # At least one row must yield a nonzero value
         self.append([-assump] + indicators)
-
-    def add_conflicts(self, conflicts: List[CONFLICT]):
-        """
-        Add the conflicts to the model, updating the conditional
-        constraints.
-        """
-        for conflict in conflicts:
-            self.add_conflict(conflict)
 
     def _setfirst(self):
         """
@@ -578,7 +570,7 @@ class Resolve:
                                       amat.T if self._snake > 1 else amat)))
 
 def main_loop(resolver: Resolve, conflict: Conflict,
-              verbose = 0, largest = False,
+              verbose = 0,
               times = 1, rtimes = 1) -> Tuple[bool,np.ndarray | None]:
     """
     The main ping/pong loop.
@@ -586,19 +578,22 @@ def main_loop(resolver: Resolve, conflict: Conflict,
     conflicts = []
     soln = None
     found = False
-    for amat in resolver.get(times = rtimes, verbose = verbose):
+    for amat in islice(resolver.get(), rtimes):
         if verbose > 2:
             print(f"A:\n{amat}")
         # Check validity
         # Give A (as assumptions) to model2 to find conflicts.
-        lconf = list(conflict.get_conflicts(amat, times,
-                                            largest = largest,
-                                            verbose = verbose))
+        lconf = list(conflict.get_conflicts(amat, times))
+
+        if verbose > 2:
+            print(f"conflicts={lconf}")
         soln = amat
         if len(lconf) == 0: # amat is a solution!
             found = True
             break
         conflicts += lconf
+    if verbose > 2:
+        print(f"found = {found}, amat = {soln}")
     if not found:
         list(map(resolver.add_conflict, conflicts))
 
@@ -611,7 +606,7 @@ def ping_pong(dim: int, mdim: int,
               encode: str = 'totalizer',
               solver: str = 'cd15',
               resolver_opts: Dict | None = None,
-              largest=False, # favor larger weight conflicts
+              smallest = False, # favor smaller weight conflicts
               minimal: int = 0,
               trace: int = 0,
               mverbose: int = 0,
@@ -655,6 +650,7 @@ def ping_pong(dim: int, mdim: int,
         solver_kwds = {}
 
     resolver = Resolve(dim, mdim - 1,
+                       verbose = verbose,
                        solver=solver,
                        encode=encode,
                        solver_kwds = solver_kwds,
@@ -665,8 +661,10 @@ def ping_pong(dim: int, mdim: int,
         print(f"Resolve census = {resolver.census}")
 
     conflict = Conflict(dim, mdim - 1,
+                        verbose = verbose,
                         solver=solver,
                         encode=encode,
+                        smallest = smallest,
                         bound = resolver_opts.get('snake', 0) == 0,
                         solver_kwds = solver_kwds)
 
@@ -690,7 +688,6 @@ def ping_pong(dim: int, mdim: int,
         # amat is None means problem is UNSAT
         found, amat = main_loop(resolver, conflict,
                                 verbose = verbose,
-                                largest = largest,
                                 times = times,
                                 rtimes = rtimes)
         if amat is None: # It is UNSAT
@@ -703,12 +700,18 @@ def ping_pong(dim: int, mdim: int,
         print(f"Total passes: {pass_no}, resolve time = {resolver.cum_time}.")
     if minimal > 0 and amat is None:
         minimal_conflicts = resolver.minimal(
-            verbose=mverbose, use_ux = minimal != 1)
+            mverbose=mverbose, use_ux = minimal != 1)
         if verbose > 0:
             print(f"Final resolve time = {resolver.cum_time}")
         return minimal_conflicts
     if amat is not None:
-        check = list(conflict.get_conflicts(amat, 1))
+        fconflict = Conflict(dim, mdim - 1,
+                             solver=solver,
+                             encode=encode,
+                             smallest = smallest,
+                             bound = resolver_opts.get('snake', 0) == 0,
+                             solver_kwds = solver_kwds)
+        check = list(fconflict.get_conflicts(amat, 1))
         print(f"Final check: {len(check) == 0}")
 
     return amat
