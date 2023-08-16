@@ -24,9 +24,11 @@ def resolving_model(gph: nx.Graph, cnf: CNF | WCNF) -> IDPool:
     pool = IDPool()
 
     met = MetricDimension(gph)
-
-    for elt in met.resolving_set():
-        cnf.append([pool.id(('x', _)) for _ in elt])
+    # Get rid of duplicates
+    for elt in set(met.resolving_set()):
+        # Don't use the trivial graph
+        if len(elt) < len(gph):
+            cnf.append([pool.id(('x', _)) for _ in elt])
 
     return pool
 
