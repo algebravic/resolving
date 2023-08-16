@@ -81,15 +81,8 @@ Menlo Park, CA USA}
     d(s,y)\}$.
   \item Minimal hitting set: either ILP or Max Sat.
   \item Issue: There can be $\frac 1 2 \#V(G)^2$ hitting sets.
-  \end{itemize}
-\end{frame}
-\begin{frame}
-  \frametitle{The Hypercube}
-  \begin{itemize}
-  \item Vertices: $n$-tuples of 0/1.
-  \item Edges: Nodes differ in one coordinate.
-  \item Metric Dimension: only known exactly for $n \le 10$.
-  \item Heuristics: Calculate good upper bound.
+  \item If $\#G$ is large this approach needs too much memory!
+  \item Other problem: \emph{symmetries}.
   \end{itemize}
 \end{frame}
 \begin{frame}
@@ -107,4 +100,57 @@ Menlo Park, CA USA}
   \end{itemize}
 \end{frame}
 
+\section{Coin Weighing, Detecting, and the Hypercube}
+\label{sec:hypercube}
+\begin{frame}{Coin Weighing}
+  \begin{itemize}
+  \item $n$ coins: some real, some counterfeit.
+  \item Real coins: $a$ grams, counterfeit: $b < a$ grams.
+  \item Can weigh any subset.
+  \item What is least number of weighings needed to find all
+    counterfeit ($\Delta(n)$)?
+  \item Original: S{\"o}derburg and Shapiro.
+  \item Erd{\H o}s-Renyi: $\Delta(n) \ge 2(1+\delta) n/\log_2(n+1)$.
+  \item Whp: $(1+\delta)(n \log_2 9)/(\log_2 n)$ random subsets will
+    work.
+  \item Lindstrom: Constructed $2^k-1$ subsets for $n=2^{k-1} k$ which
+    suffice.
+  \item So $\Delta(n) \sim \frac{n}{\log_4 n}$.
+  \end{itemize}
+\end{frame}
+\begin{frame}{Detecting Subsets}
+  \begin{itemize}
+  \item Cantor-Mills: Determine a subset of $[n]$ by the cardinality
+    of its intersections with $S_1, \dots, S_m$.
+  \item What's the least $m$, given $n$?
+  \item An $m \times n$ 0/1 matrix $A$ is \emph{detecting} if $Ax$
+    uniquely specifies $x$, a 0/1 vector.
+  \item Like \emph{compressed sensing}: $A$ undetermined, but, $x$ has
+    extra properties.
+  \item The same as coin-weighing.
+  \item Applications to good CDMA codes.
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{The Hypercube}
+  \begin{itemize}
+  \item Vertices: $n$-tuples of 0/1.
+  \item Edges: Nodes differ in one coordinate.
+  \item Metric Dimension: Almost the same as coin-weighing.
+  \item Exact values were claimed to be known for $n \le 10$.
+  \item From the literature nobody proved precise bounds.
+  \item Constructions: Lindstrom, Cantor-Mills.
+  \item Heuristic search: Calculate good upper bound.
+  \end{itemize}
+\end{frame}
+\begin{frame}{Inequalities}
+  \begin{itemize}[<+->]
+  \item Let $\beta_n$ denote the Metric dimension if $Q^n$.
+  \item Then $\beta_n \le \beta_{n+1} \le b_n + 1$.
+  \item If $S$ resolves $Q^{n+1}$, drop the last coordinate to resolve
+    $Q^n$.
+  \item If $S$ resolves $Q^n$, make $S'$ with $S$ extended by 0, and
+    then choose $s \in S$, and add $s || 1$.
+  \end{itemize}
+\end{frame}
 \end{document}
