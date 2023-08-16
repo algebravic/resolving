@@ -39,12 +39,39 @@ def _check_width(xexpr: FNode, maxwidth: int = 32) -> int:
         raise ValueError(f"Only allow bitvecs of length <= {maxwidth}")
     return width
 
+def min_width(width: int) -> int:
+
+    return ceil(log(width + 1)/log(2))
+
+def extend(xexpr: FNode, width: int) -> FNode:
+
+    xwidth = _check_width(xexpr, maxwidth = 0)
+    if xwidth > width:
+        raise ValueError("x is longer than requested length")
+    elif xwidth == width:
+        return xexpr
+    else:
+        return BVZExt(xexpr, width - xwidth)
+
+def recursive_popcount(xexpr: FNode) -> FNode:
+    """
+    Recursive splitting
+    """
+    width = _check_width(xexpr, maxwidth = 0)
+    if width == 1:
+        return xexpr
+    nwidth = min_width(width)
+    half = width // 2
+    left = recursive_popcount(BVExtract(xexpr, 0, half - 1))
+    right = recursive_popcount(BVExtract(xexpr, half, width - 1))
+    return extend(left, nwidth) + extend(right, nwidth)
+    
 def naive_popcount(xexpr: FNode) -> FNode:
     """
     Naive Computation one bit at a time.
     """
     width = _check_width(xexpr, maxwidth = 0)
-    nwidth = ceil(log(width + 1)/log(2))
+    nwidth = min_width(width)
     return sum((BVZExt(BVExtract(xexpr,_,_), nwidth-1) for _ in range(width)))
 
 def popcount(xexpr: FNode) -> FNode:
