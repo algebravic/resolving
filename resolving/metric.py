@@ -1,7 +1,7 @@
 """
 Class for metric dimension of a graph
 """
-from typing import Tuple, List, Hashable, Iterable, Set
+from typing import Tuple, List, Hashable, Iterable, Set, FrozenSet
 from itertools import combinations
 import networkx as nx
 import numpy as np
@@ -26,13 +26,13 @@ class MetricDimension:
         self._dst, self._trans = distance_matrix(gph)
         self._num = self._dst.shape[0]
 
-    def resolving_set(self) -> Iterable[Set[Hashable]]:
+    def resolving_set(self) -> Iterable[FrozenSet[Hashable]]:
         """
         Return the resolving sets for a graph.
         """
         skel = np.arange(self._num)
         for ind, jind in combinations(range(self._num), 2):
-            yield {self._trans[_] for _ in skel[self._dst[ind] != self._dst[jind]].tolist()}
+            yield frozenset((self._trans[_] for _ in skel[self._dst[ind] != self._dst[jind]].tolist()))
 
     def __len__(self) -> int:
         """
