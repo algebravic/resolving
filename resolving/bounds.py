@@ -15,6 +15,7 @@ We have I(M; m) >= H(M) = n. But I(M;m) <= H(m) <= sum_i H(M_i).
 Note that without loss of generality, we may assume that d_i <= floor(n/2).
 """
 from typing import List
+from functools import cache
 import numpy as np
 from sympy import binomial
 
@@ -46,7 +47,7 @@ def lower_bound(dim: int) -> float:
     Lower bound, per Pippenger, and using the fact that each element of a resolving
     set may be taken to have weight <= n/2.
     """
-    return int(np.ceil(dim / binary_entropy( dim // 2)))
+    return int(np.ceil(dim / binomial_entropy( dim // 2)))
 
 def unresolved(num: int, knum: int) -> int:
     """
@@ -91,3 +92,19 @@ def balanced(num: int) -> int:
     return sum(binomial(num, knum)
                * binomial(num - knum, knum)
                for knum in range(1, num // 2 + 1)) // 2
+
+@cache
+def binary_ones(num: int) -> int:
+    """
+    Number of 1's in all binary number <= n.
+    """
+    if num <= 1:
+        return 0
+    bnd = 1
+    cnt = -1
+    while bnd <= num:
+        bnd *= 2
+        cnt += 1
+    bnd //= 2
+    rem = num - bnd
+    return 2 ** (cnt - 1) * cnt + rem + binary_ones(rem)
