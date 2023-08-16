@@ -1,5 +1,5 @@
 #+Title: Optimizations for the metric dimension of the hypercube
-
+#+Latex_header: \newcommand{\B}{\{0,1\}}
 * Translations
 Let $V$ denote $\{0,1\}$, and $\oplus$ denote elementwise exclusive
 or, $e$ denote the vector of dimension $n$ all whose coordinates
@@ -81,3 +81,143 @@ lexicographically.  The latter are more involved.  I'm not sure which
 will work better.
 
 * Resolving vectors
+Question: is there a good score that we can compute for the
+counterexamples?
+
+As part of the score calculation, we want to see how many matrices a
+set of balanced vectors will rule out?  if $X$ is a set of resolving
+vectors we want to calculate
+
+We really want
+\begin{displaymath}
+\{ A \in \B^{m \times n} : A x \ne 0 \forall x \in X\}.
+\end{displaymath}
+The complement of that set is:
+\begin{displaymath}
+U(X) := \{ A \in \B^{m \times n} : \exists x \in X, A x = 0\} =
+\bigcup_{x \in X} \{ A \in \B^{m \times n} : Ax = 0\}.
+\end{displaymath}
+[Wrong: Again a failure of quantifiers]
+
+What we'd like to do is to score potential $x$.  We have a subset $B
+\subseteq X$ of vectors which we already have in hand.  For each
+possible $x$ we'd like to pick the most effective one to add.  For
+each $x \in B$ there is the set $C(x) := \{ A : A x = 0\}$ of "bad"
+matrices.  We really are interested in the complement of
+$\bigcap_{x \in B} C(x)$.
+We want to describe the set of $A$ which resolve *some*
+element of $B$.  This will be $\bigcup_{x \in B} \overline{C(x)}$.  Its
+complement is $\bigcap_{x \in B} C(x)$.
+
+Note that $\overline{C(x)}$ is exactly the set of matrices that
+resolve the vector $x$.  Since we want to resolve all vectors, we are
+interested in the set $\bigcap_{x \in B} \overline{C(x)}$.  That is,
+we want to know if there's a matrix that resolves all the vectors.
+It is easier to deal with th complement of this set:
+$H(B) := \bigcup_{x \in B} C(x)$.  If, for a given number of rows, $m$ we are
+interested in showing that there is *no* such matrix, the heuristic
+that we use is to try to make this set as big as possible.  We can try
+to estimate the size of this set using inclusion/exclusion.  This
+potentially works very well for this problem, since the indivdual
+terms are of the form $|\{A : Ax = 0, \forall x \in S\}|$, for some
+subset $S$.  Since this is a linear algebra problem, and we know that
+all $x$ vectors lie in an $n-1$-dimensional space, we only need to
+consider subsets, $S$, of cardinality $\le n-1$.
+
+We're interested in $H(B) := \bigcap_{x \in B} \overline{C(x)}$.  This
+will be the set of matrices which resolve some element in $B$.  When
+potentially adding a new vector, $y$ to $B$ we want to choose the one
+that cuts down the largest number.  We have
+
+\begin{displaymath}
+\overline{H(B)} = \cup_{x \in B} F(x).
+\end{displaymath}
+
+We can estimate this via inclusion/exclusion.  Note: there's something
+a little strange: $Ax = 0$ if and only if every row of $A$ is
+annihiliated by $x$.  Note that using linear algebra, the maximum
+dimension of $\langle x \in S \rangle$ is $n-1$, where $S \subseteq
+B$.
+
+If we're looking to prove UNSAT, it makes sense to try to maxmize
+this.  We can use inclusion-exclusion
+
+\begin{displaymath}
+\# U(X) := \sum_{\emptyset \ne S \subset X} (-1)^{|S| + 1} \#  \{ A \in \B^{m \times n} :  A x = 0, \forall x \in S\}.
+\end{displaymath}
+
+We first note, since the subsets $S$ impose a linear relation on the
+$A$'s that we only need to consider subsets $S$ of cardinality $\le
+n-1$ (it is $n-1$ since all $x \in X$ satisfy $e^T x = 0$, where $e$
+is the all 1's vector).
+
+Note that for a given subset $S$ of cardinality $n-1$ one can write a
+closed form for the cardinality of the $A$'s that are orthogonal to
+it.  It will be a sum of partition numbers.  If $S$ has exactly 1
+element, this is easy.  Furthermore if one arranges the elements of
+$S$ in a $|S| \times n$ array, and column/row permutation of that
+array will yield the same dimension.
+
+It is a bit inconvenient to calculate the above, so we calculate the
+complement of this set:
+
+\begin{displaymath}
+\# \bigcap_{x \in X}\{ A \in \B^{m \times n} : A x = 0 \}.
+\end{displaymath}
+
+Let $V$ denote the real vector space spanned by the members of $X$.
+The the above quantity is the same as
+
+\begin{displaymath}
+\# \bigcap_{v  \in V}\{ A \in \B^{m \times n} : A v = 0 \},
+\end{displaymath}
+
+which is the same as
+
+\begin{displaymath}
+\# \bigcap_{v  \in S}\{ A \in \B^{m \times n} : A v = 0 \},
+\end{displaymath}
+
+where $S$ is an set that spans $V$.  In particular, we may take $S$ to
+be $\{x_1, \dots, x_m\}$, for some $x_i \in X$ and $m = \dim V$.  This
+has the advantage of using linear algebra.  We only need to take a
+linearly independent set of $x$.  Since the dimension of the possible
+$A$'s is $mn$ at best this restricts $A$ to a subspace of dimension
+$mn - n$.
+
+\begin{displaymath}
+\sum_{\emptyset \ne X \subset X} (-1)^{|S| + 1} # \{ A \in \B^{m \times n} : A x \ne 0 \}.
+\end{displaymath}
+
+* A suggestion from Ahmed Irfan
+In the ping-pong method we deal with a problem of the form:
+$\exists a \forall x f(a) \wedge g(x) \Rightarrow \phi(x,a)$.
+The ping pong method splits this into two cooperating SAT solvers:
+A) $\exists a f(a) \wedge \phi(x_1,a) \wedge \dots \wedge \phi(x_m,a)$, and
+B) $\exists x g(x) \wedge \neg \phi(x,A)$, where $A$ is an assumption
+generated by SAT solver (A), and $x_1, \dots, x_m$ are counterexamples
+found by SAT solver (B) in previous iterations.
+
+Ahmed suggested that, in (B) we try to find a core (a minimal
+unsatisfiable set.  More specifically, if (B) is UNSAT, it finds a
+subset of the assumptions, which, when set, makes the problem UNSAT,
+and that subset is minimal with respect to inclusion), so we need to
+transform problem (B) into an UNSAT problem.  It is not sufficient to
+negate the clauses.  However, the following might work:  Run the SAT
+solver for (B) to find a counterexamples, $x_1, \dots, x_r$, and
+consider the problem:
+$\exists x, \bigvee_i (x == x_i) \wedge \phi(x,A)$.
+as clauses to the problem (B') $\exists x, g(x), \phi(x,A)$, where $A$
+is the same assumption used in problem (B).  Or possibly, run a
+version of problem (A) with $A$ as assumptions, after adding the
+counterexamples, and then asking for a core.
+
+* An alternative using Max Sat
+
+An alternative to the above might be the following:
+
+Given a putative matrix, A, set up the Max Sat problem, with hard
+clauses $g(x) \Rightarrow \phi(x,A)$, and soft clauses (all with
+weight 1) for all $i,j$: $a_{i,j} \ne A_{i,j}$.  That way the we are
+just forbidding some subset of the $A$'s, and solver (A) doesn't
+involve $x$ variables at all.  I don't think that that will work.qq

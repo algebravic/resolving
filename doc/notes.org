@@ -1050,3 +1050,18 @@ elsewhere, do constitute a metric basis.  Namely $||x - e^{(i)}||^2
 = ||x||^2 + 1 - 2 x_i$.  Thus, knowing $||x||^2 = ||x-0||^2$ and
 $||x-e^{(i)}||^2$ detemines $x_i$ for all $i$, and thus determines
 $x$.
+* Minimality check
+In the above, we have used the fact that if $S$ is a resolving set for
+a graph $G$, and $g \in \Aut(G)$, then $S^g$ is also a resolving set.
+For the hypercube, if we have a resolving set $S$, choose $s \in S$,
+and take $g$ to be the translation by $s$.  Thus $0 \in S^g$.  Let $T
+= S^g \backslash \{0\}$.  If $S$ does not resolve $G$, there are
+vertices $u \ne v \in V(G)$ such that $w(s \oplus u) = w(s \oplus
+v)$ for all $s \in S$.  If $t \in S$, then $w((s\oplus t) \oplus (u
+\oplus s)) = w((s \oplus t) \oplus (v \oplus s))$. Thus $((u \oplus
+s), (v \oplus s))$ is not resolved by $T$.  But, we want the converse.
+
+Let $A$ denotes any 0/1 $k \times n$ matrix.  if $0 \ne x \in
+\{0,1,-1\}^n, e^T x = 0$ and $Ax = 0$.  Note that $x$ as the
+difference of two 0/1 vectors $u,v$ will then satisfy $w(u) = w(v)$.
+
