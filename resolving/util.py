@@ -2,7 +2,7 @@
 SAT utilities for dealing with vectors and matrices.
 """
 from typing import Iterable, List, Tuple, Dict
-from itertools import product
+from itertools import product, combinations
 import numpy as np
 from pysat.formula import CNF, IDPool, WCNF
 from .logic import MODEL, CLAUSE, FORMULA
@@ -48,6 +48,14 @@ def makemat(pool: IDPool, prefix: str, dim1: int, dim2: int) -> Dict[Tuple[int, 
     return {_ : pool.id((prefix, _)) for _ in product(range(dim1),
                                                       range(dim2))}
 
+def makecomp(pool: IDPool, prefix: str, dim1: int, dim2: int) -> Dict[Tuple[int, Tuple[int, int]], int]:
+
+    return {_ : pool.id((prefix, _)) for _ in product(range(dim1),
+                                                      combinations(range(dim2), 2))}
+
+
+
+    
 def _check_diff_cols(mat: np.ndarray) -> List[Tuple[int, int]]:
     """
     Check if a matrix has distinct columns.

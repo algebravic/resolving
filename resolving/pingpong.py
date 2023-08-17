@@ -20,7 +20,7 @@ We will also, optionally as solver (2) to provide at most r solutions.
 
 """
 from typing import Iterable, List, Tuple, Dict
-from itertools import product, islice
+from itertools import product, islice, combinations
 from collections import Counter
 import numpy as np
 from pysat.formula import CNF, IDPool, WCNF
@@ -33,7 +33,7 @@ from .logic import MODEL, CLAUSE, FORMULA
 from .logic import set_equal, set_and
 from .bdd import not_equal
 from .symmbreak import double_lex, snake_lex
-from .util import get_prefix, extract_mat, getvec, makevec, makemat
+from .util import get_prefix, extract_mat, getvec, makevec, makemat, makecomp
 
 CONFLICT = Tuple[int,...]
 
@@ -61,6 +61,7 @@ class Conflict:
         self._pool = IDPool()
 
         self._avar = makemat(self._pool, 'A', self._mdim, self._dim)
+        self._evar = makecomp(self._pool, 'E', self._mdim, self._dim)
         self._xvar = makevec(self._pool, 'X', self._dim)
         self._yvar = makevec(self._pool, 'Y', self._dim)
         # Assumption variables to find smallest weight conflict
@@ -121,9 +122,8 @@ class Conflict:
             bound = self._dim,
             encoding = self._encoding,
             vpool = self._pool))
-        self._cnf.extend(list(lex_compare(self._pool,
-                                          ylits, xlits,
-                                          Comparator.LESS)))
+        self._cnf.extend(list(standard_lex(self._pool,
+                                          ylits, xlits)))
         bvar = makemat(self._pool, 'B', self._mdim, self._dim)
         cvar = makemat(self._pool, 'C', self._mdim, self._dim)
         for kind in range(self._mdim):
@@ -140,6 +140,29 @@ class Conflict:
                 bound = self._dim,
                 encoding = self._encoding,
                 vpool = self._pool))
+        # Symmetry breaking constraints
+        # If two columns of A are equal then the (x,y) values
+        # between the two must be non-decreasing
+        # E[i,(j,k)] is true <==> A[i,j] == A[i,k]
+        for lft, rgt in combinations(range(self._dim), 2):
+            for ind in range(self._mdim):
+                self._cnf.extend(set_equal(self._evar[ind, (lft, rgt)],
+                                           self._avar[ind, lft],
+                                           self._avar[ind, rgt]))
+        # Now conditional lex constraints.
+        # If A[:,i] == A[:,j] then (x,y)[i] <= (x,y)[j]
+        # Note that since the A variables are assumptions
+        # Unit propagation will delete all non-applicable clauses
+
+            prefix = [-self._evar[ind, (lft, rgt)]
+                for ind in range(self._mdim)]
+            self._cnf.extend([prefix + _
+                               for _ in standard_lex(
+                                   self._pool,
+                                   [self._xvar[lft], self._yvar[lft]],
+                                   [self._xvar[rgt], self._yvar[rgt]],
+                               strict=False)])
+            
 
     def _get_soln(self, assumptions: List[int]) -> np.ndarray | None:
         """
