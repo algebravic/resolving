@@ -5,11 +5,7 @@ from typing import Iterable, List, Tuple, Dict
 from itertools import product
 import numpy as np
 from pysat.formula import CNF, IDPool, WCNF
-from .logic import MODEL
-
-CLAUSE = List[int]
-FORMULA = List[CLAUSE]
-CONFLICT = Tuple[int,...]
+from .logic import MODEL, CLAUSE, FORMULA
 
 def get_prefix(pool: IDPool, prefix: str, model: MODEL) -> List[Tuple[str, int,...]]:
     """
@@ -51,3 +47,11 @@ def makemat(pool: IDPool, prefix: str, dim1: int, dim2: int) -> Dict[Tuple[int, 
     """
     return {_ : pool.id((prefix, _)) for _ in product(range(dim1),
                                                       range(dim2))}
+
+def _check_diff_cols(mat: np.ndarray) -> List[Tuple[int, int]]:
+    """
+    Check if a matrix has distinct columns.
+    """
+    _, ndim = mat.shape
+    return [(ind, jind) for jind in range(1, ndim) for ind in range(jind)
+            if (mat[:, ind] == mat[:, jind]).all()]

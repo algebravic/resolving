@@ -29,64 +29,13 @@ from pysat.card import CardEnc, EncType
 from pysat.examples.optux import OptUx
 from pysat.examples.musx import MUSX
 from .lex import lex_compare, Comparator, standard_lex
-from .logic import MODEL
+from .logic import MODEL, CLAUSE, FORMULA
 from .logic import set_equal, set_and
 from .bdd import not_equal
 from .symmbreak import double_lex, snake_lex
+from .util import get_prefix, extract_mat, getvec, makevec, makemat
 
-
-CLAUSE = List[int]
-FORMULA = List[CLAUSE]
 CONFLICT = Tuple[int,...]
-
-def get_prefix(pool: IDPool, prefix: str, model: MODEL) -> List[Tuple[str, int,...]]:
-    """
-    Get all prefixes which are defined.
-    """
-    name_val = [(pool.obj(abs(_)), int(_ > 0)) for _ in model]
-    return [(_[0][1:], _[1])
-            for _ in name_val if isinstance(_[0], tuple) and _[0][0] == prefix]
-
-def _check_diff_cols(mat: np.ndarray) -> List[Tuple[int, int]]:
-    """
-    Check if a matrix has distinct columns.
-    """
-    _, ndim = mat.shape
-    return [(ind, jind) for jind in range(1, ndim) for ind in range(jind)
-            if (mat[:, ind] == mat[:, jind]).all()]
-
-def extract_mat(pool: IDPool, prefix: str, model: MODEL) -> np.ndarray:
-    """
-    Get the A matrix
-    """
-    values = sorted(get_prefix(pool, prefix, model))
-    mdim = max((_[0][0] for _ in values)) + 1
-    ndim = max((_[0][1] for _ in values)) + 1
-    return  np.array([_[1] for _ in values], dtype=np.int8).reshape((mdim, ndim))
-
-def getvec(pool: IDPool, prefix: str, model: MODEL) -> np.ndarray:
-    """
-    Get a vector
-    """
-    values = sorted(get_prefix(pool, prefix, model))
-    # Check for consistency
-    if {_[0][0] for _ in values} != set(range(len(values))):
-        raise ValueError(f"{prefix}: {values}")
-                                          
-    return np.array([_[1] for _ in values], dtype=np.int8)
-
-def makevec(pool: IDPool, prefix: str, size: int) -> Dict[int, int]:
-    """
-    Make a vector of values.
-    """
-    return {_ : pool.id((prefix, _)) for _ in range(size)}
-
-def makemat(pool: IDPool, prefix: str, dim1: int, dim2: int) -> Dict[Tuple[int, int], int]:
-    """
-    Make a matrix of values.
-    """
-    return {_ : pool.id((prefix, _)) for _ in product(range(dim1),
-                                                      range(dim2))}
 
 class Conflict:
     """
@@ -97,13 +46,14 @@ class Conflict:
                  verbose: int = 0,
                  solver: str = 'cd15',
                  encode: str = 'totalizer',
-                 smallest: bool = False,
+                 smallest: int = 0,
                  bound: bool = True,
                  solver_kwds: Dict | None = None):
 
         self._dim = dim
         self._mdim = mdim
         self._verbose = verbose
+        self._smallest = smallest
         self._encoding = getattr(EncType, encode, EncType.totalizer)
         self._getter = (self._get_all_weights if smallest
                         else self._get_conflicts)
@@ -213,11 +163,15 @@ class Conflict:
         Get weights in increasing order.
         """
         bot = 2
+        found = False
         while bot <= self._dim // 2:
             result = self._get_soln(assumptions + [self._wvar[bot]])
             if result is None:
+                if found and self._smallest > 1:
+                    return
                 bot += 1
             else:
+                found = True
                 yield result
 
     def _get_conflicts(self, assumptions: List[int]) -> Iterable[np.ndarray]:
@@ -606,7 +560,7 @@ def ping_pong(dim: int, mdim: int,
               encode: str = 'totalizer',
               solver: str = 'cd15',
               resolver_opts: Dict | None = None,
-              smallest = False, # favor smaller weight conflicts
+              smallest: int = 0, # favor smaller weight conflicts
               minimal: int = 0,
               trace: int = 0,
               mverbose: int = 0,
