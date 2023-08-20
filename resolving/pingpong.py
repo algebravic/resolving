@@ -34,6 +34,7 @@ from .logic import set_equal, set_and
 from .bdd import not_equal
 from .symmbreak import double_lex, snake_lex
 from .util import get_prefix, extract_mat, getvec, makevec, makemat, makecomp
+from .maxtest import min_conflict
 
 CONFLICT = Tuple[int,...]
 
@@ -62,6 +63,9 @@ class Conflict:
 
         self._avar = makemat(self._pool, 'A', self._mdim, self._dim)
         self._evar = makecomp(self._pool, 'E', self._mdim, self._dim)
+        # F[i,j] means col(i) = col(j) and no equality in between
+        self._fvar = makecomp(self._pool, 'F', 1, self._dim)
+        self._gvar = makecomp(self._pool, 'G', 1, self._dim)
         self._xvar = makevec(self._pool, 'X', self._dim)
         self._yvar = makevec(self._pool, 'Y', self._dim)
         # Assumption variables to find smallest weight conflict
@@ -145,17 +149,40 @@ class Conflict:
         # between the two must be non-decreasing
         # E[i,(j,k)] is true <==> A[i,j] == A[i,k]
         for lft, rgt in combinations(range(self._dim), 2):
+            self._cnf.append([-self._evar[ind, (lft, rgt)]
+                              for ind in range(self._mdim)]
+                             + [self._gvar[0, (lft, rgt)]])
+            
+                                          
             for ind in range(self._mdim):
+                self._cnf.append([self._evar[ind, (lft, rgt)],
+                                  -self._gvar[0, (lft, rgt)]])
                 self._cnf.extend(set_equal(self._evar[ind, (lft, rgt)],
                                            self._avar[ind, lft],
                                            self._avar[ind, rgt]))
+            # if any col strictly between lft and rgt are equal
+            # to lft then f is false
+            self._cnf.extend([[-self._gvar[0, (lft, btw)],
+                               -self._fvar[0, (lft, rgt)]]
+                              for btw in range(lft+1, rgt)])
+            # if no column strictly between lft and rgt
+            # is equal of lft, then f[lft,rgt] is false
+            self._cnf.extend([[self._gvar[0, (lft, btw)],
+                               -self._gvar[0, (lft, rgt)],
+                               self._fvar[0, (lft, rgt)]]
+                              for btw in range(lft+1, rgt)])
+        # Note that we only call solve with assumptions for
+        # all of the A values.  Then unit propagation makes
+        # all of the e,f,g values constant.  Thus the only
+        # active constraints are those that are strictly necessary.
         # Now conditional lex constraints.
         # If A[:,i] == A[:,j] then (x,y)[i] <= (x,y)[j]
         # Note that since the A variables are assumptions
         # Unit propagation will delete all non-applicable clauses
 
-            prefix = [-self._evar[ind, (lft, rgt)]
-                for ind in range(self._mdim)]
+            # prefix = [-self._evar[ind, (lft, rgt)]
+            #     for ind in range(self._mdim)]
+            prefix = [-self._fvar[0, (lft, rgt)]]
             self._cnf.extend([prefix + _
                                for _ in standard_lex(
                                    self._pool,
@@ -262,6 +289,7 @@ class Resolve:
                  snake: int = 0, # Use snake lex if > 0, 2 if Transpose
                  maxweight: bool = False, # Only use maximum weights
                  firstweight: bool = False,
+                 getcore: int = 0,
                  solver_kwds: dict | None = None):
 
         
@@ -271,6 +299,7 @@ class Resolve:
         self._encoding = getattr(EncType, encode, EncType.totalizer)
         self._snake = snake
         self._maxweight = maxweight
+        self._getcore = getcore
         self._cnf = CNF()
         self._pool = IDPool()
         self._avar = {_ : self._pool.id(('A',) + _)
@@ -296,6 +325,8 @@ class Resolve:
         self._alt = alt
         self._conflicts = {}
         self._controls = [] # controlling variable for last found matrices
+        self._cores = {}
+        self._num_conflicts = 0
 
     def append(self, clause: CLAUSE):
         """
@@ -326,7 +357,7 @@ class Resolve:
     @property
     def num_conflicts(self):
         """ Return the number of distinct conflicts """
-        return len(self._conflicts)
+        return self._num_conflicts
 
     @property
     def duplicates(self):
@@ -342,7 +373,7 @@ class Resolve:
         set do we have to allow all of them.
         """
         # control is used to turn on/off counterexamples
-        control = self._pool._next()
+        control = self._pool.id()
         prefix = (list(self._conflicts.values())
                   + self._controls + [control])
         self._controls.append(-control)
@@ -387,7 +418,7 @@ class Resolve:
             raise ValueError("Minimal result clauses not all unit")
         return [backwards[_[0]] for _ in good]
 
-    def add_conflict(self, xval: np.ndarray):
+    def add_conflicts(self, amat: np.ndarray, xvals: List[np.ndarray]):
         """
         Add conflict clauses.
         Each conflict has an associated assumption variable.
@@ -396,23 +427,47 @@ class Resolve:
         We will use those variables later to find a minimal set of conflicts
         for the UNSAT case.
         """
-        txval = tuple(xval.tolist())
-        if self._verbose > 2:
-            print(f"+conflict = {txval}")
-        if txval in self._conflicts:
-            self._duplicates += 1
-            return
-        assump = self._pool._next()
-        # self.append([-assump, - self._controls[-1]])
-        self._conflicts[txval] = assump
-        (self._bdd_add_conflict if self._alt else self._add_conflict)(xval)
+        conflictor = (self._bdd_add_conflict
+            if self._alt else self._add_conflict)
+        self._num_conflicts += len(xvals)
+        if self._getcore < 2:
+            for xval in xvals:
+                txval = tuple(xval.tolist())
+                if self._verbose > 2:
+                    print(f"+conflict = {txval}")
+                if txval in self._conflicts:
+                    self._duplicates += 1
+                    continue
+                assump = self._pool.id()
+                # self.append([-assump, - self._controls[-1]])
+                self._conflicts[txval] = assump
+                conflictor(xval)
+        if self._getcore:
+            core = min_conflict(
+                xvals,
+                amat,
+                solver = self._solve_name,
+                snake = self._snake,
+                verbose = self._verbose)
+            for xval in xvals:
+                txval = tuple(xval.tolist())
+                self._cores[txval] = core
+                if self._verbose > 1:
+                    print(f"xval = {xval}, core = {core}")
+            if core:
+                self.append([int(1 - 2 * amat[_]) * self._avar[_]
+                            for _ in core])
 
+    def core_stats(self):
+        """Statistics about cores"""
+        return Counter(map(len, self._cores.values()))
+    
     def _bdd_add_conflict(self, xval: np.ndarray):
         """
         Add clauses that forbid A@x = 0
         """
         inequalities = []
-        indicators = [self._pool._next() for _ in range(self._mdim)]
+        indicators = [self._pool.id() for _ in range(self._mdim)]
         bound = (xval == -1).sum()
         pos = np.arange(self._dim)[xval == 1].tolist()
         neg = np.arange(self._dim)[xval == -1].tolist()
@@ -439,14 +494,14 @@ class Resolve:
         for kind in range(self._mdim):
             lits = ([self._avar[kind, _] for _ in pos]
                     + [- self._avar[kind, _] for _ in neg])
-            indic1 = self._pool._next()
+            indic1 = self._pool.id()
             indicators.append(indic1)
             for clause in CardEnc.atmost(
                     lits = lits, bound = bound - 1,
                     encoding = self._encoding,
                     vpool = self._pool).clauses:
                 self.append([-assump, -indic1] + clause)
-            indic2 = self._pool._next()
+            indic2 = self._pool.id()
             indicators.append(indic2)
             for clause in CardEnc.atleast(
                     lits = lits, bound = bound + 1,
@@ -548,6 +603,7 @@ class Resolve:
 
 def main_loop(resolver: Resolve, conflict: Conflict,
               verbose = 0,
+              getcore: int = 0,
               times = 1, rtimes = 1) -> Tuple[bool,np.ndarray | None]:
     """
     The main ping/pong loop.
@@ -555,13 +611,15 @@ def main_loop(resolver: Resolve, conflict: Conflict,
     conflicts = []
     soln = None
     found = False
+    reasons = []
+                
     for amat in islice(resolver.get(), rtimes):
         if verbose > 2:
             print(f"A:\n{amat}")
         # Check validity
         # Give A (as assumptions) to model2 to find conflicts.
         lconf = list(conflict.get_conflicts(amat, times))
-
+        reasons.append((amat, lconf))
         if verbose > 2:
             print(f"conflicts={lconf}")
         soln = amat
@@ -572,7 +630,8 @@ def main_loop(resolver: Resolve, conflict: Conflict,
     if verbose > 2:
         print(f"found = {found}, amat = {soln}")
     if not found:
-        list(map(resolver.add_conflict, conflicts))
+        for amat, lconf in reasons:
+            resolver.add_conflicts(amat, lconf)
 
     return found, soln
 
@@ -587,6 +646,7 @@ def ping_pong(dim: int, mdim: int,
               minimal: int = 0,
               trace: int = 0,
               mverbose: int = 0,
+              getcore: int = 0,
               solver_kwds: Dict | None = None) -> np.ndarray | None | List[CONFLICT]:
     """
     Test if the a set of size m is a resolving set for the
@@ -630,6 +690,7 @@ def ping_pong(dim: int, mdim: int,
                        verbose = verbose,
                        solver=solver,
                        encode=encode,
+                       getcore = getcore,
                        solver_kwds = solver_kwds,
                        **resolver_opts)
 
@@ -667,9 +728,10 @@ def ping_pong(dim: int, mdim: int,
                                 verbose = verbose,
                                 times = times,
                                 rtimes = rtimes)
-        if amat is None: # It is UNSAT
+        if not found and amat is None: # It is UNSAT
             break
-
+    if getcore:
+        print(f"Cores statistics = {resolver.core_stats()}")
     if verbose > 0:
         print(f"Final conflict time = {conflict.cum_time}, "
               + f"conflicts={resolver.num_conflicts}")
