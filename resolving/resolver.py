@@ -203,7 +203,6 @@ class Resolve:
                 xvals,
                 amat,
                 solver = self._solve_name,
-                snake = self._snake,
                 verbose = self._verbose)
             for xval in xvals:
                 txval = tuple(xval.tolist())

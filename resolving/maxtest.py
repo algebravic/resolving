@@ -139,3 +139,28 @@ def min_conflict(conflicts: List[np.ndarray],
     core = get_min_core(cnf, assump, solver, verbose=verbose)
     return ([pool.obj(abs(_))[1] for _ in core]
             if core else None)
+
+def cheap_conflict(conflict: np.ndarray,
+                   amat: np.ndarray):
+    """
+    Cheap special purpose min conflict
+
+    Restrict things to rows of A whose dot product
+    with the conflict is 0.
+    Among those, only consider columns cooresponding
+    to nonzero entries of the conflict.
+    """
+    mdim, dim = amat.shape
+    check = amat @ conflict
+    # Note that this sould be 0
+    # otherwise conflict isn't a conflict for amat
+    # So we want to forbid all the integer points
+    # in the region  A @ x = 0, where we know x
+    # and the entries of A are unknown in 0/1
+    # However, we have the additional restrictions
+    # that some subset of them should be equal to the
+    # constant entries of A.
+    cols = np.arange(dim)[conflict != 0]
+    # We only need to consider the columns
+    rows = np.arange(mdim)[check == 0]
+    
