@@ -84,6 +84,11 @@ class Conflict:
         xlits = [self._xvar[_] for _ in range(self._dim)]
         ylits = [self._yvar[_] for _ in range(self._dim)]
         self._cnf.extend([[-_[0], - _[1]] for _ in zip(xlits, ylits)])
+        # Symmetry breaking
+        #  AND (x[i] == 0 AND y[i] == 0, i < j) ==> (y[j] == 0)
+        self._cnf.extend([xlits[: ind] + ylits[ : ind]
+                          + [-ylits[ind]]
+                          for ind in range(self._dim)])
         # Conditional clause to only allow one weight
         self._cnf.extend(CardEnc.atmost(lits = self._wvar.values(),
                                         bound = 1,
