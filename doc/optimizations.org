@@ -371,5 +371,49 @@ with $A_1 = e$ (the all 1's vector), and $A_{i+1} = B_i$ for $i=1,
 note that if $A$ is a detecting matrix, then it is also a balanced
 detecting matrix, since the latter is a weaker condition.
 
+* <2023-08-21 Mon> UNSAT proofs
+For general SAT solving the "standard" way of providing a proof of
+UNSAT is either the DRUP or DRAT proof, both of which can be produced
+mechanically in many solvers.  What I'd like to do is to produce
+fairly compact proofs that a particular 0/1 matrix is acutally a
+detecting or balanced detecting, without having to list the
+constraints explicitly.  The idea is that if $A$ is an $m \times n$
+matrix we want to show that $Ax \ne 0$ for all the $x$ vectors of the
+desired form.  For detecting, that set will be $x_i \in \{0,\pm 1\}$,
+and $x \ne 0$.  For balanced detecting we have the condition $\sum_i
+x_i = 0$.
+
+We can describe the feasible $x$ as 0/1 points in a polytope.  In
+particular, we write $x = y - z$ for $0/1$ vectors $y,z$.  We have the
+additional constraints $y_i + z_i \le 1$, and $\sum_i x_i \ge 1,
+\sum_i y_i \ge 1$.  For balanced, we add the constraint $\sum_i (x_i -
+y_i) = 0$.  Call the polytope in question, $P$.  Ideally, we would
+like to have the polytope being empty.  If that were the case, then we
+can generated a proof of this via the Farkas lemma.  We usually won't
+be so lucky.  However, what we can do, is to make use of
+Chvatal-Gomory cuts.  It is known that a finite number of them suffice
+to show that that there are no integer points in the polytope.  A
+simpler set of cuts to generate are the $0$-$\frac 12$ cuts.  A paper
+of Koster, Zymolka and Kutschka indicates a practical method to find
+them.
+
+An alternative would be to use lattice reduction.  In particular, one
+could use the Maximum Entropy method to find a distribution with which
+to rescale, to make an ellipsoidal approximation.  This converts it to
+a CVP problem, which, with lattice reduction one can given a fairly
+short proof of emptiness.
+
+Without looking at the details of the Koster et. al. paper, if we have
+the polytope specified by $A x \le b, Cx = d, x \ge 0$, we can find
+matrices $B,D$ with all elements of $B$ $\ge 0$, and consider $(B A) +
+\lambda (DC) \le B b + \lambda D d$ for some $\lambda$.  In our case
+all entries of $B$ and $C$ are in $\{0,1\}$.  We'd like $B,D$ to have
+the property that $BA + DC$ is integral and $B A + DC \equiv 0 \bmod
+2$, but $Bb + D d \not \equiv 0 \bmod 2$. In that case we will get a
+cutting plane, since we can divide the left hand side by 2, and remain
+integral, but the right hand side will not.  Can we take all entries
+of $C$ to be in $\{0,1\}$?
+
+
 
 
