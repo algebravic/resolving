@@ -52,6 +52,8 @@ def main_loop(resolver: Resolve, conflict: Conflict,
         if len(lconf) == 0: # amat is a solution!
             found = True
             break
+        if verbose > 1:
+            print(f"conflicts: {lconf}")
         conflicts += lconf
     if verbose > 2:
         print(f"found = {found}, amat = {soln}")
@@ -124,12 +126,15 @@ def ping_pong(dim: int, mdim: int,
     if verbose > 1:
         print(f"Resolve census = {resolver.census}")
 
+    bound = (1 if resolver_opts.get('ss_cuts', False) or
+        (resolver_opts.get('snake', 0) != 0) else 2)
+    print(f"lower bound = {2 * bound}")
     conflict = Conflict(dim, mdim - 1,
                         verbose = verbose,
                         solver=solver,
                         encode=encode,
                         smallest = smallest,
-                        bound = resolver_opts.get('snake', 0) == 0,
+                        bound = bound,
                         solver_kwds = solver_kwds)
 
     if verbose > 1:
