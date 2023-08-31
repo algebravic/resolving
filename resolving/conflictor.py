@@ -136,7 +136,7 @@ class Conflict:
             # We want sum_j (B[i,j] - C[i,j]) = 0 for all i
             self._cnf.extend(CardEnc.equals(
                 lits=([bvar[kind, _] for _ in range(self._dim)]
-                      + [- cvar[kind, _] for _ in range(self._dim)]),
+                    + [- cvar[kind, _] for _ in range(self._dim)]),
                 bound = self._dim,
                 encoding = self._encoding,
                 vpool = self._pool))
