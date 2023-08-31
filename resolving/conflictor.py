@@ -36,24 +36,26 @@ class Conflict:
         self._dim = dim
         self._mdim = mdim
         self._verbose = verbose
-        self._smallest = smallest
         self._encoding = getattr(EncType, encode, EncType.totalizer)
-        self._getter = (self._get_all_weights if smallest
+        self._getter = (self._get_all_weights if smallest > 0
                         else self._get_conflicts)
         self._cnf = CNF()
         self._pool = IDPool()
 
         self._avar = makemat(self._pool, 'A', self._mdim, self._dim)
-        self._evar = makecomp(self._pool, 'E', self._mdim, self._dim)
-        # F[i,j] means col(i) = col(j) and no equality in between
-        self._fvar = makecomp(self._pool, 'F', 1, self._dim)
-        self._gvar = makecomp(self._pool, 'G', 1, self._dim)
         self._xvar = makevec(self._pool, 'X', self._dim)
         self._yvar = makevec(self._pool, 'Y', self._dim)
-        # Assumption variables to find smallest weight conflict
-        self._wvar = {_: self._pool.id(('W', _))
-                      for _ in range(2, self._dim // 2 + 1)}
         self._bound = bound
+        if self._bound == 1:
+            self._evar = makecomp(self._pool, 'E', self._mdim, self._dim)
+            # F[i,j] means col(i) = col(j) and no equality in between
+            self._fvar = makecomp(self._pool, 'F', 1, self._dim)
+            self._gvar = makecomp(self._pool, 'G', 1, self._dim)
+        self._smallest = smallest
+        if self._smallest > 0:
+            self._wvar = {_: self._pool.id(('W', _))
+                for _ in range(self._bound, self._dim // 2 + 1)}
+        # Assumption variables to find smallest weight conflict
         self._generate()
         if solver_kwds is None:
             solver_kwds = {}
@@ -89,32 +91,38 @@ class Conflict:
         self._cnf.extend([xlits[: ind] + ylits[ : ind]
                           + [-ylits[ind]]
                           for ind in range(self._dim)])
-        # Conditional clause to only allow one weight
-        self._cnf.extend(CardEnc.atmost(lits = self._wvar.values(),
-                                        bound = 1,
-                                        encoding = EncType.ladder,
-                                        vpool = self._pool))
-        for wgt in range(2, self._dim // 2 + 1):
-            self._cnf.extend(list(([- self._wvar[wgt]] + clause
-                             for clause in CardEnc.equals(
-                                     lits = xlits,
-                                     bound = wgt,
-                                     encoding = self._encoding,
-                                     vpool = self._pool).clauses)))
-        # Support (even) is >= 4
-        self._cnf.extend(CardEnc.atleast(
-            lits = xlits + ylits,
-            bound = 4 if self._bound else 2,
-            encoding = self._encoding,
-            vpool = self._pool))
+        if self._smallest > 0:
+            # Conditional clause to only allow one weight
+            self._cnf.extend(CardEnc.equals(lits = self._wvar.values(),
+                                            bound = 1,
+                                            encoding = EncType.ladder,
+                                            vpool = self._pool))
+            # w[wgt] is an indicator variable to control (x,y) of weight wgt
+            for wgt in range(self._bound, self._dim // 2 + 1):
+                self._cnf.extend(list(([- self._wvar[wgt]] + clause
+                                for clause in CardEnc.equals(
+                                    lits = xlits,
+                                    bound = wgt,
+                                    encoding = self._encoding,
+                                    vpool = self._pool).clauses)))
+        else:
+            # Support (even) is >= 2 * bound
+            self._cnf.extend(CardEnc.atleast(
+                lits = xlits + ylits,
+                bound = 2 *  self._bound,
+                encoding = self._encoding,
+                vpool = self._pool))
+
         # sum_i (x[i] - y[i]) = 0
         self._cnf.extend(CardEnc.equals(
             lits = xlits + [-_ for _ in ylits],
             bound = self._dim,
             encoding = self._encoding,
             vpool = self._pool))
-        self._cnf.extend(list(standard_lex(self._pool,
-                                          ylits, xlits)))
+        # self._cnf.extend(list(standard_lex(self._pool,
+        #                                   ylits, xlits)))
+        # We have B[i,j] = A[i,j] * X[j]
+        # We have C[i,j] = A[i,j] * Y[j]
         bvar = makemat(self._pool, 'B', self._mdim, self._dim)
         cvar = makemat(self._pool, 'C', self._mdim, self._dim)
         for kind in range(self._mdim):
@@ -125,12 +133,21 @@ class Conflict:
                 self._cnf.extend(set_and(cvar[kind, ind],
                                          self._avar[kind, ind],
                                          self._yvar[ind]))
+            # We want sum_j (B[i,j] - C[i,j]) = 0 for all i
             self._cnf.extend(CardEnc.equals(
                 lits=([bvar[kind, _] for _ in range(self._dim)]
                       + [- cvar[kind, _] for _ in range(self._dim)]),
                 bound = self._dim,
                 encoding = self._encoding,
                 vpool = self._pool))
+
+        if self._bound == 1:
+            self._equal_cols()
+
+    def _equal_cols(self):
+        """
+        Symmetry breaking constraints in case we allow equal columns
+        """
         # Symmetry breaking constraints
         # If two columns of A are equal then the (x,y) values
         # between the two must be non-decreasing
@@ -158,14 +175,14 @@ class Conflict:
                                -self._gvar[0, (lft, rgt)],
                                self._fvar[0, (lft, rgt)]]
                               for btw in range(lft+1, rgt)])
-        # Note that we only call solve with assumptions for
-        # all of the A values.  Then unit propagation makes
-        # all of the e,f,g values constant.  Thus the only
-        # active constraints are those that are strictly necessary.
-        # Now conditional lex constraints.
-        # If A[:,i] == A[:,j] then (x,y)[i] <= (x,y)[j]
-        # Note that since the A variables are assumptions
-        # Unit propagation will delete all non-applicable clauses
+            # Note that we only call solve with assumptions for
+            # all of the A values.  Then unit propagation makes
+            # all of the e,f,g values constant.  Thus the only
+            # active constraints are those that are strictly necessary.
+            # Now conditional lex constraints.
+            # If A[:,i] == A[:,j] then (x,y)[i] <= (x,y)[j]
+            # Note that since the A variables are assumptions
+            # Unit propagation will delete all non-applicable clauses
 
             # prefix = [-self._evar[ind, (lft, rgt)]
             #     for ind in range(self._mdim)]
@@ -176,11 +193,16 @@ class Conflict:
                                    [self._xvar[lft], self._yvar[lft]],
                                    [self._xvar[rgt], self._yvar[rgt]],
                                strict=False)])
+        
             
-
     def _get_soln(self, assumptions: List[int]) -> np.ndarray | None:
         """
-        Get a solution.
+        Get a solution
+
+        Input: The list of assumptions for the input A matrix
+
+        If a solution exists, add a conditional clause forbidding that solution
+        (conditional on the A values), and return the solution as a 0/1/-1 vector
         """
         status = self._solve.solve(assumptions = assumptions)
         self._cum_time += self._solve.time()
@@ -199,7 +221,7 @@ class Conflict:
         """
         Get weights in increasing order.
         """
-        bot = 2
+        bot = self._bound
         found = False
         while bot <= self._dim // 2:
             result = self._get_soln(assumptions + [self._wvar[bot]])
@@ -216,7 +238,7 @@ class Conflict:
         Get conflicts in arbitrary order.
         """
         # Turn off specific weights
-        assump = assumptions + [-_ for _ in self._wvar.values()]
+        assump = assumptions #  + [-_ for _ in self._wvar.values()]
         while True:
             result = self._get_soln(assump)
             if result is None:
