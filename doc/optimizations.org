@@ -414,6 +414,33 @@ cutting plane, since we can divide the left hand side by 2, and remain
 integral, but the right hand side will not.  Can we take all entries
 of $C$ to be in $\{0,1\}$?
 
+* A BDD for the conflicts
+Recall that a conflict is a pair of 0/1 n-vectors: $(x,y)$ such that
+a) $\sum_i x_i = \sum_i y_i$, and $x_i + y_i \le 1$ (alternatively, as
+boolean variables and CNF clause $\neg x_i \ve \neg y_i$.
+
+We may descibe the pair $(x,y)$ by a BDD as follows:
+The variable order is $x_1, y_1, x_2, y_2, x_3, y_3, \dots$.
+Each node will have a state of a pair of counters with values in
+$[0,\lfloor n/2 \rfloor]$.  In addition, the $y$ nodes will have the
+value of the previous $x$ node.  We can optimize the counters, since
+variables at level $\ell$ can only have counters in $[0, \ell - 1]$.
+If we wish to symmetry break, by requiring that the first non-zero
+among the $(x_i,y_i)$ occurs for $x$, we keep track of whether or not
+all preceeding values are 0.  If we are at an $x$ node, this give no
+restriction.  If we are at a $y$ node, this forces the $y$ value to
+be 0.  Actually we can optimize things a bit more.  We only need to
+keep a counter which is the difference between the $x$ counter and the
+$y$ counter.  This will then be in the range $[-\lfloor n/2 \rfloor,
+\lfloor n/2 \rfloor]$.  We have an initial state:
+$(0,0)$ with transitions
+$(0,0): (s,t) = (s, t)$
+$(1,0): (s,t) = (1, t+1)$
+$(0,1): (s,t) = \bot$ if $s=0$ else $(s, t-1)$
+$(1,1): (s,t) = \bot$.
+The final state is $(1,0)$.
+
+But this doesn't immediately help, as it still an *exists* statement.
 
 
 
