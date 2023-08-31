@@ -53,9 +53,6 @@ def makecomp(pool: IDPool, prefix: str, dim1: int, dim2: int) -> Dict[Tuple[int,
     return {_ : pool.id((prefix, _)) for _ in product(range(dim1),
                                                       combinations(range(dim2), 2))}
 
-
-
-    
 def _check_diff_cols(mat: np.ndarray) -> List[Tuple[int, int]]:
     """
     Check if a matrix has distinct columns.
