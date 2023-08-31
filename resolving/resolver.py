@@ -17,6 +17,7 @@ from .bdd import not_equal
 from .symmbreak import double_lex, snake_lex
 from .util import get_prefix, extract_mat, getvec, makevec, makemat, makecomp
 from .maxtest import min_conflict
+from .schreier_sims import schreier_sims_cuts
 
 CONFLICT = Tuple[int,...]
 
@@ -42,6 +43,7 @@ class Resolve:
                  nozero: bool = False, # disallow 0 column
                  solver = 'cd15',
                  encode = 'totalizer',
+                 ss_cuts: bool = False,
                  snake: int = 0, # Use snake lex if > 0, 2 if Transpose
                  maxweight: bool = False, # Only use maximum weights
                  firstweight: bool = False,
@@ -54,6 +56,7 @@ class Resolve:
         self._verbose = verbose
         self._encoding = getattr(EncType, encode, EncType.totalizer)
         self._snake = snake
+        self._ss_cuts = ss_cuts
         self._maxweight = maxweight
         self._getcore = getcore
         self._cnf = CNF()
@@ -350,8 +353,15 @@ class Resolve:
         # Double sorted increasing
         amat = np.array([[self._avar[ind, jind] for jind in range(self._dim)]
                          for ind in range(self._mdim)], dtype=int)
-        if self._firstweight:
-            amat = amat[:, 1:] # avoid first column
-        breaker = snake_lex if self._snake > 0 else double_lex
-        self._cnf.extend(list(breaker(self._pool,
-                                      amat.T if self._snake > 1 else amat)))
+        if self._ss_cuts:
+            self._cnf.extend([[-int(amat[leader]), int(amat[follower])]
+                              for leader, follower
+                              in schreier_sims_cuts(self._dim,
+                                                    self._mdim)])
+        else:
+            if self._firstweight:
+                amat = amat[:, 1:] # avoid first column
+            breaker = snake_lex if self._snake > 0 else double_lex
+            self._cnf.extend(list(breaker(self._pool,
+                                        amat.T if self._snake > 1
+                                          else amat)))
