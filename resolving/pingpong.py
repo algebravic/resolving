@@ -38,7 +38,6 @@ def main_loop(resolver: Resolve,
     """
     The main ping/pong loop.
     """
-    conflicts = []
     soln = None
     status = Status.UNSAT
     reasons = []
@@ -60,7 +59,6 @@ def main_loop(resolver: Resolve,
             status = Status.UNKNOWN
         if verbose > 1:
             print(f"conflicts: {lconf}")
-        conflicts += lconf
     if verbose > 2:
         print(f"found = {found}, amat = {soln}")
     if status == Status.UNKNOWN:
@@ -76,7 +74,7 @@ def ping_pong(dim: int, mdim: int,
               encode: str = 'totalizer',
               solver: str = 'cd15',
               resolver_opts: Dict | None = None,
-              smallest: int = 0, # favor smaller weight conflicts
+              conflictor_opts: Dict | None = None,
               minimal: int = 0,
               trace: int = 0,
               mverbose: int = 0,
@@ -117,31 +115,32 @@ def ping_pong(dim: int, mdim: int,
 
     if resolver_opts is None:
         resolver_opts = {}
+    if conflictor_opts is None:
+        conflictor_opts = {}
     if solver_kwds is None:
         solver_kwds = {}
 
     resolver = Resolve(dim, mdim - 1,
-                       verbose = verbose,
-                       solver=solver,
-                       encode=encode,
-                       getcore = getcore,
-                       solver_kwds = solver_kwds,
-                       **resolver_opts)
-
+        verbose = verbose,
+        solver=solver,
+        encode=encode,
+        getcore = getcore,
+        solver_kwds = solver_kwds,
+        **resolver_opts)
 
     if verbose > 1:
         print(f"Resolve census = {resolver.census}")
 
     bound = (1 if resolver_opts.get('ss_cuts', False) or
         (resolver_opts.get('snake', 0) != 0) else 2)
+    conflictor_opts['bound'] = bound
     print(f"lower bound = {2 * bound}")
     conflict = Conflict(dim, mdim - 1,
-                        verbose = verbose,
-                        solver=solver,
-                        encode=encode,
-                        smallest = smallest,
-                        bound = bound,
-                        solver_kwds = solver_kwds)
+        verbose = verbose,
+        solver=solver,
+        encode=encode,
+        solver_kwds = solver_kwds,
+        **conflictor_opts)
 
     if verbose > 1:
         print(f"Conflict census = {conflict.census}")
@@ -160,9 +159,9 @@ def ping_pong(dim: int, mdim: int,
                 print(f"conflictor census = {conflict.census}")
         # Add new conflicts.  At the beginning there are none
         status, amat = main_loop(resolver, conflict,
-                                verbose = verbose,
-                                times = times,
-                                rtimes = rtimes)
+            verbose = verbose,
+            times = times,
+            rtimes = rtimes)
     if getcore:
         print(f"Cores statistics = {resolver.core_stats()}")
     if verbose > 0:
@@ -170,19 +169,18 @@ def ping_pong(dim: int, mdim: int,
               + f"conflicts={resolver.num_conflicts}")
         # print(f"duplicates = {resolver.duplicates}")
         print(f"Total passes: {pass_no}, resolve time = {resolver.cum_time}.")
-    if minimal > 0 and amat is None:
+    if minimal > 0 and status == Status.UNSAT:
         minimal_conflicts = resolver.minimal(
             mverbose=mverbose, use_ux = minimal != 1)
         if verbose > 0:
             print(f"Final resolve time = {resolver.cum_time}")
         return minimal_conflicts
-    if amat is not None:
+    if status == Status.SAT:
         fconflict = Conflict(dim, mdim - 1,
-                             solver=solver,
-                             encode=encode,
-                             smallest = smallest,
-                             bound = resolver_opts.get('snake', 0) == 0,
-                             solver_kwds = solver_kwds)
+            solver=solver,
+            encode=encode,
+            solver_kwds = solver_kwds,
+            **conflictor_opts)
         check = list(fconflict.get_conflicts(amat, 1))
         print(f"Final check: {len(check) == 0}")
 
