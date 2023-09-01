@@ -20,6 +20,7 @@ We will also, optionally as solver (2) to provide at most r solutions.
 
 """
 from typing import Iterable, List, Tuple, Dict
+from enum import Enum
 from itertools import islice
 import numpy as np
 from .conflictor import Conflict
@@ -27,16 +28,19 @@ from .resolver import Resolve
 
 CONFLICT = Tuple[int,...]
 
-def main_loop(resolver: Resolve, conflict: Conflict,
+Status = Enum('Status', ['SAT', 'UNSAT', 'UNKNOWN'])
+
+def main_loop(resolver: Resolve,
+              conflict: Conflict,
               verbose = 0,
-              getcore: int = 0,
-              times = 1, rtimes = 1) -> Tuple[bool,np.ndarray | None]:
+              times = 1,
+              rtimes = 1) -> Tuple[Status, np.ndarray | None]:
     """
     The main ping/pong loop.
     """
     conflicts = []
     soln = None
-    found = False
+    status = Status.UNSAT
     reasons = []
                 
     for amat in islice(resolver.get(), rtimes):
@@ -48,20 +52,22 @@ def main_loop(resolver: Resolve, conflict: Conflict,
         reasons.append((amat, lconf))
         if verbose > 2:
             print(f"conflicts={lconf}")
-        soln = amat
         if len(lconf) == 0: # amat is a solution!
-            found = True
+            status = Status.SAT
+            soln = amat
             break
+        else:
+            status = Status.UNKNOWN
         if verbose > 1:
             print(f"conflicts: {lconf}")
         conflicts += lconf
     if verbose > 2:
         print(f"found = {found}, amat = {soln}")
-    if not found:
+    if status == Status.UNKNOWN:
         for amat, lconf in reasons:
             resolver.add_conflicts(amat, lconf)
 
-    return found, soln
+    return status, soln
 
 def ping_pong(dim: int, mdim: int,
               times: int = 1,
@@ -141,9 +147,9 @@ def ping_pong(dim: int, mdim: int,
         print(f"Conflict census = {conflict.census}")
 
     pass_no = 0
-    found = False
+    status = Status.UNKNOWN
     amat = None
-    while not found:
+    while status == Status.UNKNOWN:
         pass_no += 1
         if trace > 0 and pass_no % trace == 0:
             print(f"At pass {pass_no}, resolve time = {resolver.cum_time}")
@@ -153,14 +159,10 @@ def ping_pong(dim: int, mdim: int,
                 print(f"resolver census = {resolver.census}")
                 print(f"conflictor census = {conflict.census}")
         # Add new conflicts.  At the beginning there are none
-        # found = True, means that problem is SAT, then amat is the solution
-        # amat is None means problem is UNSAT
-        found, amat = main_loop(resolver, conflict,
+        status, amat = main_loop(resolver, conflict,
                                 verbose = verbose,
                                 times = times,
                                 rtimes = rtimes)
-        if not found and amat is None: # It is UNSAT
-            break
     if getcore:
         print(f"Cores statistics = {resolver.core_stats()}")
     if verbose > 0:
