@@ -267,7 +267,7 @@ class Resolve:
                     vpool = self._pool).clauses:
                 self.append([-assump, -indic2] + clause)
             # Both cannot be true
-            self.append([-indic1, -indic2])
+            self.append([-assump, -indic1, -indic2])
         # At least one row must yield a nonzero value
         self.append([-assump] + indicators)
 
