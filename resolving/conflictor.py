@@ -31,6 +31,7 @@ class Conflict:
                  encode: str = 'totalizer',
                  smallest: int = 0,
                  bound: bool = True,
+                 sbreak: bool = False,
                  solver_kwds: Dict | None = None):
 
         self._dim = dim
@@ -46,7 +47,8 @@ class Conflict:
         self._xvar = makevec(self._pool, 'X', self._dim)
         self._yvar = makevec(self._pool, 'Y', self._dim)
         self._bound = bound
-        if self._bound == 1:
+        self._sbreak = sbreak
+        if self._sbreak:
             self._evar = makecomp(self._pool, 'E', self._mdim, self._dim)
             # F[i,j] means col(i) = col(j) and no equality in between
             self._fvar = makecomp(self._pool, 'F', 1, self._dim)
@@ -141,7 +143,7 @@ class Conflict:
                 encoding = self._encoding,
                 vpool = self._pool))
 
-        if self._bound == 1:
+        if self._sbreak:
             self._equal_cols()
 
     def _equal_cols(self):
@@ -212,8 +214,10 @@ class Conflict:
         xval = getvec(self._pool, 'X', model)
         yval = getvec(self._pool, 'Y', model)
         # Don't ever get this solution again
-        forbid = ([int(1 - 2*xval[_]) * self._xvar[_] for _ in range(self._dim)]
-                  + [int(1 - 2*yval[_]) * self._yvar[_] for _ in range(self._dim)])
+        forbid = ([int(1 - 2*xval[_]) * self._xvar[_]
+            for _ in range(self._dim)]
+            + [int(1 - 2*yval[_]) * self._yvar[_]
+               for _ in range(self._dim)])
         self.append([-_ for _ in assumptions] + forbid)
         return xval - yval
 
@@ -237,10 +241,8 @@ class Conflict:
         """
         Get conflicts in arbitrary order.
         """
-        # Turn off specific weights
-        assump = assumptions #  + [-_ for _ in self._wvar.values()]
         while True:
-            result = self._get_soln(assump)
+            result = self._get_soln(assumptions)
             if result is None:
                 return
             yield result
