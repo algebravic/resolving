@@ -12,7 +12,7 @@ from pysat.examples.optux import OptUx
 from pysat.examples.musx import MUSX
 from .lex import lex_compare, Comparator, standard_lex
 from .logic import MODEL, CLAUSE, FORMULA
-from .logic import set_equal, set_and
+from .logic import set_equal, set_and, set_xor
 from .bdd import not_equal
 from .symmbreak import double_lex, snake_lex
 from .util import get_prefix, extract_mat, getvec, makevec, makemat, makecomp
@@ -21,10 +21,20 @@ from .schreier_sims import schreier_sims_cuts
 
 CONFLICT = Tuple[int,...]
 
+def xor_comp(pool: IDPool, rowl: np.ndarray, rowr: np.ndarray) -> Iterable[CLAUSE]:
+    """
+    Generate clauses for A < A XOR B
+    """
+    dim = rowl.shape[0]
+    values = [pool.id() for _ in range(dim)]
+    for ind, val in enumerate(values):
+            yield from set_xor(val, int(rowl[ind]), int(rowr[ind]))
+    yield from standard_lex(pool, list(map(int, rowl)), values)
+        
 class Resolve:
     """
     A class to find a putative resolving matrix.
-
+ 
     It keeps a state consisting of the global constraints on the A
     matrix (along with symmetry breaking constraints) and all
     conflicts that have been added so far.  Each conflict constraint
@@ -44,6 +54,7 @@ class Resolve:
                  solver = 'cd15',
                  encode = 'totalizer',
                  ss_cuts: bool = False,
+                 xor_break: bool = False, # use xor symm break
                  snake: int = 0, # Use snake lex if > 0, 2 if Transpose
                  maxweight: bool = False, # Only use maximum weights
                  firstweight: bool = False,
@@ -57,6 +68,7 @@ class Resolve:
         self._encoding = getattr(EncType, encode, EncType.totalizer)
         self._snake = snake
         self._ss_cuts = ss_cuts
+        self._xor_break = xor_break
         self._maxweight = maxweight
         self._getcore = getcore
         self._cnf = CNF()
@@ -353,6 +365,11 @@ class Resolve:
         # Double sorted increasing
         amat = np.array([[self._avar[ind, jind] for jind in range(self._dim)]
                          for ind in range(self._mdim)], dtype=int)
+        # All rows nonzero
+        for ind in range(self._mdim):
+            # i-th row nonzero
+            self._cnf.append(list(map(int, amat[ind])))
+            
         if self._ss_cuts:
             self._cnf.extend([[-int(amat[leader]), int(amat[follower])]
                               for leader, follower
@@ -365,3 +382,9 @@ class Resolve:
             self._cnf.extend(list(breaker(self._pool,
                                         amat.T if self._snake > 1
                                           else amat)))
+        if self._xor_break:
+            for ind in range(1, self._mdim):
+                self._cnf.extend(list(xor_comp(self._pool,
+                                               amat[0], amat[ind])))
+            self._cnf.extend(list(xor_comp(self._pool,
+                                           amat[1], amat[0])))
