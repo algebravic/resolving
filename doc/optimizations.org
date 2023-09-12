@@ -442,5 +442,115 @@ The final state is $(1,0)$.
 
 But this doesn't immediately help, as it still an *exists* statement.
 
+** Double sorting of matrices
+There appears to be the following theorem:
+Let $M$ be an $m \times n$ matrix with entries in a totally ordered set
+$S$.  There are two operations: $R$: permute the rows of $M$ so that
+they are in nondecreasing lexicographic order, and $C$, doing the same
+with columns.  Then
+Theorem: The operations $RC$ has a finite iteration fixed point.  That
+is, there is an integer $r$ such that $(RC)^r (M) = (RC)^{r+1}(M)$.
 
+For the case when the entries of $M$ are in $\{0,1\}$ we have the
+following:
 
+Define a *score*: $s(M) = \sum_{i=1}^m \sum_{j=1}^n 2^{i + j} M_{i,j}$.
+We can define column and row scores:
+$c(i,M) = \sum_{j=1}^n 2^j M_{i,j}$
+$r(j,M) = \sum_{i=1}^m 2^i M_{i,j}$.
+Note that $s(M) = \sum_{i=1}^m c(i,M) = \sum_{j=1}^n r(j,M)$.
+If $c(i,M) > c(i',M)$ for some $i < i'$, then swapping those will
+change the score $s(M)$ by $(2^{i'} - 2^i) c(i,M) - (2^{i'} - 2^i)
+c(i',M) = (2^{i'} - 2^i)(c(i,M) - c(i',M)) \ge 2^i$,  However, the maximum
+score is $(2^{m+1} - 1) (2^{n+1} - 1)$.  Similarly for $r(j,M)$.  So
+this shows that the double sorting process stabilizes after a finite
+time.
+
+An interesting question is what is the real maximum?
+
+* Lexicographic comparisons
+
+A method of symmetry breaking in SAT is the following:
+
+Let $F$ be a formula with the variables $x_1, \dots, x_n$.  Supposed
+that $\tau$ is a maps from $\{0,1\}^n$ to itself, so that if $\alpha$
+satsifies $F$ then so does $\tau(\alpha)$.  We can define $\tau$ by a
+set of clauses involving the variables $x_1, \dots, x_n$ and new
+variables $x_1', \dots, x_n'$ plus some number of auxilliary
+variables.  We then can demand that $x < x'$, where $<$ denotes
+lexicographic order, where we've fixed the order of the the variables
+in $x$ and $x'$.  As long as we use the same order of variables, such
+inequalities for different endomorphisms are all valid.
+
+Note that if $\tau$ is a signed permutation of the variables $x_i$
+then we do not need to introduce new variables $x'$ and auxilliaries.
+
+A method of trimming the lex order, is that if corresponding variables
+are equal, they may be omitted, from comparison.  If two variables are
+complemented, this "short circuits" the comparison: everything after
+them may be dropped.
+
+Proposition: Let $S$ be a totally ordered set, and let $<$ and $\le$
+denote lexicographic order on $S^k$ for various $k$.  If $a,b \in S$, then
+$(a,b) < (b,a)$ if and only if $a < b$.  Also $(a,b) \le (b,a)$ if and
+only if $a \le b$.
+
+Proof: By definition, $(a,b) < (b,a)$ if and only if either $a=b$ and
+$b < a$, or $a < b$.  The first alternative is impossible.  Also by
+definition $(a,b) \le (b,a)$ if and only if either $a=b$ and $b \le a$
+or $a \le b$.  The first alternative can only happen if $a=b$, and the
+second alternative subsumes that.
+
+By the above discussion, if $A$ is a feasible 0/1 array for balanced
+detecting problem, then so is $B$, where $B_j = A_i \oplus A_j$ for
+all $j \ne i$, and $B_i = A_i$.  Note that a feasible array also
+satisfies $A_i \ne 0$ for all $i$.  If we fix the boolean variables
+order for lexicographic comparison at $A_{1,1}, \dots, A_{1, n}, A_{2,
+1}, \dots A_{2,n}, \dots$, that is we flatten the array by rows, then
+we have $A \ne B$, since $A_i \ne 0$, and $A < B$ if and only if
+$either $A_1 < B_1$ if $i \ne 1$ of $A_2 < B_2$ if $i=1$.  In the
+former case this is $A_1 < A_1 \oplus A_i$, and in the latter,
+$A_2 < A_2 \oplus A_1$.  The proof of that follows since
+writing out $A$ is the determined lex order we have
+$(A_1, A_2, \dots, A_m) < (B_1, B_2, \dots, B_m)$.  In the case that
+$i \ne 1$ we have $A_1 \ne B_1 = A_1 \oplus A_i$, since $A_i \ne 0$.
+Thus, by definition of lex order we have $A  < B$ if and only if $A_1
+< B_1$.  Similarly, if $i=1$, we have $A_1 = B_1$, and $A_2 \ne B_2$.
+
+After the $i$-th operation when $i > 1, $B_j = A_j \oplus A_i$ for $j
+\ne i$, and $B_i = A_i$.  Suppose we apply the $i'$-th operation to
+$B$ for $i' \ne 1, i$.  Then $B'_j =B_j \oplus B_{i'}$ for $j \ne i'$
+and $B'_{i'} = B_{i'}$.  If $j \ne i,i'$, then $B'_j = A_j \oplus A_i
+\oplus A_{i'} \oplus A_i = A_j \oplus A_{i'}$.  If $j = i$, we have
+$B'_i = A_i \oplus A_{i'} \oplus A_i = A_{i'}$, and $B'_{i'} = B_{i'}
+= A_{i'} \oplus A_i$.
+
+In the above variable order, the inequality from swapping two
+adjacent rows, after removing all trivial equalities will be of the
+form $(a,b) < (b,a)$, where $a$ is the first row and $b$ the second.
+
+The inequality from swapping two columns after removing trivial
+inequalities will of the form $(a_1, b_1, a_2, b_2, \dots, a_m, b_m) <
+(b_1, a_1, b_2, a_1, \dots, b_m, a_m)$ where $a$ is the first column
+in order, and $b$ is the second.  Inductively using the fact
+that $(a,b) \le (b,a) \Leftright arrow a \le b$ and $(a,b) = (b,a)
+\Leftrightarrow a = b$ on each pair, show that this is equivalent to
+$(a_1, \dots, a_m) < (b_1, \dots, b_m)$.
+
+If $a,b$ are two 0/1 $n$-tuples, and $a < b$, let $i$ be the smallest
+index such that $a_j = b_j$ for all $j < i$ and $a_i \ne b_i$.  Since
+$a < b$, we must have $a_i = 0$ and $b_i = 1$.  Then $a \oplus b$
+starts with $0^{i-1} 1$.
+
+* Reduction of lex constraints
+ 1) If $\alpha = \gamma$ entails $x=y$, then a constraint $c$ of the
+    form $\alpha x \beta \le_{\tt lex} \gamma y \delta$ may be
+    replaced with $$\alpha \beta \le_{\tt lex} \gamma \delta$.
+2) Let $C = C' \cup \{\alpha x \le_{\tt lex} \gamma y\}$ be a set
+   of constraints.  If $C \cup \{\alpha = \gamma\}$ entails $x=y$, then
+   $C$ can be replaced with $C' \cup \{\alpha  \le_{\tt lex}
+   \gamma\}$.
+3') Let $C = C' \cup \{\alpha x \beta \le_{\tt lex} \gamma y \delta\}$
+be a set of constraints.  If $C \cup \{\alpha = \gamma\}$ entails
+$x=y$, then $C$ can be replaced with $C' \cup \{\alpha  \beta \le_{\tt lex}
+   \gamma \delta\}$. 
