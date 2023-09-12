@@ -7,7 +7,7 @@ from random import randint
 from math import log, ceil
 from pysmt.shortcuts import Symbol, ForAll, Exists, And, Or, Not, Int
 from pysmt.shortcuts import Equals, NotEquals, LE, GE, GT, LT, Plus, BVExtract, AllDifferent
-from pysmt.shortcuts import BVNot, BVConcat, BVToNatural, BVZero, BVZExt
+from pysmt.shortcuts import BVNot, BVConcat, BVToNatural, BVZero, BVZExt, BVXor
 from pysmt.shortcuts import is_sat, get_model, get_unsat_core
 from pysmt.typing import INT, BVType
 from pysmt.fnode import FNode
@@ -126,6 +126,7 @@ def popcount(xexpr: FNode) -> FNode:
 
 def smt_bv_setup(num: int, mnum: int,
                  pop_fun: FUN = popcount,
+                 xor_break: bool = False,
                  concat: bool = False):
     """
     Use bitvector for the model.
@@ -171,6 +172,11 @@ def smt_bv_setup(num: int, mnum: int,
     x_ord = xvars[0] < xvars[1] # A simple symmetry breaker
 
     x_cond = And([disjoint_x , x_restrict , equal_card , x_ord])
+    if xor_break:
+        extra = ([avars[0] < BVXor(avars[0], avars[_])
+                 for _ in range(1, mnum - 1)]
+                 + [avars[1] < BVXor(avars[1], avars[0])])
+        a_cond = And([a_cond] + extra)
 
     # Linking of the x variables and a variables
     if concat:
@@ -211,9 +217,13 @@ def smt_bv_model(num: int, mnum: int,
                  pop_fun: FUN = popcount,
                  transpose: bool = True,
                  concat: bool = False,
+                 xor_break: bool = False,
                  reverse: bool = True):
     avars, xvars, a_cond, x_cond, unresolved = smt_bv_setup(
-        num, mnum, pop_fun = pop_fun, concat = concat)
+        num, mnum,
+        pop_fun = pop_fun,
+        concat = concat,
+        xor_break = xor_break)
     if transpose:
         bvars, b_cond = transpose_matrix(avars)
         b_ord = And(*(_[0] < _[1]
