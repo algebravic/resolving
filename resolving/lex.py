@@ -90,6 +90,56 @@ def standard_lex(pool: IDPool,
                  op2: List[int],
                  strict: bool = True) -> Iterable[List[int]]:
     """
+    See Knuth TAOCP 7.2.2.2 page 101
+    x <=_lex y, each of length n:
+    AND_{k=1}^{n-1} C[k] /\ F, where
+      F =  (~x[n] \/ y[n] \/ ~a[n-1]), and
+    C[k] = (~x[k] \/ y[k] \/ ~a[k-1]) /\ (~x[k] \/ a[k] \/ ~a[k-1]) /\ (y[k] \/ a[k] \/ ~a[k-1])
+    where ~a[0] is omitted, i.e. a[0] is True
+
+    If we want strict inequality we replade the term, F, by the term
+    F' = (~x[n] \/ ~a[n-1]) /\ (y[n] \/ ~a[n-1]).
+
+    Knuth says 'These formulas arise by considering the carries that can occur when
+    (~x) + (1 or 0) is added to y.'  This brings up the possibility of using the fast
+    lookahead carry for better propagation.
+
+    Note that we can just treat zip(op1, op2).  If the lengths are different,
+    then strict is always true, without adding the clause F'
+    """
+    nop1 = len(op1)
+    nop2 = len(op2)
+    num = min(nop1, nop2)
+    if num == 1:
+        if strict:
+            if nop1 == nop2:
+                # ~ [(1,0), (0,0), (1,1)]
+                # ~([(1,0), (1,1)] = ~[(1,)]: 
+                # ~x \/ (x /\ y) = (~x \/ x) /\ (~x \/ y) = (~x \/ y)
+                # forbid (1,0)
+                yield from [[-op1[0]], [op2[0]]]
+        else:
+            yield [-op1[0], op2[0]]
+        return
+    aux = [pool.id() for _ in range(num)]
+    yield from [[-op1[0], op2[0]], [-op1[0], aux[0]], [op2[0], aux[0]]]
+    for ind in range(1, num - 1):
+        yield from [
+            [-op1[ind], op2[ind], - aux[ind - 1]],
+            [-op1[ind], aux[ind], - aux[ind - 1]],
+            [op2[ind], aux[ind], -aux[ind - 1]]]
+    if strict:
+        if nop1 == nop2:
+            yield from [[-op1[num - 1], -aux[num - 2]],
+                        [op2[num - 1], -aux[num - 2]]]
+    else:
+        yield [-op1[num - 1], op2[num - 1], - aux[num - 2]]
+
+def simple_lex(pool: IDPool,
+               op1: List[int],
+               op2: List[int],
+               strict: bool = True) -> Iterable[List[int]]:
+    """
     Lexicographic <
     """
     equals = []
