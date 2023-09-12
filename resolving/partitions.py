@@ -58,7 +58,7 @@ def gcd(num: int, mnum: int) -> int:
         if mnum < num:
             mnum, num = num, mnum
         mnum -= num
-        if mnum == 0:
+        if mnum == 0 or num == 1:
             return res * num
         while mnum % 2 == 0:
             mnum //= 2
