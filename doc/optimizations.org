@@ -554,3 +554,133 @@ starts with $0^{i-1} 1$.
 be a set of constraints.  If $C \cup \{\alpha = \gamma\}$ entails
 $x=y$, then $C$ can be replaced with $C' \cup \{\alpha  \beta \le_{\tt lex}
    \gamma \delta\}$. 
+
+* Algorithms
+Reference: "Minimal ordering constraints for some families of variable
+symmetries" by Grayland, Jefferson, Miguel and Roney-Dougal
+
+In that paper they give the three rules above.  On page 81 and
+following they describe a graph-based algorithm for reducing sets of
+lexicographic constraints.  I think that, implicitly, all
+lexicographic inequalities only involve strings of variables of the
+same length.  Given a collection of lexicographic inequalities, and
+variable inequalities construct a directed graph $G$ whose nodes are
+labeled by the variables in the support of all the clauses.  Here,
+$x,y$ and $z$ denote variables (in the SAT case literals)
+
+a) If $x \le y$, draw an edge from $x$ to $y$.
+b) if $x = y$, draw an edge from $x$ to $y$ and one from $y$ to $x$.
+c) If $x \alpha \le_{\tt lex} y \beta$ for some strings of variables
+$\alpha, \beta$, draw an edge from $x$ to $y$.
+
+Next take the transitive closure of this graph.  Note that variables
+in the same strongly connected component are equal.   We can now use
+the equality deletion rule to modify the constraints.  If there are
+new heads of any of the lex constraints, they will add new edges to
+the graph.
+
+* An important special case
+
+Let $M$ be an $m \times n$ matrix of boolean variables, and we know
+that if $M$ is a solution to our SAT problem then so is $M'$, obtained
+from $M$ by permuting rows and columns.  That is, the symmetry group
+of the problem constains $S_m \times S_n$.  Consider the variables
+order $M_1, M_2, \dots, M_n$, where $M_i is the sequence $M_{i,1},
+M_{i,2}, \dots, M_{i,n}$.  The following notation will be useful:
+$M_i$ will denote the variables in row $i$ in column order: $M_{i,1}
+\cdots M_{i,n}$
+$M_{i:j}$ will denote the string of variables $M_i M_{i+1} \cdots
+M_j$, and the empty string if $j < i$.
+
+For $1 \le i < m$, let $\sigma_i$ denote
+the permutation which swaps $M_i$ and $M_{i+1}$.  Then the lex-leader
+constraint correspond to $\sigma_i$ is
+$M_{1:i-1} M_i M_{i+1}   \cdots \le_{\tt lex}
+M_{1:i-1} M_{i+1} M_i M_{i+2:n}$
+Removing equal strings makes this equivalent to
+$M_i M_{i+1} \le_{\tt lex} M_{i+1} M_i$.  By the above discussion this
+is equivalent to $M_i \le_{\tt lex} M_{i+1}$.
+
+Similarly, let $\tau_i$ for $1 \le i < n$, denote the permutation that
+swaps columns $i$ and $i+1$.  The lex-leader constraint corresponding
+to $\tau_i$ is
+$M_{1,1:i-1} M_{1,i} M_{1, i+1} M_{1,i+2:n}
+M_{2,1:i-1} M_{2,i} M_{2, i+1} M_{2,i+2:n}
+\dots
+M_{m,1:i-1} M_{m,i} M_{m, i+1} M_{m,i+2:n}
+\le_{\tt lex}
+M_{1,1:i-1}  M_{1, i+1} M_{1,i} M_{1,i+2:n}
+M_{2,1:i-1}  M_{2, i+1} M_{2,i} M_{2,i+2:n}
+\dots
+M_{m,1:i-1}  M_{m, i+1} M_{m,i}M_{m,i+2:n}$
+
+Removing equal variables in corresponding positions yields an equivalent
+$M_{1,i} M_{1, i+1}
+M_{2,i} M_{2, i+1}
+\dots
+M_{m,i} M_{m, i+1}
+\le_{\tt lex}
+M_{1, i+1} M_{1,i}
+M_{2, i+1} M_{2,i}
+\dots
+M_{m, i+1} M_{m,i}$
+
+Use the fact that $ab \le_{\tt lex} ba$ is equivalent to $a \le_{\tt
+lex} b$ for each pair yields an equivalent:
+
+$M_{1,i} M_{2,i} \dots M_{m,i}  \le_{\tt lex}
+M_{1, i+1}M_{2, i+1}\dots M_{m, i+1}$.
+
+* Automatically finding syntactical symmetries
+If $F$ is a CNF formula, a *syntactical symmetry* is a *signed
+permutation* of the variables in the support of $F$.  If $V$ is a set
+of boolean variables, a signed permutation of $V$ is a permutation,
+$\pi$, of $L$ the set of literals over $V$ (i.e. $L = V \cup
+\{\overline{v}: v \in V\}$), such that $\overline{\pi(v)} =
+\pi(\overline{v})$.  A signed permutation *leaves $F$ invariant* if,
+for all clauses $C \in F$, we have $\{\pi(\ell) : \ell \in C\} \in F$.
+
+The following is true:
+
+Definition: If $G$ is an undirected graph, an autmorphism, $\pi$ of
+$G$, is a one-to-one map $\pi: V(G) \rightarrow V(G)$, such that, for
+all $\{v,w\} \in E(G)$, we have $\{\pi(v), \pi(w)\} \in E(G)$.  If $G$
+is colored, i.e. there is a map $c: V(G) \rightarrow C$, to some set
+$C$, a colored automorphism of $G$, is an automorphism, $\pi$ such
+that $c(\pi(v)) = c(v)$ for all $v \in V(G)$.
+
+Theorem: Given a CNF formula $F$, without unit clauses and with
+support $V$, construct the vertex colored undirected graph $G$ as
+follows: The vertices of $G$ is the set of literals, $L$ over $V$,
+along with all clauses $C$ in $F$ of width $\ge 3$.  For each $v \in
+V$ there is an edge joining $v$ to $\overline{v}$.  For each clause
+$C$ of with $\ge 3$ there is an edge joining $\ell$ to $C$ for each
+literal $\ell \in C$.  For each clause, $C = \{\ell, \ell'\}$, of width 2, there is an
+edge joining $\ell$ and $\ell'$.  All vertices corresponding to
+literals are colored red, and all vertices corresponding to clauses
+are colored blue.  Then the colored automorphism group of $G$ is
+exactly the group of signed permutations of $F$.
+
+Proof: Let $\pi$ is a signed permutation of $F$. First, if $v \in V$,
+the support of $F$, there is an edge in $G$ of the form $\{v,
+\overline{v}\}$. Clearly $\pi$ leaves this edge invariant.  If
+$\{\ell, \ell'\} \in F$ is a 2-clause, then, by definition of signed
+permutation, $\{\pi(\ell), \pi(\ell') \}$ is also a clause in $F$, and
+so is also an edge in $G$.  Finally, if $C$ is $k$-clause for $k \ge
+3$, $\pi(C)$ is also a $k$-clause, and is connected to exactly the
+literals in $\pi(C)$ in $G$.  Conversely, let $\pi$ be a colored
+automorphism of $G$.  Since $\pi$ respects colors, it can only map
+literals to literals.  Since the edge $\{v, \overline{v}\}$ is in $G$,
+the edge $\{pi(v), \pi(\overline{v})\}$ is also in $G$.  Note that the
+edges containing a literal $\ell$ are exactly $\{\ell,
+\overline\{\ell}\}$ along with all 2-clauses $C$ containing $\ell$.
+Thus $\pi(\overline{\ell})$ must be in the set $\{\overline{\ell}\}
+\cup \{\mu \in C: \mu \ne \ell, \ell \in C \text{ a 2-clause}\}$.  Why
+does that pin it down?
+
+
+
+
+
+ 
+
