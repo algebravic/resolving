@@ -147,7 +147,7 @@ def cheap_conflict(conflict: np.ndarray,
 
     Restrict things to rows of A whose dot product
     with the conflict is 0.
-    Among those, only consider columns cooresponding
+    Among those, only consider columns corresponding
     to nonzero entries of the conflict.
     """
     mdim, dim = amat.shape
