@@ -20,7 +20,7 @@ def double_lex_gens(dim: int, mdim: int) -> Iterable[PERM]:
 
     We use the Coxeter generators for S_n.
     """
-    trans = {_: 1 + _[0] + mdim * _[1] for _ in product(range(mdim), range(dim))}
+    trans = {_: _[0] + mdim * _[1] for _ in product(range(mdim), range(dim))}
     yield from (tuple((trans[row, _], trans[row + 1, _]) for _ in range(dim))
                 for row in range(mdim - 1))
     yield from (tuple((trans[_, col], trans[_, col + 1]) for _ in range(mdim))
