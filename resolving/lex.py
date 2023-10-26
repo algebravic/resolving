@@ -97,7 +97,7 @@ def standard_lex(pool: IDPool,
     C[k] = (~x[k] \/ y[k] \/ ~a[k-1]) /\ (~x[k] \/ a[k] \/ ~a[k-1]) /\ (y[k] \/ a[k] \/ ~a[k-1])
     where ~a[0] is omitted, i.e. a[0] is True
 
-    If we want strict inequality we replade the term, F, by the term
+    If we want strict inequality we replace the term, F, by the term
     F' = (~x[n] \/ ~a[n-1]) /\ (y[n] \/ ~a[n-1]).
 
     Knuth says 'These formulas arise by considering the carries that can occur when
@@ -113,10 +113,6 @@ def standard_lex(pool: IDPool,
     if num == 1:
         if strict:
             if nop1 == nop2:
-                # ~ [(1,0), (0,0), (1,1)]
-                # ~([(1,0), (1,1)] = ~[(1,)]: 
-                # ~x \/ (x /\ y) = (~x \/ x) /\ (~x \/ y) = (~x \/ y)
-                # forbid (1,0)
                 yield from [[-op1[0]], [op2[0]]]
         else:
             yield [-op1[0], op2[0]]
