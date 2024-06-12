@@ -19,6 +19,7 @@ from .util import get_prefix, extract_mat, getvec, makevec, makemat, makecomp
 from .maxtest import min_conflict
 
 CONFLICT = Tuple[int,...]
+CADICAL = 'Cadical195'
 
 class Conflict:
     """
@@ -27,7 +28,7 @@ class Conflict:
 
     def __init__(self, dim: int, mdim: int,
                  verbose: int = 0,
-                 solver: str = 'cd15',
+                 solver: str = CADICAL,
                  encode: str = 'totalizer',
                  smallest: int = 0,
                  bound: bool = True,
