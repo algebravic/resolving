@@ -13,3 +13,4 @@
 *.out
 /doc/ltximg/
 poetry.lock
+poetry.lock
