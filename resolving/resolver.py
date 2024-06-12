@@ -20,6 +20,7 @@ from .maxtest import min_conflict
 from .schreier_sims import schreier_sims_cuts
 
 CONFLICT = Tuple[int,...]
+CADICAL = 'Cadical195'
 
 def xor_comp(pool: IDPool, rowl: np.ndarray, rowr: np.ndarray) -> Iterable[CLAUSE]:
     """
@@ -51,7 +52,7 @@ class Resolve:
                  alt_model: bool = False, # Use the alternate model
                  alt: bool = False, # Whether to use BDD for not equal
                  nozero: bool = False, # disallow 0 column
-                 solver = 'cd15',
+                 solver = CADICAL,
                  encode = 'totalizer',
                  ss_cuts: bool = False,
                  xor_break: bool = False, # use xor symm break
