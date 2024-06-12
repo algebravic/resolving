@@ -27,6 +27,7 @@ from .conflictor import Conflict
 from .resolver import Resolve
 
 CONFLICT = Tuple[int,...]
+CADICAL = 'Cadical195'
 
 Status = Enum('Status', ['SAT', 'UNSAT', 'UNKNOWN'])
 
@@ -72,7 +73,7 @@ def ping_pong(dim: int, mdim: int,
               rtimes: int = 1,
               verbose: int = 1,
               encode: str = 'totalizer',
-              solver: str = 'cd15',
+              solver: str = CADICAL,
               resolver_opts: Dict | None = None,
               conflictor_opts: Dict | None = None,
               minimal: int = 0,
