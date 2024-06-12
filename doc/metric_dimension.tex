@@ -2,13 +2,22 @@
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amsthm}
+\title{Resolving the Hypercube} \author{Victor S. Miller}
+\newcommand{\secref}[1]{theorem~\ref{sec:#1}}
+\renewcommand{\eqref}[1]{equation~\ref{eq:#1}}
+\newcommand{\thmref}[1]{theorem~\ref{thm:#1}}
+\newcommand{\defref}[1]{definition~\ref{def:#1}}
+\newcommand{\propref}[1]{proposition~\ref{prop:#1}}
+\newcommand{\lemref}[1]{lemma~\ref{lem:#1}}
+\newcommand{\corref}[1]{corollary~\ref{cor:#1}}
+\DeclareMathOperator{\Aut}{Aut} \newcommand{\RR}{\mathbb{R}}
+\newcommand{\cS}{\mathcal{S}}
 \newtheorem{definition}{Definition}
 \newtheorem{lemma}{Lemma}
 \newtheorem{proposition}{Proposition}
-\title{The Metric Dimension of the Hamming Graph}
-\author{Victor S. Miller}
-\DeclareMathOperator{\Aut}{Aut}
-\newcommand{\RR}{\mathbb{R}}
+\newtheorem{corollary}{Corollary}
+\newtheorem{theorem}{Theorem}
+\newtheorem{problem}{Problem}
 \begin{document}
 \maketitle
 \begin{abstract}
@@ -32,7 +41,7 @@ The concept of \emph{metric dimension} was introduced, independently,
 by Harary and Melter \cite{harary1976metric}, and Slater
 \cite{slater1975leaves} as an attempt to generalize the continuous
 concept of dimension to discrete spaces.  They noted that in the real
-Euclidean space $\RR^n$, that there is a set of $n+1$ points, so that
+Euclidean space $\RR^n$, there is a set of $n+1$ points, so that
 every point in $\RR^n$ is uniquely determined by its distances from
 those points, and that $n+1$ is the minimum possible value for the
 size of such a set.  In fact the set may be taken to be the 0 vector,
@@ -45,28 +54,38 @@ graph.
 Since the original papers, there have been a large number of works
 concerning metric dimension of various graphs.  On one hand, it is
 shown that the general problem of computing the metric dimension of a
-graph is NP-complete \cite[GT61]{garey1979computers}
-\cite{khuller1996landmarks,diaz2012complexity,hauptmann2012approximation}.
+graph is NP-complete
+\cite[GT61]{garey1979computers,khuller1996landmarks,diaz2012complexity,hauptmann2012approximation}.
+On the other hand, it is not necessarily true that it is NP-hard to
+calculate the metric dimension for some interesting
+families of graphs.  In particular, we treat the family of
+\emph{hypercube} graphs.
+
 In this section we define some basic terminology: \emph{resolving set}
 and \emph{metric dimension}.
 
 \begin{definition}
-  Let $G$ be a finite graph, and $u \ne v \in V(G)$ two distinct
-  vertices of $G$.  A vertex $x \in V(G)$ \emph{resolves} the pair
-  $(u,v)$ if $d(x,u) \ne d(x,v)$ or $d(u,x) \ne d(v,x)$, where
-  $d(a,b)$ denotes the length of the shortest path from $a$ to $b$.
-  A subset of vertices $S \subseteq V(G)$ is a \emph{resolving set}
-  for $G$ if every pair of distinct vertices of $G$ is resolved by
-  some element of $S$.  The \emph{metric dimension} of $G$ is the
-  cardinality of the smallest resolving set for $G$.
+  Let $X$ be a metric space, with metric $d$.  Given $x \ne y \in X$,
+  we say that $s \in X$ \emph{resolves} the pair $\{x,y\}$ if $d(s,x)
+  \ne d(s,y)$.  A subset $S \subseteq X$ is a \emph{resolving set} if
+  every pair of vertices is resolved by some element of $S$.  Note
+  that $X$ is, itself, a resolving set.  The \emph{metric dimension}
+  of $X$ is the smallest cardinality of a resolving set.
 \end{definition}
+
+Note that if $G$ is a finite, connected, undirected graph, it is
+naturally a metric space, with the metric $d_G(x,y)$ the length of the
+shortest path in $G$ between $x$ and $y$.  When we speak of the metric
+dimension of a graph, it is with respect to the metric $d_G$.
+
 The metric dimension of $G$ is usually denoted by $\beta(G)$, although
 some authors use the notation $\mu(G)$.
 
 The problem which we consider here is to calculate the metric
-dimension of the \emph{Hypercube}.
-This problem was first described by Harary and Melter in
-\cite{harary1976metric}. 
+dimension of the \emph{Hypercube}.  This problem was first considered
+as ``Problem B'' in \cite{erdos1963two}.  A related problem is
+``Problem A''\footnote{This problem was first posed in \cite{shapiro1963combinatory}} in the same paper.  The two problems have a close
+interplay.
 
 \begin{definition}
   Let $S$ be a finite set, and $x,y \in S^n$ be $n$-tuples of elements
@@ -75,14 +94,21 @@ This problem was first described by Harary and Melter in
 \end{definition}
 
 \begin{definition}
+  An undirected \emph{labeled graph} $G$ is an unidirected graph along
+  with a map $\ell: V(G) \rightarrow L$, where $L$ is some set of
+  labels.
+\end{definition}
+We often abuse notation, when the context is clear, by omitting the
+map $\ell$.
+\begin{definition}
   Let $n$ be a positive integer. The $n$-dimensional \emph{hypercube}
-  $Q^n$. is the undirected graph whose vertices are the set
-  $\{0,1\}^n$ of $n$-tuples of 0/1.  Two such vertices are connected
-  by an edge if and only if the Hamming distance between the vertices
-  is 1.
+  $Q^n$ is the undirected graph whose vertices are are uniquely
+  labeled by the set $\{0,1\}^n$ of $n$-tuples of 0/1.  Two such
+  vertices are connected by an edge if and only if the Hamming
+  distance between the labels of the vertices is 1.
 \end{definition}
 Note that if $x,y \in V(Q^n)$ are two vertices then $d_{Q^n}(x,y) =
-d_H(x,y)$, the Hamming distance.
+d_H(\ell(x),\ell(y))$, the Hamming distance.
 \begin{definition}[Weight]
   Let $S$ be a finite set with a distinguished element, denoted by 0.
   The \emph{weight} of an $n$-tuple of elements of $S$, $x$ is the number
@@ -91,8 +117,8 @@ d_H(x,y)$, the Hamming distance.
 
 If $x,y \in V(Q^n)$ then $d_{Q^n}(x,y) = w(x \oplus y)$, where $x
 \oplus y$ is the coordinatewise sum of the elements of $x$ and $y$
-taken modulo 2.  If $x * y$ denotes the coordinatewise product of $x$
-and $y$, then we have $w(x \oplus y) = w(x) + w(y) - 2 w(x * y)$.
+taken modulo 2.  If $x \cdot y$ denotes the coordinatewise product of $x$
+and $y$, then we have $w(x \oplus y) = w(x) + w(y) - 2 w(x \cdot y)$.
 
 \begin{definition}[Automorphism Group]
   Let $G$ be a finite undirected graph.  An \emph{automorphism}, of
@@ -103,7 +129,6 @@ and $y$, then we have $w(x \oplus y) = w(x) + w(y) - 2 w(x * y)$.
   the property that given $x, y \in V(G)$ there is an automorphism,
   $\phi$ such that $\phi(x) = y$, then $G$ is said to be \emph{vertex
     transitive}.
-  
 \end{definition}
 
 \begin{definition}[Hyperoctahedral Group]
@@ -124,7 +149,418 @@ there is an automorphism $\phi \in \Aut(G)$ such that $\phi(x) = z, \phi(y) = w$
 \end{definition}
 Note that the hypercube $Q^n$ is distance transitive
 
-Lemma: 
+\begin{lemma}
+  The hypercube $Q^n$ is distance transitive.
+\end{lemma}
+\begin{proof}
+  Let $u,v,x,y,z,w \in V(Q^n)$ be such that $d_{Q^n}(u,v) = d_{Q^n}(x,y)$.
+  By definition of $d_{Q^n}$, we have $w(u \oplus v) = w(x \oplus y)$.
+  Then there is a permutation, $\sigma$ of $[n]$ such that
+  $(u \oplus v)^\sigma = x \oplus y$.  Let $\alpha = u^\sigma \oplus
+  x$.  Then, we have, $v^\sigma \oplus \alpha = y$.  Namely, we have
+  $x \oplus y = (u \oplus v)^\sigma = u^\sigma \oplus v^\sigma$.  Thus
+  $y = x \oplus u^\sigma \oplus y = \alpha \oplus y$.
+\end{proof}
+
+\section{Detecting Matrices}
+\label{sec:detecting}
+
+\begin{definition}
+  Let $n$ be a positive integer.  The set of \emph{test vectors}
+  $T(n) := \{ x \in \{0,1,-1\}^n : x \ne 0\}$ is the set of nonzero $n$-vectors
+whose coordinates are in the set $\{0,1,-1\}$.  The set of
+\emph{balanced test vectors}, $B(n)$ is the subset of $T(n)$ whose sum
+of coordinates is 0.  If $m \le n/2$ let $B_m(n)$ denote the subset of
+$B(n)$ consisting of those vectors which have exactly $m$ 1's as their
+coordinates.  It's straightforward to see that
+\begin{displaymath}
+  \# B_m(n) = \binom{n}{m} \binom{n-m}{m}.
+\end{displaymath}
+Namely, there are $\binom{n}{m}$ places to put a 1, and
+$\binom{n-m}{m}$ remaining places to put a -1.
+\end{definition}
+\begin{definition}
+\label{def:detecting}
+  Let $m,n$ be positive integers.  An $m \times n$ 0/1 matrix, $A$,
+  with all rows nonzero and distinct, is \emph{detecting}, if
+  $Ax \ne 0$ for all $x \in T(n)$.  It is \emph{balanced detecting} if
+  $Ax \ne 0$ for all $x \in B(n)$.
+\end{definition}
+Observe that if $A$ is a balanced detecting matrix, then the matrix
+$A'$ which consists of the matrix $A$ with the addition of a row of
+all 1's is detecting.
+\begin{theorem}
+  \label{thm:detecting}
+  Let $n$ be a positive integer, and $S$ be a resolving subset of
+  $Q^n$ containing 0. Then, the matrix, $A$, whose rows consist of the
+  nonzero element of $S$ is balanced detecting.  Conversely, if $A$ is
+  a balanced detecting matrix, then the set $S$ consisting of the 0
+  vector along with the rows of $A$ is a resolving subset of $Q^n$.
+\end{theorem}
+\begin{theorem}
+\label{thm:symmetry}
+  Let $m,n$ be positive integers, and $A$ be an $m \times n$ balanced
+  detecting matrix.  Then the matrix $A'$ such that $A'_1 = A_1$, and
+  $A'_i = A_1 \oplus A_i$ for all $i > 1$ is balanced detecting.
+\end{theorem}
+\section{Symmetry}
+\label{sec:symmetry}
+
+The detecting matrix version of the problem has a very large symmetry
+group. Using \emph{symmetry breaking} is essential for the
+calculation.
+
+By \thmref{symmetry} the following matrices generate symmetries of a
+balanced detecting matrix
+\begin{equation}
+  \label{eq:generator}
+  \begin{pmatrix}
+    1 & 0 & 0 & \dots & 0 \\
+    1 & 1 & 0 & \dots & 0 \\
+    & & \vdots \\
+    1 & 0 & 0 & \dots & 1
+  \end{pmatrix}
+\end{equation}
+
+\begin{proposition}
+  The group generated by the $n \times n$ permutation matrix and the
+  matrix given in \eqref{generator} is isomorphic to $S_{n+1}$.
+\end{proposition}
+\begin{proof}
+  The Coxeter generators of the symmetric group are the transpositions
+  $\sigma_i := (i, i+1)$ for $1 \le i < n$, with the relations
+  $\sigma_i^2 = 1$ for all $i$, $\sigma_i \sigma_j = \sigma_j
+  \sigma_i$ if $|i-j| > 1$ and $(\sigma_i \sigma_{i+1})^3 = 1$.
+\end{proof}
+
+\section{Reductions}
+\label{sec:reductions}
+
+In this section we discuss reductions of the coin-weighing problem and
+the metric dimension for the hypercube.  In particular, we show that
+each problem is equivalent to constructing certain sets of 0/1
+matrices.
+
+\begin{problem}{Subset distinguishing}
+We are given an unknown subset $S \subset \{1, \dots, n\}$.  We are
+allowed to take \emph{measurements} of $S$ by choosing sets $X
+\subseteq \{1, \dots, n\}$.  The information gained from $X$ is the
+cardinality $\# (X \cap S)$.  A collection of subsets $\cS$ of $\{1, \dots,
+n\}$ is \emph{distinguishing}, if $\# (X \cap S)$ for all $X \in \cS$
+is sufficient to determine $S$.
+\end{problem}
+
+This problem (in the guise of coin weighing) is Problem A in
+\cite{erdos1963two}.
+
+We can encode the collection $\cS$ in terms of a 0/1 matrix.  The rows
+of an $m \times n$ 0/1 matrix $A$ are the characteristic vectors of
+the subsets.  Call such a matrix \emph{distinguishing} if for all $x
+\ne y \in \{0,1\}^n$, we have $Ax \ne Ay$.  Denote by $\gamma_n$ the
+minimum value of $m$ such that there exists a distinguishing $m \times
+n$ 0/1 matrix.  Note that $A$ is distinguishing if and only if $Ax =
+0$ implies that $x = 0$, where $x \in \{0, -1, 1\}$.
+
+\begin{problem}[Resolving set for the hypercube]
+A subset $S \subset \{0,1\}^n$ is \emph{resolving} if for all $x \ne y
+\in \{0,1\}^n$ there is an $a \in S$ such that $w(a \oplus x) \ne w(a
+\oplus y)$.  Here $w(x) := \sum_{i=1}^n x_i$ and $x \oplus y$ is the
+vector $(x \oplus y)_i = x_i \oplus y_i$, where $\alpha \oplus \beta =
+0$ if $\alpha = \beta$ and 1 otherwise.
+\end{problem}
+As with the set distinguishing problem we may state this in terms of
+matrices, whose rows are the characteristic vectors of the members of
+$S$.
+
+We use the following notation: if $\alpha, \beta \in \{0,1\}$, denote
+by $\alpha \oplus \beta = 0$ if $\alpha = \beta$ and 1 otherwise.  If
+$x, y \in \{0,1\}^n$ denote by $x \oplus y$ the vector such that $(x
+\oplus y)_i = x_i \oplus y_i$ for all $i$, and if $A \in \{0,1\}^{m
+  \times n}$, $A \oplus x$ is the vector such that $(A \oplus x)_i =
+A_i \oplus x$ for all $i$, where $A_i$ denotes the $i$-th row of $A$. 
+
+We note that $\alpha \oplus \beta = \alpha + \beta - 2 \alpha \beta$
+for $\alpha, \beta \in \{0,1\}$, and $\oplus$ is commutative and associative.
+
+Note that if $S$ is a resolving set then so is $S \oplus a := \{x
+\oplus a : x \in S\}$, for any $a \in \{0,1\}^n$.  Namely if $x \ne y
+\in \{0,1\}^n$, we have $x \oplus a \ne y \oplus a$.  Therefore, by
+definition of a resolving set, there is a $b \in S$ so that $w(b
+\oplus (x \oplus a)) \ne w(b \oplus (y \oplus a))$.  However, we have
+$b \oplus (x \oplus a) = (a \oplus b) \oplus x$ and
+$b \oplus (y \oplus a) = (a \oplus b) \oplus y$. Therefore $a \oplus
+b$ resolves $(x,y)$.  Thus, without loss of generality, we may assume
+that $0 \in S$.
+
+If $A$ is an $m \times n$ 0/1 matrix, and $x$ is a 0/1 column $n$
+vector, define $A \oplus x$ to be vector $(A \oplus x)_i = (A_i \oplus
+x)$, where $A_i$ denotes the $i$-th row.  We say that such a matrix is
+\emph{resolving} if, for all $x \ne y \in \{0,1\}^n$ we have $A \oplus
+x \ne A \oplus y$.
+
+Let $\beta_n$ be the smallest $m$ such that there is a resolving 0/1
+matrix of dimension $m \times n$.
+
+\begin{definition}
+  A vector $x \in \{0,1,-1\}^n$ is \emph{balanced} if $\sum_i x_i = 0$.
+\end{definition}
+
+\begin{definition}
+  An $m \times n$ 0/1 matrix $A$ is \emph{balanced detecting} if $A x
+  = 0$ implies that $x = 0$ for all balanaced $x \in \{0,1,-1\}^n$.
+\end{definition}
+\begin{lemma}
+  If $A$ is a balanced detecting matrix, then $A'$ is a resolving
+  matrix, where
+  \begin{displaymath}
+    A' =
+    \begin{bmatrix}
+      1 & 1 & \hdots & 1& 1 \\
+      \hline \\
+      & & A
+    \end{bmatrix}.
+  \end{displaymath}
+\end{lemma}
+\begin{proof}
+  Note that the all 1's vector resolves all pairs $(x,y)$ such that
+  $w(x) \ne w(y)$.  Observe that $w(x \oplus y) = w(x) + w(y) - 2 w(x
+  \& y)$, where $(x \& y)_i := x_i y_i$.  Thus
+  $w(A \oplus x) = A e + e^T x - 2 A x$, where $e$ is the column
+  vector of length $n$ with all coordinates equal to 1.
+
+  Thus $w(A \oplus x) = w(A \oplus y)$ if and only if
+  $e^T(x-y) = 2 A (x-y)$.  This shows that if $w(x) \ne w(y) \bmod 2$
+  then $(x,y)$ is resolved by all vectors, and if $w(x) \ne w(y)$ then
+  $(x,y)$ is resolved by the all 1's vector.
+\end{proof}
+\begin{proposition}
+Let $n$ be a positive integer.  If $m$ is the smallest integer such
+that there exists an $m \times n$ balanced detecting matrix, then the
+metric dimension $\beta_n = m + 1$.
+\end{proposition}
+\begin{proof}
+  Let $m$ be such that there is a balanced detecting matrix $A \in
+  \{0,1\}^{m \times n}$. Then, by the above remark,
+    the matrix $A'$ is a resolving matrix.  Thus $\beta_n \le m+1$.
+    Conversely, if $B$ is a $\beta_n \times n$ resolving matrix, we
+    may assume, without loss of generality, that $B_1 = 0$.  Let $B'$
+    denote the $(\beta_n - 1) \times n$ matrix $B'_i = B_{i+1}$ for
+    $i=1, \dots, \beta_n - 1$.  Then $B'$ must be a balanced detecting
+    matrix. Thus, if there is no balanced detecting
+    matrix of dimension $(m-1) \times n$ this shows that $\beta_n - 1
+    \ge m$.
+\end{proof}
+If $A$ is an $m \times n$ matrix and $S \subseteq \{1, \dots, n\}$,
+denote by $A(S) := \sum_{j \in S} A^T_j$.
+\begin{proposition}
+  An $m\times n$ 0/1 matrix, $A$ is balanced detecting if and only if
+  for each $1 \le j \le n$ the
+  collection $A x$ where $x\in \{0,1\}^n$, and $w(x) = j$ are
+  distinct.  Note that the vectors in this collection are the sums of
+  the columns of $A$ over all subsets of $[n]$.
+\end{proposition}
+\begin{proof}
+  If $S \subseteq \{1, \dots, n\}$ is a subset of $[n]$, denote by
+  $x^{(S)}$  thn vector $(x^{(S)}_i) = 1$ if $i \in S$ and 0
+  otherwise.  If $S \ne T \subseteq [n]$ satisfy $\#S = \#T = j$, then
+  $x_S - X_T \in B_j(n)$ where $j = \# (S \backslash T)$.  Thus
+  $A(x_S - X_T) \ne 0$, by definition of balanced detecting.
+\end{proof}
+\begin{corollary}
+  If an $m \times n$ 0/1 matrix is balanced detecting then for $1 \le
+  n/2$ we have
+  \begin{displaymath}
+    (j+1)^m \ge \binom{n}{j}.
+  \end{displaymath}
+\end{corollary}
+\begin{proof}
+  If we sum up exactly $j$ columns of $A$, the resulting vector has
+  coordinates in $\{0,1, \dots, j\}$.  Thus there are at most
+  $(j+1)^m$ such sums.  But there are exactly $\binom{n}{j}$ possible
+  subsets of $\{1, \dots, n\}$ of cardinality $j$.  In order for the
+  sums to be distinct, we must then have $(j+1)^m \ge \binom{n}{j}$.
+\end{proof}
+We give a slightly tighter bound by examining the entropy of
+some random variables.  This is a slight generalization of a method of
+Pippenger, which we review below.
+
+\subsection{A Tighter Bound}
+\label{sec:tighter}
+
+By using entropy arguments we can get a tighter lower bound.  First we
+recall an argument of Pippenger \cite{pippenger1977information}.
+
+If $X$ is a random variable whose range, $R$, is finite, define
+\emph{binary entropy}
+\begin{displaymath}
+  H(X) := - \sum_{x \in R} \Pr(X = x) \log_2 \Pr(X = x).
+\end{displaymath}
+If $X,Y$ are two random variables define $H(X | Y) = H(X, Y) - H(Y)
+\ge 0$.
+
+\begin{proposition}
+  Let $A$ be an $m \times n$ 0/1 detecting matrix and
+  $X^{(d)}$ be a random variable satisfying
+  \begin{displaymath}
+    \Pr(X^{(d))} = j) = \binom{d}{j} 2^{-d}, j=0, 1, \dots, d.
+  \end{displaymath}
+  \begin{equation}
+    \label{eq:pippenger}
+    m \ge \left \lceil \frac{n}{\max(H(X^{(d)}), d = 1, \dots n)}
+    \right \rceil.
+  \end{equation}
+\end{proposition}
+\begin{proof}
+  Let $Y \in [n]$ be a set valued random variable which is uniform
+  among all subsets of $[n]$.  If $D \subseteq [n]$, let $X^{(D)} := \#(Y
+  \cap D)$.  We have
+  \begin{displaymath}
+    \Pr(X^{(D)} = j) = \binom{n}{j} 2^{-\#D}, j=0, \dots, \#D,
+  \end{displaymath}
+  and 0 otherwise.  If $D_1, \dots, D_m$ are detecting, then, by
+  definition, knowledge of $D_1, \dots, D_m$ uniquely determines the
+  value of $Y$.  Thus $0 = H(Y | X^{(D_1)}, \dots, X^{(D_m)})$.
+  However $n = H(Y) = H(Y | X^{(D_1)}, \dots, X^{(D_m)}) +
+  H(X^{(D_1)}, \dots, X^{(D_m)}) - H(X^{(D_1)},
+  \dots, X^{(D_m)} | Y) \le \sum_{j=1}^m H(X^{(D_j)}).$
+\end{proof}
+\begin{proposition}
+  Let $A$ be an $m \times n$ 0/1 balanced detecting matrix.
+  Let $Y^{(s)}$ be a set valued random variable which takes on each subset
+  of $[n]$ of cardinality $s$ with equal probability $1/\binom{n}{s}$.
+  If $D \subseteq [n]$ satisfies $\# D = d$, then we define the random
+  variables $X^{(D)} = \# (Y \cap D)$.
+  If $\#D = d$ then the distribution of $X^{(D)}$ is
+  \begin{displaymath}
+    \Pr(X^{(D))} = j) = \binom{n}{s}^{-1}\binom{d}{j}
+    \binom{n-d}{s - j}, j=0, 1, \dots, \min(d,s),
+  \end{displaymath}
+  and 0 otherwise.
+  % min(d,m) = d + m - max(d,m), so m - min(d,m) = max(d,m) - d = max(0,
+  % m-d)
+  Then, for all $s = 0, \dots, n, d=1, \dots, n$ we have
+  \begin{equation}
+    \label{eq:better}
+    m \ge \frac{\log_2 \binom{n}{s}}{H(X^{(D)})}.
+  \end{equation}
+\end{proposition}
+\section{An iterative method}
+\label{sec:iterative}
+
+In order to find balanced detecting matrices, or to show that there no
+balanced detecting matrices of dimension $m \times n$, we can use two
+cooperating solvers.  Let $M(m,n)$ denote the set of $m \times n$ 0/1
+matrices.  Then the problem that we want to solve can be expressed as
+follows
+\begin{equation}
+  \label{eq:logical}
+  \exists A \in M(m,n) \forall x \in B(n), Ax \ne 0.
+\end{equation}
+This can be restated as follows
+\begin{equation}
+  \label{eq:logical:restate}
+  \exists A \in M(m,n) \neg \exists x \in B(n), Ax = 0.
+\end{equation}
+This suggests the following method.  Have two solvers (we can either
+use SAT solvers or SMT solvers).  The first solver has a state of a
+set of elements of $B(n)$: $C:=\{x_1, \dots, x_m\}$.  That solver tries
+to solve the problem
+\begin{displaymath}
+  \exists A \in M(m,n), Ax \ne 0 \forall x \in C.
+\end{displaymath}
+If there is no solution, then the original problem is UNSAT.  If there
+is a solution, it then passes it to the second solver, which tries to
+solve the problem
+\begin{displaymath}
+  \exists x \in B(n), A x = 0.
+\end{displaymath}
+If there is no solution, the original problem is SAT, which $A$ the
+desired solution.  If there is a solution, it is passed to the first
+solver, to add to its set, $C$.  This back and forth process continues
+until the original problem is declared SAT or UNSAT.
+
+One remark is that all of the constraints implied by $x \in B(n)$ are
+not necessary.  If $C \subseteq B(n)$ define the set
+$\cA_m(C) := \{A \in M(m,n), \forall x \in C, Ax \ne 0\}$.  We are
+interested in the smallest possible set $C$ such that $\cA_m(C) = \cA_m(B(n))$.
+In particular, we wish to analyze the situation in
+which we have a subset $C \subset B(n)$, and $y \in B(n), y \not \in
+C$.  Under what circumstances does it happen that
+\begin{displaymath}
+  \forall A \in M(m,n), \bigwedge_{x \in C} Ax \ne 0 \Rightarrow Ay
+  \ne 0.
+\end{displaymath}
+Taking the contrapositive, this is equivalent to
+\begin{displaymath}
+  \forall A \in M(m,n), Ay = 0 \Rightarrow \bigvee_{x \in C} Ax = 0.
+\end{displaymath}
+If we define $N(x) := \{A \in M(m,n): A x = 0\}$, this is equivalent
+to
+\begin{displaymath}
+  N(y) \subseteq \bigcup_{x \in C} N(x).
+\end{displaymath}
+If we define $N'(x) := \{z \in \{0,1\}^n : z^T x = 0\}$, we see that
+$N(x) = N'(x)^m$.  Thus our condition is reduced to
+\begin{displaymath}
+  N'(y) \subseteq \bigcup_{x \in C} N'(x).
+\end{displaymath}
+\begin{lemma}
+If $n \ge 3$ we have $\{0,1\}^n = \cup_{x \in B(n)} N'(x)$.
+\end{lemma}
+\begin{proof}
+  For each $y \in \{0,1\}^n$ we exhibit an $x \in B(n)$ such that $y
+  \in N'(x)$.
+  We have  $0 \in Z$, since $0 \in N'(x)$ for all $x$.  If
+  $y$ satisfies $w(y) = 1$, let $y_i = 1$. Then, since
+  $n \ge 3$, there are $j,k \ne i$.  Choose $x$ such that $x_j = - x_k = 1$ and
+  $x_\ell = 0$ for $\ell \ne j,k$. Then $y \in N'(x)$.  Finally, if
+  $w(y) \ge 2$, there are $j \ne k$ such that $y_j = y_k = 1$.  Let
+  $x$ be such that $x_j = -x_k = 1$ and $x_\ell = 0$ for
+  $\ell \ne j,k$. Then $y \in N'(x)$.
+\end{proof}
+Thus to find a minimum necessary set $x \in B(n)$ we are reduced to a
+minimum set covering problem.
+\section{Certificates}
+\label{sec:certificates}
+
+When we assert that the metric dimension of $Q^n$ has a particular
+value, $m$, it isn't sufficicent to exhibit a purported balanced
+detecting matrix of dimension $(m-1) \times n$ and to assert that some
+program failed to find one of dimension $(m-2) \times n$.  In this
+section we discuss \emph{certificates} for these assertions.  By a
+certificate, we mean some data which can be used in an easily
+checkable proof of these assertions.
+
+Since we have used SAT and SMT solvers to make the above assertions,
+we can use the fact each assertion above can be proven by asserting that a
+particular CNF formula is UNSAT.  Many SAT solvers can produce what
+are known as DRUP (directed reverse unit propagation) proofs of UNSAT,
+which we will describe below.
+
+In order that such a proof to be a valid certificate, one must also supplement
+it with a proof that the CNF formula used is encoded correctly.
+
+The statement that $A$ is an $m \times n$ balanced detecting matrix is
+equivalent to the the statement that the only integer point in the
+polytope $P := \{x \in [-1,1]^n : A x = 0,
+\sum_{i=1}^n x_i = 0 \}$ is $0$.  By writing $x = y-z$ for $y,z \in
+[0,1]$ this is equivalent to the
+polytope $P' = \{A y = Az : y, z \in [0,1]^n, \sum_{i=1}^n (y_i - z_i)
+= 0, \sum_{i=1}^n x_i \ge 1, y_i + z_i \le 1, \text{ for } i=1, \dots,
+n\}$ containing no integer points.  One can supplement $P'$ with a series
+of $\{0, \frac 1 2 \}$ cuts, so that the resulting polytope is the
+empty set.  That may be certified by means of exhibiting a Farkas
+proof of emptiness.
+
+The statement that there is no $m \times n$ balanced detecting matrix
+is equivalent to the statement that the polytope $P = \{A \in [0,1]^{m
+  \times n} : A x = 0, \forall x \in B(n)\}$ contains no nonzero integer
+points.  We show below that the set $B(n)$ can be cut down, and still
+make the above valid.
+
+
+
+
 \bibliography{references}
 \bibliographystyle{alpha}
 \end{document}
