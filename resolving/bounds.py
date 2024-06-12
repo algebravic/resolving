@@ -16,6 +16,7 @@ Note that without loss of generality, we may assume that d_i <= floor(n/2).
 """
 from typing import List
 from functools import cache
+from math import ceil, log
 import numpy as np
 from sympy import binomial
 
@@ -25,16 +26,22 @@ def binomial_distr(weight: int) -> np.ndarray:
     """
     return np.array([binomial(weight, _) for _ in range(weight + 1)], dtype=np.float64)
 
+def entr(arg: float) -> float:
+
+    return - arg * log(arg) if arg > 0 else 0.0
+
 def binary_entropy(distr: np.ndarray) -> float:
     """
     Given a distribution (all positive), compute
     the binary entropy.
+    Let d = sum_i a[i]
 
-    sum_i (a[i])/d * log(a[i]/d) = (1/d) sum_i a[i] log(a[i)) - (1/d) sum_i log(d)
+    sum_i (a[i]/d) * log(a[i]/d) = (1/d) sum_i a[i] log(a[i)) - (1/d) sum_i log(d)
+       = (1/d) sum_i a[i] log(a[i)) - log(d)
     """
     
-    normalize = distr / distr.sum()
-    return - (1/(np.log(2))) * (np.log(normalize) * normalize).sum()
+    denom = distr.sum()
+    return (sum(map(entr, distr)) / denom - log(denom)) / log(2.0)
 
 def binomial_entropy(weight) -> float:
     """
@@ -47,15 +54,40 @@ def lower_bound(dim: int) -> float:
     Lower bound, per Pippenger, and using the fact that each element of a resolving
     set may be taken to have weight <= n/2.
     """
-    return int(np.ceil(dim / binomial_entropy( dim // 2)))
+    return int(ceil(dim / binomial_entropy( dim // 2)))
 
-def unresolved(num: int, knum: int) -> int:
+def pippenger_bound(dim: int) -> float:
+
+    entropies = map(binomial_entropy, range(1, dim // 2 + 1))
+    return ceil(dim / max(entropies))
+
+def subset_distr(num: int, dval: int, sval: int) -> List[float]:
+
+    return np.array([binomial(dval, _) * binomial(num - dval, sval - _)
+            for _ in range(min(dval, sval) + 1)], dtype=np.float64)
+
+def entropy_list(dim: int) -> List[float]:
+
+    return [log(binomial(dim, sval)) / max([binary_entropy(subset_distr(dim, dval, sval))
+            for dval in range(1, (dim // 2) + 1)]) for sval in range(1, (dim // 2) + 1)]
+
+def improved_bound(dim: int) -> float:
+
+    entropies = entropy_list(dim)
+    return ceil(max(entropies) / log(2))
+
+def num_pairs(num: int, subw: int) -> int:
+
+    return (0 if num < 2 * subw
+            else binomial(num, subw) * binomial(num - subw, subw))
+
+def unresolved(num: int, wnum: int) -> int:
     """
     Calculate the number of equal weight pairs of vectors
     that are unresolved by a vector of weight k.
     Input:
        num: the length of the bit vectors
-       knum: the weight that we're testing.
+       wnum: the weight that we're testing.
     Output:
        The number of pairs of nonzero 0/1 vectors of equal weight
        which have the same weight when intersected with
@@ -69,12 +101,9 @@ def unresolved(num: int, knum: int) -> int:
        by binom(n-k, w-v) * binom(n-k-w+v,w-v)
        and sum over all (v,w), with 0 <= v <= w, 1 <= w.
     """
-    return sum(binomial(knum, vnum)
-               * binomial(knum - vnum, vnum)
-               * binomial(num - knum, wnum - vnum)
-               * binomial(num - knum - wnum + vnum, wnum - vnum)
-               for wnum in range(1, (num // 2) + 1)
-               for vnum in range(min(wnum, knum // 2) +1)) // 2
+    return (sum((num_pairs(wnum, jnum) * num_pairs(num - 2 * wnum, rnum)
+               for jnum in range((wnum // 2) + 1)
+               for rnum in range(num // 2 - jnum) +1)) - 1)
 
 def unresolved_table(num: int) -> List[int]:
     """
@@ -108,3 +137,10 @@ def binary_ones(num: int) -> int:
     bnd //= 2
     rem = num - bnd
     return 2 ** (cnt - 1) * cnt + rem + binary_ones(rem)
+
+def naive_bounds(num: int) -> int:
+    " For j=1,n/2, we have (j+1)^m >= binom(n,j) "
+
+    lbounds = (ceil(log(binomial(num, jind)) / log(jind + 1))
+        for jind in range(1, num // 2 + 1))
+    return max(lbounds)
