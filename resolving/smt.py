@@ -2,14 +2,14 @@
 Solve the metric dimension of the hypercube using SMT.
 """
 from typing import Iterable, Callable, List, Tuple
-from itertools import chain, product
+from itertools import chain, product, combinations
 from random import randint
 from math import log, ceil
 from pysmt.shortcuts import Symbol, ForAll, Exists, And, Or, Not, Int
 from pysmt.shortcuts import Equals, NotEquals, LE, GE, GT, LT, Plus, BVExtract, AllDifferent
 from pysmt.shortcuts import BVNot, BVConcat, BVToNatural, BVZero, BVZExt, BVXor
 from pysmt.shortcuts import is_sat, get_model, get_unsat_core
-from pysmt.typing import INT, BVType
+from pysmt.typing import INT, BVType, FunctionType
 from pysmt.fnode import FNode
 from pysmt.typing import _BVType
 
@@ -173,10 +173,18 @@ def smt_bv_setup(num: int, mnum: int,
 
     x_cond = And([disjoint_x , x_restrict , equal_card , x_ord])
     if xor_break:
-        extra = ([avars[0] < BVXor(avars[0], avars[_])
-                 for _ in range(1, mnum - 1)]
-                 + [avars[1] < BVXor(avars[1], avars[0])])
-        a_cond = And([a_cond] + extra)
+        # add A[0] to others: (A[0], A[1] + A[0], ...)
+        # add A[i] to others: (A[i], ..., A[j] + A[i], A[i] + A[0])
+        # add A[0] values to others: (A[i], A[j], A[0])
+        # yields a swap.
+        # Recall that all A[i] are nonzero
+        # So that A[i] + A[j] != A[i]
+        # Add A[j] for j > 0 to all others
+        extra = [avars[0] < BVXor(avars[0], avars[_])
+            for _ in range(1, mnum - 1)]
+        # Add A[0] to all others
+        extra1 = [avars[1] < BVXor(avars[0], avars[1])]
+        a_cond = And([a_cond] + extra + extra1)
 
     # Linking of the x variables and a variables
     if concat:
@@ -333,3 +341,9 @@ def check_equivalent(fun1: FUN, fun2: FUN, width: int) -> None | int:
     formula = fun1(xvar).NotEquals(fun2(xvar))
     model = get_model(formula)
     return model.get_py_value(xvar) if model else None
+
+# Axioms for Hamming Weight
+def hamming_weight_and(fun, arg1, arg2):
+
+    return And(fun(arg1) <= fun(arg1 & arg2),
+               fun(arg2) <= fun(arg1 & arg2))
