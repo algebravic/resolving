@@ -1,5 +1,5 @@
 """
-Use MAXSAST to find a minimal cardinality resolving set for a finite
+Use MAXSAT to find a minimal cardinality resolving set for a finite
 unidirected connected graph G.
 """
 from typing import Set, Tuple, List, Any
