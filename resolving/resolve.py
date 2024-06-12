@@ -16,6 +16,7 @@ from .timeit import Timer
 
 VECTOR = Tuple[int, ...]
 CLAUSE = List[int]
+CADICAL = 'Cadical195'
 
 def resolving_model(gph: nx.Graph, cnf: CNF | WCNF) -> IDPool:
     """
@@ -143,7 +144,7 @@ def resolve_hypercube_sat(num: int,
                               encoding = getattr(EncType, encode,
                                                  EncType.totalizer),
                               vpool = pool))
-    solve, model = solve_sat(cnf, solver_name = kwds.get('solver', 'cd15'))
+    solve, model = solve_sat(cnf, solver_name = kwds.get('solver', CADICAL))
     soln = get_answer(model, pool)
     if soln is None:
         print(f"core = {core}")
