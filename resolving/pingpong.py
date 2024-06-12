@@ -79,6 +79,7 @@ def ping_pong(dim: int, mdim: int,
               trace: int = 0,
               mverbose: int = 0,
               getcore: int = 0,
+              get_conflicts: bool = False,
               solver_kwds: Dict | None = None) -> np.ndarray | None | List[CONFLICT]:
     """
     Test if the a set of size m is a resolving set for the
@@ -183,5 +184,7 @@ def ping_pong(dim: int, mdim: int,
             **conflictor_opts)
         check = list(fconflict.get_conflicts(amat, 1))
         print(f"Final check: {len(check) == 0}")
+    if get_conflicts:
+        return amat, resolver._conflicts.keys()
 
     return amat
