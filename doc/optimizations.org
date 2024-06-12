@@ -678,8 +678,84 @@ Thus $\pi(\overline{\ell})$ must be in the set $\{\overline{\ell}\}
 \cup \{\mu \in C: \mu \ne \ell, \ell \in C \text{ a 2-clause}\}$.  Why
 does that pin it down?
 
+* A set covering problem
+
+For $n$ a positive integer, define $B(n) = \{x \in \{0,1,-1\}^n :
+\sum_{i=1}^n x_i = 0, x \ne 0 \}$.  Given $x \in B(n)$, define $N(x) =
+\{y \in \{0,1\}^n : x^T y = 0 \}$.  A subset $C \subseteq B(n)$ is a
+*cover* if $\cup_{x \in C} N(x) = \{0,1\}^n$.  Note that $C = B(n)$ is
+a cover if $n \ge 3$.  We are interested in finding a minimum
+cardinality set $C$ which is a cover.
+
+The integer programming specification of this is as follows:
+
+We have a 0/1 variables $y_x$ for each $x \in B(n)$
+minimize $\sum_{x \in B(n)} y_x$ subject to:
+
+for each $z \in \{0,1\}^n$ a constraint $C(z) \ge 1$
+$\sum_{x, z \in N(x)} y_x \ge 1$.
+
+This has $2^n$ constraints in $\#B(n)$ variables.
+
+Question: Can we solve this via cutting planes, or use the large
+symmetry group to reduce the size of the LP.
+
+First, the constraint $C(z) \ge 1$: it is violated if and only if
+$y_x = 0$ for all $x$ such that $z^T x = 0$.
+
+A simple greedy algorithm is the following:
+Let $\cS$ be the set of $x \in B(n)$ already chosen.  Initially $\cS =
+\emptyset$.
+At each stage we want to choose $x$ so as to minimize the number of
+uncovered $z$ in $\{x\} \cup \cS$.
+
+Question: Can we use representation theory to reduce the IP?
 
 
+For a given $x \in B(n)$ it's easy to explicitly describe the set of
+$z$ such that $x^T z = 0$.  Let $S_1 = \{i : x_i = 1\}, S_{-1} = \{i :
+x_i = -1\}$, and $T$ the support of $z$.  It is necessary and
+sufficient that $\# T \cap S_1 = \# T \cap S_{-1}$.  Thus, if $x \in
+B_m(n)$, we have the number of such $z$ is $\sum_{2j + k \le n}
+\binom{m}{j}^2\binom{n-m}{k}$.
+
+The symmetry group $S_n$ acts on the LP.  The orbits acting on $B(m)$
+are $B_m(n)$.
+
+Note that $z \in N(\sigma x)$ if and only if $z^{\sigma^{-1}}  \in
+N(x)$.  So if we calculate $\sum_{\sigma} C(z_0 ^\sigma)$.
+
+Note that we can relax the linear program as follows:
+If $c_z \ge 0$, then the constraint
+$\sum_z c_z C(z) \ge \sum_z c_z$ is valid.
+
+At each stage we want to choose $x \not \on \cS$ so that $\dim \langle
+\{x\} \cup \cS \rangle$ is minimal
+
+
+Note that $z \in N(x)$ if and only if $z^T x = 0$,  In particular, let
+$S$ be the support of $z$, and $S'$ its complement.
+
+The dual of of the LP relaxation is a packing problem:
+
+There is a variable $w_z \in [0,1]$ for each $z \in \{0,1\}^n$.
+We then
+maximize $
+
+* 01 Covering set
+
+Definition: A subset $S \subseteq B(n)$ is a *01 Covering Set* if for
+all $x \in \{0,1,\}^n$ there is an $y \in S$ such that $y^T x = 0$.
+Note that for $n \ge 3$, that $B(n)$ is a 01 covering set (proof
+below).  Thus we have the problem of finding a 01 covering set of
+minimal cardinality
+
+Lemma: Let $A \in \{0,1\}^{m \times n}$, and $S$ be a 01 covering set.
+Then $A$ is a balanced detecting matrix if and only if $Ax \ne 0$ for
+all $x \in S$.
+
+Proof: Note that $A$ is a balanced detecting matrix if and only if
+there is a row $A_i$ such that $A_i$.
 
 
  
