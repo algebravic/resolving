@@ -12,3 +12,4 @@
 *.toc
 *.out
 /doc/ltximg/
+poetry.lock
