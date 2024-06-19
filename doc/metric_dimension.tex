@@ -10,8 +10,10 @@
 \newcommand{\propref}[1]{proposition~\ref{prop:#1}}
 \newcommand{\lemref}[1]{lemma~\ref{lem:#1}}
 \newcommand{\corref}[1]{corollary~\ref{cor:#1}}
-\DeclareMathOperator{\Aut}{Aut} \newcommand{\RR}{\mathbb{R}}
+\DeclareMathOperator{\Aut}{Aut}
+\newcommand{\RR}{\mathbb{R}}
 \newcommand{\cS}{\mathcal{S}}
+\newcommand{\cA}{\mathcal{A}}
 \newtheorem{definition}{Definition}
 \newtheorem{lemma}{Lemma}
 \newtheorem{proposition}{Proposition}
@@ -21,17 +23,18 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-  The \emph{metric dimension} of a graph is a measure of
-  how easy it is to distinguish vertices given distance information.
-  It is the smallest cardinality of a subset of vertices so that the set
-  of distances from those nodes uniquely determines any other vertex.
-  Finding the metric dimension is an NP-complete problem.
+  The \emph{metric dimension} of a graph is a measure of how easy it
+  is to distinguish vertices given distance information.  It is the
+  smallest cardinality of a subset of vertices so that the set of
+  distances from those nodes uniquely determines any other vertex.
+  Finding the metric dimension is, in general, an NP-complete problem.
   Nevertheless it is of some interest to determine its exact value for
   various families of graphs.  In this note we discuss the use of
-  \emph{MaxSat} solvers in determining the metric dimension of the
-  \emph{hypercube}.  Since these graphs have a large symmetry group it
-  is of great practical importance to make use of the these symmetries
-  to speed up the computation.
+  \emph{MaxSat} solvers, and cooperating SAT and SMT solvers in
+  determining the metric dimension of the \emph{hypercube}.  Since
+  these graphs have a large symmetry group it is of great practical
+  importance to make use of the these symmetries to speed up the
+  computation.
 \end{abstract}
 
 \section{Introduction}
@@ -56,6 +59,7 @@ concerning metric dimension of various graphs.  On one hand, it is
 shown that the general problem of computing the metric dimension of a
 graph is NP-complete
 \cite[GT61]{garey1979computers,khuller1996landmarks,diaz2012complexity,hauptmann2012approximation}.
+
 On the other hand, it is not necessarily true that it is NP-hard to
 calculate the metric dimension for some interesting
 families of graphs.  In particular, we treat the family of
@@ -84,24 +88,33 @@ some authors use the notation $\mu(G)$.
 The problem which we consider here is to calculate the metric
 dimension of the \emph{Hypercube}.  This problem was first considered
 as ``Problem B'' in \cite{erdos1963two}.  A related problem is
-``Problem A''\footnote{This problem was first posed in \cite{shapiro1963combinatory}} in the same paper.  The two problems have a close
-interplay.
+``Problem A''\footnote{This problem was first posed in
+  \cite{shapiro1963combinatory}} in the same paper.  The two problems
+have a close interplay.
 
-\begin{definition}
+\begin{definition}[Hamming Distance]
   Let $S$ be a finite set, and $x,y \in S^n$ be $n$-tuples of elements
   of $S$.  The \emph{Hamming distance} $d_H(x,y)$ is the number of
   indices, $i \in \{1, \dots, n\}$ such that $x_i \ne y_i$.
 \end{definition}
 
-\begin{definition}
+\begin{definition}[Labeled Graph]
   An undirected \emph{labeled graph} $G$ is an unidirected graph along
   with a map $\ell: V(G) \rightarrow L$, where $L$ is some set of
   labels.
 \end{definition}
 We often abuse notation, when the context is clear, by omitting the
 map $\ell$.
-\begin{definition}
+\begin{definition}[Weak Product]
+Let $G, H$ denote finite undirected graphs.  Their \emph{weak product}
+$G \square H$ is the graph such that $V(G \square H) = V(G) \times V(H)$,
+and $\{(x,y),(x'y')\} \in E(G \square H)$ if and only if either $(x,x')
+\in E(G)$ and $y=y'$ or $x=x'$ and $(y,y') \in E(H)$.
+\end{definition}
+\begin{definition}[Hypercube]
   Let $n$ be a positive integer. The $n$-dimensional \emph{hypercube}
+  $Q^n$ is the $n$-fold weak product $K_2 \square \cdots \square K_2C$ where
+  $K_2$ is complete graph on two vertices.  Another way of seeing
   $Q^n$ is the undirected graph whose vertices are are uniquely
   labeled by the set $\{0,1\}^n$ of $n$-tuples of 0/1.  Two such
   vertices are connected by an edge if and only if the Hamming
@@ -115,10 +128,10 @@ d_H(\ell(x),\ell(y))$, the Hamming distance.
   of coordinates of $x$ which are not 0.  Denote the weight of $x$ by $w(x)$.
 \end{definition}
 
-If $x,y \in V(Q^n)$ then $d_{Q^n}(x,y) = w(x \oplus y)$, where $x
-\oplus y$ is the coordinatewise sum of the elements of $x$ and $y$
-taken modulo 2.  If $x \cdot y$ denotes the coordinatewise product of $x$
-and $y$, then we have $w(x \oplus y) = w(x) + w(y) - 2 w(x \cdot y)$.
+If $x,y \in V(Q^n)$ then $d_{Q^n}(x,y) = w(\ell(x) \oplus \ell(y))$, where $\ell(x)
+\oplus \ell(y)$ is the coordinatewise sum of the elements of $\ell(x)$ and $\ell(y)$
+taken modulo 2.  If $u \cdot v$ denotes the coordinatewise product of $u$
+and $v$, then we have $w(u \oplus v) = w(u) + w(v) - 2 w(u \cdot v)$.
 
 \begin{definition}[Automorphism Group]
   Let $G$ be a finite undirected graph.  An \emph{automorphism}, of
@@ -130,13 +143,20 @@ and $y$, then we have $w(x \oplus y) = w(x) + w(y) - 2 w(x \cdot y)$.
   $\phi$ such that $\phi(x) = y$, then $G$ is said to be \emph{vertex
     transitive}.
 \end{definition}
-
+\begin{definition}
+  If $\sigma \in \cS_n$ is a permutation of $\{1, \dots, n\}$ and $x \in
+  T^n$ for some set $T$, then define $x^\sigma$ by $(x^\sigma)_i =
+  x_{\sigma^{-1}(i)}$ for $i=1, \dots, n$.  Note that if $\sigma, \tau
+  \in \cS_n$, then $x^{\sigma \tau} = (x^{\sigma})^\tau$.  Namely
+  $(x^{\sigma \tau})_i = x_{(\sigma \tau)^{-1}(i)} = x^{\tau^{-1}
+    (\sigma^{-1}(i))} = ((x^\sigma)^\tau)_i$.
+\end{definition}
 \begin{definition}[Hyperoctahedral Group]
 The \emph{hyperoctahedral group} of dimension $n$ is (in concrete
 form) the set of all maps $\{0,1\}^n \rightarrow \{0,1\}^n$ of the
 form $(x,\sigma)$ where $x \in \{0,1\}^n$ and $\sigma \in S_n$,
 permutations of $\{1, \dots, n\}$, where $(x, \sigma) (y) = x \oplus
-(y_{\sigma(1)}, \dots, y_{\sigma(n)})$.
+y^\sigma$.
   
 \end{definition}
 Note: The hyperoctahedral group of dimension $n$ is $\Aut(Q^n)$.
@@ -149,13 +169,13 @@ there is an automorphism $\phi \in \Aut(G)$ such that $\phi(x) = z, \phi(y) = w$
 \end{definition}
 Note that the hypercube $Q^n$ is distance transitive
 
-\begin{lemma}
+\begin{lemma}[Distance Transitivity of the Hypercube]
   The hypercube $Q^n$ is distance transitive.
 \end{lemma}
 \begin{proof}
   Let $u,v,x,y,z,w \in V(Q^n)$ be such that $d_{Q^n}(u,v) = d_{Q^n}(x,y)$.
   By definition of $d_{Q^n}$, we have $w(u \oplus v) = w(x \oplus y)$.
-  Then there is a permutation, $\sigma$ of $[n]$ such that
+  Thus there is a permutation, $\sigma$ of $[n]$ such that
   $(u \oplus v)^\sigma = x \oplus y$.  Let $\alpha = u^\sigma \oplus
   x$.  Then, we have, $v^\sigma \oplus \alpha = y$.  Namely, we have
   $x \oplus y = (u \oplus v)^\sigma = u^\sigma \oplus v^\sigma$.  Thus
@@ -197,12 +217,32 @@ all 1's is detecting.
   a balanced detecting matrix, then the set $S$ consisting of the 0
   vector along with the rows of $A$ is a resolving subset of $Q^n$.
 \end{theorem}
+\begin{proof}
+  If the subset $S$ is resolving and $A$ is the constructed matrix it
+  is balanced detecting.  Namely, for every $u \ne v \in
+  Q^n$ with $w(u) = w(v)$ satsifies $A_i \cdot u \ne A_i \cdot v$ for
+  some $i$.  However, $w(A_i \oplus u) - w(A_i \oplus v) = w(A_i) +
+  w(u) - 2 w(A_i \cdot u) - (w(A_i) +
+  w(v) - 2 w(A_i \cdot v)) = 2(w(A_i \cdot u) - w(A_i \cdot v)) \ne
+  0$.  Thus $A_i$ resolves $(u,v)$.  But the vector $0$ resolves those
+  $(u,v)$ of the same weight.  Conversely, if $A$ is balanced
+  detecting we use the same calculation to resolve all pairs $(u,v)$
+  of distinct weights, and use $0$ to resolve pairs of the same weight.
+\end{proof}
 \begin{theorem}
 \label{thm:symmetry}
   Let $m,n$ be positive integers, and $A$ be an $m \times n$ balanced
   detecting matrix.  Then the matrix $A'$ such that $A'_1 = A_1$, and
   $A'_i = A_1 \oplus A_i$ for all $i > 1$ is balanced detecting.
 \end{theorem}
+\begin{proof}
+  If $A$ is a balanced detecting matrix, by \thmref{detecting} the set
+  $S$ consisting of the $0$ vector along with the vectors given by the
+  rows of $A$ is resolving.  But then the set $S' = \{ A_1, 0 \} \cup \{
+  A_i \oplus A_1, i=2,\dots, m\}$ is also resolving, obtained by
+  XORing each element with $A_1$.  But the matrix $A'$ is obtained by
+  omitting $0$ from $S'$, and is thus balanced detecting,
+\end{proof}
 \section{Symmetry}
 \label{sec:symmetry}
 
@@ -384,10 +424,11 @@ We give a slightly tighter bound by examining the entropy of
 some random variables.  This is a slight generalization of a method of
 Pippenger, which we review below.
 
-\subsection{A Tighter Bound}
-\label{sec:tighter}
+\subsection{Entropy Lower Bounds}
+\label{sec:entropy}
 
-By using entropy arguments we can get a tighter lower bound.  First we
+By using entropy arguments about the entropy of certain random
+variables we can get tighter lower bounds.  First we
 recall an argument of Pippenger \cite{pippenger1977information}.
 
 If $X$ is a random variable whose range, $R$, is finite, define
@@ -396,7 +437,8 @@ If $X$ is a random variable whose range, $R$, is finite, define
   H(X) := - \sum_{x \in R} \Pr(X = x) \log_2 \Pr(X = x).
 \end{displaymath}
 If $X,Y$ are two random variables define $H(X | Y) = H(X, Y) - H(Y)
-\ge 0$.
+\ge 0$, where $H(X,Y) := H((X,Y))$.  We note that $H(X | Y) \ge 0$,
+and $=0$ if and only if $X$ depends on $Y$.
 
 \begin{proposition}
   Let $A$ be an $m \times n$ 0/1 detecting matrix and
@@ -429,10 +471,10 @@ If $X,Y$ are two random variables define $H(X | Y) = H(X, Y) - H(Y)
   Let $Y^{(s)}$ be a set valued random variable which takes on each subset
   of $[n]$ of cardinality $s$ with equal probability $1/\binom{n}{s}$.
   If $D \subseteq [n]$ satisfies $\# D = d$, then we define the random
-  variables $X^{(D)} = \# (Y \cap D)$.
-  If $\#D = d$ then the distribution of $X^{(D)}$ is
+  variables $X^{(D,s)} = \# (Y^{(s)} \cap D)$.
+  If $\#D = d$ then the distribution of $X^{(D,s)}$ is
   \begin{displaymath}
-    \Pr(X^{(D))} = j) = \binom{n}{s}^{-1}\binom{d}{j}
+    \Pr(X^{(D,s))} = j) = \binom{n}{s}^{-1}\binom{d}{j}
     \binom{n-d}{s - j}, j=0, 1, \dots, \min(d,s),
   \end{displaymath}
   and 0 otherwise.
@@ -441,15 +483,60 @@ If $X,Y$ are two random variables define $H(X | Y) = H(X, Y) - H(Y)
   Then, for all $s = 0, \dots, n, d=1, \dots, n$ we have
   \begin{equation}
     \label{eq:better}
-    m \ge \frac{\log_2 \binom{n}{s}}{H(X^{(D)})}.
+    m \ge \frac{\log_2 \binom{n}{s}}{H(X^{(D,s)})}.
   \end{equation}
 \end{proposition}
+
+\section{A General Method}
+\label{sec:general}
+
+Most of the previous papers on the subject calculate the metric
+dimension by reducing it to a \emph{minimal hitting set} problem.
+\begin{definition}{Hitting Set}
+Let $X$ be a set and $S_1 , \dots, S_m \subseteq \cS$ be subsets.
+
+A \emph{hitting set} for $\{S_i\}$ is a subset $U \subseteq X$ such
+that $U \cap S_i \ne \emptyset$ for all $i=1, \dots, m$.
+A \emph{minimal hitting set} is one for which $|U|$ is minimal.
+\end{definition}
+If $G$ is a finite connected undirected graph, for $x,y \in V(G), x
+\ne y$
+we set $S_{x,y} = \{v \in V(G): d_G(v,x) != d_G(v,y)\}$, the set of
+vertices of $G$ which resolve the pair $(x,y)$.  Thus $U$ is a
+resolving set for $G$ if and only if $U \cap S_{x,y} \ne \emptyset$
+for all $x \ne y \in V(G)$.
+A minimal resolving set for $G$ is then a minimal hitting set
+for $V(G)$.
+
+Many of the previous papers find the metric dimension of a graph by
+posing the minimal hitting set problem as an integer linear program:
+
+\begin{equation}
+  \label{eq:ilp}
+  \begin{aligned}
+    \text{Minimize } & \sum_{v \in V(G)} t_v \\
+    \text{Subject to} \\
+    \sum_{v \in S_{x,y}} t_v & \ge 1 \text{ for } x \ne y \in V(G) \\
+    t_v \in \{0,1\}, \forall v \in V(G).
+  \end{aligned}
+\end{equation}
+
 \section{An iterative method}
 \label{sec:iterative}
 
+Although this is correct, in general, the size of this program is
+rather large, since there are $\binom{|G|}{2}$ constraints.  In
+special case that the graph is $Q^n$ the $n$-dimensional hypercube, a
+nunber of the set $S_{x,y}$ are equal to $V(G)$, in which case they
+can be omitted from the constraints, and there are a number of
+duplicates.  Since $|Q^n| = 2^n$, posing the problem in this way
+quickly becomes impractical.  In addition, when the graph $G$ has a
+large group of metric automorphisms, it is essential to use some sort
+of symmetry breaking.
+
 In order to find balanced detecting matrices, or to show that there no
 balanced detecting matrices of dimension $m \times n$, we can use two
-cooperating solvers.  Let $M(m,n)$ denote the set of $m \times n$ 0/1
+cooperating constraint solvers.  Let $M(m,n)$ denote the set of $m \times n$ 0/1
 matrices.  Then the problem that we want to solve can be expressed as
 follows
 \begin{equation}
@@ -462,9 +549,9 @@ This can be restated as follows
   \exists A \in M(m,n) \neg \exists x \in B(n), Ax = 0.
 \end{equation}
 This suggests the following method.  Have two solvers (we can either
-use SAT solvers or SMT solvers).  The first solver has a state of a
-set of elements of $B(n)$: $C:=\{x_1, \dots, x_m\}$.  That solver tries
-to solve the problem
+use SAT solvers or SMT solvers).  The first solver maintains a state
+of a set of elements of $B(n)$: $C:=\{x_1, \dots, x_m\}$.  That solver
+tries to solve the problem
 \begin{displaymath}
   \exists A \in M(m,n), Ax \ne 0 \forall x \in C.
 \end{displaymath}
@@ -474,7 +561,7 @@ solve the problem
 \begin{displaymath}
   \exists x \in B(n), A x = 0.
 \end{displaymath}
-If there is no solution, the original problem is SAT, which $A$ the
+If there is no solution, the original problem is SAT, where $A$ the
 desired solution.  If there is a solution, it is passed to the first
 solver, to add to its set, $C$.  This back and forth process continues
 until the original problem is declared SAT or UNSAT.
@@ -520,6 +607,39 @@ If $n \ge 3$ we have $\{0,1\}^n = \cup_{x \in B(n)} N'(x)$.
 \end{proof}
 Thus to find a minimum necessary set $x \in B(n)$ we are reduced to a
 minimum set covering problem.
+
+\section{Symmetry Breaking}
+\label{sec:symmetry}
+
+In this section we discuss the use of the symmetries to optimize both
+the search for a minimal balanced detecting matrix and to show that no
+smaller dimension suffices.  We will restrict our discussion to the
+following situation:
+
+\begin{quotation}
+  We are given a boolean formula $f(x_1, \dots, x_n)$ in boolean
+  variables, $x_1, \dots, x_n$.  It is know that there is permutation
+  group $G \subseteq \cS_n$ such that $f = f^\sigma$ for all
+  $\sigma \in G$, where
+  $f^\sigma(x_1, \dots, x_n) := f(x_{\sigma^{-1}(1)}, \dots,
+  x_{\sigma^{-1}(n)})$.  We wish to exibit $\xi \in \{0,1\}^n$ such
+  that $f(\xi) = 1$ or show that no such $\xi$ exists.  We have a
+  total lexicographic order on the set of such $\xi$: $\xi \le \xi'$
+  if and only if either $\xi = \xi'$ or there is an $1 \le i < n$,
+  such that $\xi_j = \xi'_j$ for $j=1, \dots, i$, and
+  $\xi_{i+1} = 0, \xi'_{i+1} = 1$.  We can restrict the set of
+  considered $\xi$ to those for which $\xi \le \xi^\sigma$, for
+  $\sigma$ contained in some subset of $G$.
+\end{quotation}
+\begin{definition}[Lexicographic Order]
+  Let $S$ be a totally ordered set, and $n$ a positive integer.  The
+  \emph{lexicographic order} on the $n$-fold product $S^n$ is as
+  follows:
+
+  $(x_1, \dots, x_n) \le (x'_1, \dots, x'_n)$ if and only if either $x
+  = x'$ or there is an $1 \le i < n$ such that $x_j = x'_j$ for $j=1,
+  \dots, i$ and $x_{i+1} < x'_{i+1}$.
+\end{definition}
 \section{Certificates}
 \label{sec:certificates}
 
@@ -529,38 +649,40 @@ detecting matrix of dimension $(m-1) \times n$ and to assert that some
 program failed to find one of dimension $(m-2) \times n$.  In this
 section we discuss \emph{certificates} for these assertions.  By a
 certificate, we mean some data which can be used in an easily
-checkable proof of these assertions.
+checkable proof of these assertions.  This is in contrast to much of
+the earlier literature, such as \cite{beardon2013resolving}, in which
+the values of the metric dimension are asserted as being the result of
+a long calculation, without any certification.
 
 Since we have used SAT and SMT solvers to make the above assertions,
-we can use the fact each assertion above can be proven by asserting that a
-particular CNF formula is UNSAT.  Many SAT solvers can produce what
-are known as DRUP (directed reverse unit propagation) proofs of UNSAT,
-which we will describe below.
+we can use the fact each assertion above can be proven by asserting
+that a particular CNF formula is UNSAT.  Many SAT solvers can produce
+what are known as DRUP (directed reverse unit propagation) proofs of
+UNSAT, which we will describe below.
 
-In order that such a proof to be a valid certificate, one must also supplement
-it with a proof that the CNF formula used is encoded correctly.
+In order that such a proof to be a valid certificate, one must also
+supplement it with a proof that the CNF formula used is encoded
+correctly.
 
 The statement that $A$ is an $m \times n$ balanced detecting matrix is
 equivalent to the the statement that the only integer point in the
-polytope $P := \{x \in [-1,1]^n : A x = 0,
-\sum_{i=1}^n x_i = 0 \}$ is $0$.  By writing $x = y-z$ for $y,z \in
-[0,1]$ this is equivalent to the
-polytope $P' = \{A y = Az : y, z \in [0,1]^n, \sum_{i=1}^n (y_i - z_i)
-= 0, \sum_{i=1}^n x_i \ge 1, y_i + z_i \le 1, \text{ for } i=1, \dots,
-n\}$ containing no integer points.  One can supplement $P'$ with a series
+polytope $P := \{x \in [-1,1]^n : A x = 0, \sum_{i=1}^n x_i = 0 \}$ is
+$0$.  By writing $x = y-z$ for $y,z \in [0,1]$ this is equivalent to
+the polytope
+$P' = \{A y = Az : y, z \in [0,1]^n, \sum_{i=1}^n (y_i - z_i) = 0,
+\sum_{i=1}^n x_i \ge 1, y_i + z_i \le 1, \text{ for } i=1, \dots, n\}$
+containing no integer points.  One can supplement $P'$ with a series
 of $\{0, \frac 1 2 \}$ cuts, so that the resulting polytope is the
 empty set.  That may be certified by means of exhibiting a Farkas
 proof of emptiness.
 
 The statement that there is no $m \times n$ balanced detecting matrix
-is equivalent to the statement that the polytope $P = \{A \in [0,1]^{m
-  \times n} : A x = 0, \forall x \in B(n)\}$ contains no nonzero integer
-points.  We show below that the set $B(n)$ can be cut down, and still
-make the above valid.
+is equivalent to the statement that the polytope
+$P = \{A \in [0,1]^{m \times n} : A x = 0, \forall x \in B(n)\}$
+contains no nonzero integer points.  We show below that the set $B(n)$
+can be cut down, and still make the above valid.
 
 
-
-
-\bibliography{references}
-\bibliographystyle{alpha}
+\bibliography{metric_dimension}
+\bibliographystyle{plain}
 \end{document}
