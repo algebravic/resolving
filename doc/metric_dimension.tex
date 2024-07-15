@@ -652,7 +652,16 @@ certificate, we mean some data which can be used in an easily
 checkable proof of these assertions.  This is in contrast to much of
 the earlier literature, such as \cite{beardon2013resolving}, in which
 the values of the metric dimension are asserted as being the result of
-a long calculation, without any certification.
+a long calculation, without any certification.  In this section we
+describe three possible approaches to obtaining such certification:
+\begin{enumerate}
+\item Use of DRUP and DRAP proof of UNSAT from SAT solvers.
+\item Generation of cuts using Integer Linear Programming, along with
+  a a \emph{Farkas certificate} of infeasilibility.
+\item Use of lattice reduction algorithms to generate a good
+  ellipsoidal approximation to the constraint region, along with
+  algorithms for enumerating lattice points of small size.
+\end{enumerate}
 
 Since we have used SAT and SMT solvers to make the above assertions,
 we can use the fact each assertion above can be proven by asserting
@@ -681,6 +690,29 @@ is equivalent to the statement that the polytope
 $P = \{A \in [0,1]^{m \times n} : A x = 0, \forall x \in B(n)\}$
 contains no nonzero integer points.  We show below that the set $B(n)$
 can be cut down, and still make the above valid.
+
+We are interested in the following situation: If $y \in B(n)$, we say
+that $A \in \{0,1\}^{m \times n}$ is \emph{feasible} for $y$ if $Ay
+\ne 0$.  Let $S \subseteq B(n)$. We say that $y \in B(n)$ is
+\emph{redundant} with respect to $S$ if any feasible $A$ with respect
+to $y$ is feasible with respect to all $x \in S$.  In logical terms
+this is
+\begin{displaymath}
+  \bigwedge_{x \in S} (A x \ne 0) \Rightarrow (Ay \ne 0).
+\end{displaymath}
+Taking contrapositives, this is equivalent to
+\begin{displaymath}
+  (Ay = 0) \Rightarrow \bigvee_{x \in S} (Ax = 0).
+\end{displaymath}
+
+\begin{definition}
+  Let $m, n$ be positive integers, and $x \in B(n)$.  Define
+  $P(x) := \{ A \in \{0,1\}^{m \times n} : A x = 0\}$.  Let $S
+  \subseteq B(n), y \in B(n)$. We say that $y$ is \emph{covered by
+    $S$} if $P(y) \subseteq \bigcup_{x \in S} P(x)$, and that $S$ is a
+  \emph{cover} of $B(n)$ if every $y \in B(n)$ is covered by $S$.
+\end{definition}
+
 
 
 \bibliography{metric_dimension}
