@@ -8,10 +8,13 @@
 *.blg
 *.pdf
 *.nav
-/doc/*.snm
 *.toc
 *.out
+/doc/*.snm
+/cnf/
+/smt/
+/essence/
+/bule/
+/data/
 /doc/ltximg/
-poetry.lock
-poetry.lock
 poetry.lock
