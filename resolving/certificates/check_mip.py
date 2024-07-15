@@ -2,7 +2,7 @@
   Use the MIP package to check the status of a putative balanced resolving matrix.
 """
 import numpy as np
-from mip import Model, xsum, maximize, BINARY, OptimizationStatus
+from mip import Model, xsum, maximize, minimize, BINARY, OptimizationStatus
 
 def check_resolving(amat: np.ndarray) -> bool:
     """
@@ -20,7 +20,7 @@ def check_resolving(amat: np.ndarray) -> bool:
     amat_x =[xsum(_[0] * _[1] for _ in zip(amat[ind], xvar)) for ind in range(mdim)]
     amat_y =[xsum(_[0] * _[1] for _ in zip(amat[ind], yvar)) for ind in range(mdim)]
     no_detect = [_[0] == _[1] for _ in zip(amat_x, amat_y)]
-    mod.objective = maximize(xsum(xvar))
+    mod.objective = minimize(xsum(xvar))
     for constr in exclude + equals + nozero + no_detect:
         mod += constr
     #mod.verbose = 1
