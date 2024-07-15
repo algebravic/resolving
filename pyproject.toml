@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "resolving"
 version = "0.1.0"
-description = ""
+description = "Calculate the metric dimension of the hypercube"
 authors = ["Victor S. Miller <victorsmiller@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.12"
+python = ">=3.11,<3.13"
 numpy = ">=1.24.2"
 networkx = ">=3.0"
 #python-sat = ">=0.1.8.dev2,<=0.1.8.dev9"
@@ -21,7 +21,8 @@ pydot = ">=1.4.2"
 z3-solver = ">=4.12.2.0"
 pycddlib = ">=2.1.6"
 cvxpy = {version = ">=1.3.2"}
-mip = "1.16rc0"
+mip = ">=1.16rc0"
+symmetry = {git = "https://github.com/algebravic/symmetry.git"}
 
 
 [tool.poetry.group.test.dependencies]
