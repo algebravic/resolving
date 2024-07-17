@@ -18,6 +18,11 @@ from .symmbreak import double_lex, snake_lex
 from .util import get_prefix, extract_mat, getvec, makevec, makemat, makecomp
 from .maxtest import min_conflict
 from .schreier_sims import schreier_sims_cuts
+from .gensymm import encode_implications
+from symmetry import row_snake_order, column_snake_order, reduce_impl
+from symmetry import lex_double
+from symmetry import get_extended_symmetry
+from symmetry import make_implications
 
 CONFLICT = Tuple[int,...]
 CADICAL = 'Cadical195'
@@ -54,6 +59,7 @@ class Resolve:
                  nozero: bool = False, # disallow 0 column
                  solver = CADICAL,
                  encode = 'totalizer',
+                 breaker: str = 'double_lex',
                  ss_cuts: bool = False,
                  xor_break: bool = False, # use xor symm break
                  snake: int = 0, # Use snake lex if > 0, 2 if Transpose
@@ -356,6 +362,52 @@ class Resolve:
                                           [self._avar[ind+1, jind]
                                            for jind in range(self._dim)]))
 
+    def _symmetry_break(self, breaker: str = 'double_lex'):
+        """
+          Use the indicated symmetry break
+
+          Possiblities:
+          'double_lex' : standard double lex
+          'snake_row' : snake lex with row snake
+          'snake_col' : snake lex with col snake
+          other: the name of a file which contains the json of lex implicants
+        """
+        impl = []
+        match breaker:
+            case 'double_lex':
+                impl = make_implications((self._mdim, self._dim),
+                    row_wise, lex_double)
+            case 'snake_row':
+                impl = reduce_impl(make_implications((self._mdim, self._dim),
+                    row_snake_order, lex_double))
+            case 'snake_col':
+                impl = reduce_impl(make_implications((self._mdim, self._dim),
+                    column_snake_order, lex_double))
+            case 'schreier-sims':
+                impl = schreier_sims_cuts(self._dim, self._mdim)
+            case ('covering', mnum, num):
+                impl = get_extended_symmetry(
+                    self._mdim, self._dim, mnum, num)
+            case _:
+                print(f"Unrecognized {breaker}, using default")
+                impl = make_implications((self._mdim, self._dim),
+                    row_wise, lex_double)
+        self._cnf.extend(encode_implications(self._pool,
+                                             self._avar,
+                                             impl))
+    def _nonzero_rows(self):
+
+        return [[self._avar[ind, jind] for jind in range(self._dim)]
+                for ind in range(self._mdim)]
+
+    def _break_xor(self):
+        " Only valid for rowwise order "
+        for ind in range(1, self._mdim):
+            self._cnf.extend(list(xor_comp(self._pool,
+                                           amat[0], amat[ind])))
+            self._cnf.extend(list(xor_comp(self._pool,
+                                           amat[1], amat[0])))
+    
     def _model2(self):
         """
         Simpler model with double lexical ordering.
