@@ -59,7 +59,7 @@ class Resolve:
                  nozero: bool = False, # disallow 0 column
                  solver = CADICAL,
                  encode = 'totalizer',
-                 breaker: str = 'double_lex',
+                 breaker: str | Tuple[str, int, int] = 'double_lex',
                  ss_cuts: bool = False,
                  xor_break: bool = False, # use xor symm break
                  snake: int = 0, # Use snake lex if > 0, 2 if Transpose
@@ -92,7 +92,7 @@ class Resolve:
         if alt_model:
             self._model1()
         else:
-            self._model2()
+            self._model2(breaker)
         self._solve_name = solver
         if solver_kwds is None:
             solver_kwds = {}
@@ -362,7 +362,7 @@ class Resolve:
                                           [self._avar[ind+1, jind]
                                            for jind in range(self._dim)]))
 
-    def _symmetry_break(self, breaker: str = 'double_lex'):
+    def _symmetry_break(self, breaker: str | Tuple[str, int, int] = 'double_lex'):
         """
           Use the indicated symmetry break
 
@@ -408,7 +408,7 @@ class Resolve:
             self._cnf.extend(list(xor_comp(self._pool,
                                            amat[1], amat[0])))
     
-    def _model2(self):
+    def _model2(self, breaker):
         """
         Simpler model with double lexical ordering.
         """
@@ -416,28 +416,10 @@ class Resolve:
         # Non zero first row
         # Everything is increasing so others are nonzero
         # Double sorted increasing
-        amat = np.array([[self._avar[ind, jind] for jind in range(self._dim)]
-                         for ind in range(self._mdim)], dtype=int)
-        # All rows nonzero
-        for ind in range(self._mdim):
-            # i-th row nonzero
-            self._cnf.append(list(map(int, amat[ind])))
-            
-        if self._ss_cuts:
-            self._cnf.extend([[-int(amat[leader]), int(amat[follower])]
-                              for leader, follower
-                              in schreier_sims_cuts(self._dim,
-                                                    self._mdim)])
-        else:
-            if self._firstweight:
-                amat = amat[:, 1:] # avoid first column
-            breaker = snake_lex if self._snake > 0 else double_lex
-            self._cnf.extend(list(breaker(self._pool,
-                                        amat.T if self._snake > 1
-                                          else amat)))
+
+        self._nonzero_rows()
+
+        self._symmetry_break(breaker)
+
         if self._xor_break:
-            for ind in range(1, self._mdim):
-                self._cnf.extend(list(xor_comp(self._pool,
-                                               amat[0], amat[ind])))
-            self._cnf.extend(list(xor_comp(self._pool,
-                                           amat[1], amat[0])))
+            self._break_xor()
