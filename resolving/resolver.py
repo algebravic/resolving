@@ -19,7 +19,8 @@ from .util import get_prefix, extract_mat, getvec, makevec, makemat, makecomp
 from .maxtest import min_conflict
 from .schreier_sims import schreier_sims_cuts
 from .gensymm import encode_implications
-from symmetry import row_snake_order, column_snake_order, reduce_impl
+from symmetry import row_snake_order, column_snake_order, row_wise
+from symmetry import reduce_impl
 from symmetry import lex_double
 from symmetry import get_extended_symmetry
 from symmetry import make_implications
@@ -60,9 +61,7 @@ class Resolve:
                  solver = CADICAL,
                  encode = 'totalizer',
                  breaker: str | Tuple[str, int, int] = 'double_lex',
-                 ss_cuts: bool = False,
                  xor_break: bool = False, # use xor symm break
-                 snake: int = 0, # Use snake lex if > 0, 2 if Transpose
                  maxweight: bool = False, # Only use maximum weights
                  firstweight: bool = False,
                  getcore: int = 0,
@@ -73,8 +72,6 @@ class Resolve:
         self._mdim = mdim
         self._verbose = verbose
         self._encoding = getattr(EncType, encode, EncType.totalizer)
-        self._snake = snake
-        self._ss_cuts = ss_cuts
         self._xor_break = xor_break
         self._maxweight = maxweight
         self._getcore = getcore
@@ -282,6 +279,7 @@ class Resolve:
             indicators.append(indic2)
             for clause in CardEnc.atleast(
                     lits = lits, bound = bound + 1,
+
                     encoding = self._encoding,
                     vpool = self._pool).clauses:
                 self.append([-assump, -indic2] + clause)
