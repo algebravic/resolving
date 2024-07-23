@@ -133,8 +133,10 @@ def ping_pong(dim: int, mdim: int,
     if verbose > 1:
         print(f"Resolve census = {resolver.census}")
 
-    bound = (1 if resolver_opts.get('ss_cuts', False) or
-        (resolver_opts.get('snake', 0) != 0) else 2)
+    # bound = (2 if resolver_opts.get('breaker','double_lex') in
+    #     ['schreier-sims', 'snake_col', 'snake_row']
+    #     else 1)
+    bound = 1
     conflictor_opts['bound'] = bound
     print(f"lower bound = {2 * bound}")
     conflict = Conflict(dim, mdim - 1,
