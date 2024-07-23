@@ -20,26 +20,43 @@ def encode_implications(pool: IDPool,
                         tseytin: str = 'T') -> Iterable[CLAUSE]:
     """
       Encode the lex implications using the given prefixes.
+      Inputs:
+      pool: A pysat IDPool
+      avar: a dictionary indexed by pairs yielding boolean variables
+      impls: an Iterable of implications
+        Each implication is a tuple of pairs of coordinates
+      tseytin: option prefix string for tseytin variables to
+        use in the IDPool:
+
+      Output:
+
+        This is a generator that produces clauses implementing
+        the implications.
     """
-
+    tseytins = set()
     for impl in impls:
-
+        
         clause = []
         for lft, rgt in impl[: -1]:
             left = avar[lft]
             right = avar[rgt]
-            key = (tseytin, tuple(sorted((lft, rgt))))
-            gen_clauses = key not in pool.obj2id
-            tst = pool.id(key)
+            key = tuple(sorted((lft, rgt)))
+            tseytins.add(key)
             # tst <==> left == right
-            if gen_clauses:
-                yield from [[tst, left, right],
-                            [-tst, -left, right],
-                            [-tst, left, -right],
-                            [tst, -left, -right]]
-            clause.append(-tst)
+            clause.append(- pool.id((tseytin, key)))
         lft0, rgt0 = impl[-1]
         yield clause + [-avar[lft0], avar[rgt0]]
+
+    for key in tseytins:
+        lft, rgt = key
+        left = avar[lft]
+        right = avar[rgt]
+        tst = pool.id((tseytin, key))
+        yield from [[tst, left, right],
+                    [-tst, -left, right],
+                    [-tst, left, -right],
+                    [tst, -left, -right]]
+                
 
 def _tuple_it(arg: Any) -> Any:
 
