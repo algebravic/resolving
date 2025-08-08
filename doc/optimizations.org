@@ -555,6 +555,7 @@ be a set of constraints.  If $C \cup \{\alpha = \gamma\}$ entails
 $x=y$, then $C$ can be replaced with $C' \cup \{\alpha  \beta \le_{\tt lex}
    \gamma \delta\}$. 
 
+<<<<<<< HEAD
 * Algorithms
 Reference: "Minimal ordering constraints for some families of variable
 symmetries" by Grayland, Jefferson, Miguel and Roney-Dougal
@@ -759,4 +760,51 @@ there is a row $A_i$ such that $A_i$.
 
 
  
+=======
+Notice that (1) is a special case if (3'), when $C'$ is the empty set.
+
+
+A simple and useful special case of (1) is if $x=y$ because $x$ and
+$y$ are identical.  Another useful rule is
+
+Let $C = C' \cup \{\alpha x \beta \le_{\tt lex} \gamma y \delta\}$
+be a set of constraints.  If $C \cup \{\alpha = \gamma\}$ entails
+$x\ne y$, then $C$ can be replaced with $C' \cup \{\alpha \le_{\tt
+lex}  \gamma\}$. 
+
+In the above it's not clear, in practice, what "entailment" algorithm
+is used.  I would think that something like unit propagation would be
+a good compromise.
+
+* Automatically finding syntactic symmetries.
+
+Let $V$ be a finite set of variables, and $L$ the corresponding set of
+literals over $V$: $V \cup \{\sim v : v \in V\}$.  A *signed permutation*
+of $V$, is a one-to-one map $\pi: L \rightarrow L$, such that,
+$\sim \pi(v) = \pi(\sim v)$ for all $v \in V$, where $\sim (\sim v) = v$.
+
+Treating a clause as a subset of $2^L$, we define $\pi(C) =
+\{\pi(\ell) : \ell \in C\}$.
+
+Definition: if $F$ is a CNF formula, with support $V$, then a signed
+permutation $\pi$ of $V$ is an *automorphism* of $F$ if
+$\pi(C) \in F$ for all $C \in F$.  Such a signed automorphism is also
+called a *syntatic automorphism*.
+
+The group of all syntactic symmetries may be found by reducing the
+problem to finding the group of *colored automorphisms of a graph*.
+
+More specifically construct an undirected graph whose vertices are
+$L$, colored red, and $C \in F$, colored blue.    There is an edge
+$\{v, \sim v\}$ for all $v \in V$.  There is also an edge $\{\ell,
+C\}$ for all $\ell \in C$.  This was the construction in Crawford, Ginsberg,
+Luks, and Roy "Symmetry Breaking predicates for search problems", in
+Proceedings of Knowledge Repersentation and Reasoning, November 1996, pp
+148-159.
+
+Aloul ("Symmetry in Boolean Satisfiability", Symmetry 2010, no, 2,
+1121-1134) refines this construction  by omitting 2-clauses, and,
+instead, adding the edge $\{\ell, \ell'\}$ for a 2-clause with those
+constituent literals.
+>>>>>>> 1afcfe6 (Added more paragraphs in writeup.)
 
