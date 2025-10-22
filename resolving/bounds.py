@@ -28,7 +28,7 @@ def binomial_distr(weight: int) -> np.ndarray:
 
 def entr(arg: float) -> float:
 
-    return - arg * log(arg) if arg > 0 else 0.0
+    return arg * log(arg) if arg > 0 else 0.0
 
 def binary_entropy(distr: np.ndarray) -> float:
     """
@@ -36,12 +36,13 @@ def binary_entropy(distr: np.ndarray) -> float:
     the binary entropy.
     Let d = sum_i a[i]
 
-    sum_i (a[i]/d) * log(a[i]/d) = (1/d) sum_i a[i] log(a[i)) - (1/d) sum_i log(d)
-       = (1/d) sum_i a[i] log(a[i)) - log(d)
+    - sum_i (a[i]/d) * log(a[i]/d) = - (1/d) sum_i a[i] log(a[i)) + log(d)
+       = - (1/d) sum_i a[i] log(a[i)) + (n/d) log(d)
     """
     
     denom = distr.sum()
-    return (sum(map(entr, distr)) / denom - log(denom)) / log(2.0)
+    num = distr.shape[0]
+    return - sum(map(entr, distr)) / (denom * log(2.0)) + log(denom) / log(2.0)
 
 def binomial_entropy(weight) -> float:
     """
@@ -144,3 +145,32 @@ def naive_bounds(num: int) -> int:
     lbounds = (ceil(log(binomial(num, jind)) / log(jind + 1))
         for jind in range(1, num // 2 + 1))
     return max(lbounds)
+
+def bipartite_rhs(diam: int, dim: int) -> int:
+    """
+      upper = (D-3-k)/3, where k=0,1,-1 (3)
+      = (D+1) mod 3 - 1
+    """
+    top = (diam + 1 - (diam + 1) % 3) // 3
+    lead = dim * sum((_+1) ** (dim - 1) for _ in range(top))
+
+    match diam % 3:
+        case 0:
+            rest = ((diam + 3) // 3) ** dim + (diam // 3) ** dim
+        case 1:
+            rest = 2 * ((diam + 2) // 3) ** dim
+        case 2:
+            rest = 2 * ((diam + 1) // 3) ** dim
+    return lead + rest
+
+def bipartite_bound(num: int, diam: int) -> int:
+    """
+      Use the method of Dankelmann et. al. to find
+      a bound on the metric dimension of a bipartite graph.
+    """
+    dim = 1
+    while True:
+        if num <= bipartite_rhs(diam, dim):
+            return dim
+        else:
+            dim += 1
