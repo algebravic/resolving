@@ -2,6 +2,7 @@
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amsthm}
+\usepackage{url}
 \title{Resolving the Hypercube} \author{Victor S. Miller}
 \newcommand{\secref}[1]{theorem~\ref{sec:#1}}
 \renewcommand{\eqref}[1]{equation~\ref{eq:#1}}
@@ -113,12 +114,12 @@ and $\{(x,y),(x'y')\} \in E(G \square H)$ if and only if either $(x,x')
 \end{definition}
 \begin{definition}[Hypercube]
   Let $n$ be a positive integer. The $n$-dimensional \emph{hypercube}
-  $Q^n$ is the $n$-fold weak product $K_2 \square \cdots \square K_2C$ where
-  $K_2$ is complete graph on two vertices.  Another way of seeing
-  $Q^n$ is the undirected graph whose vertices are are uniquely
-  labeled by the set $\{0,1\}^n$ of $n$-tuples of 0/1.  Two such
-  vertices are connected by an edge if and only if the Hamming
-  distance between the labels of the vertices is 1.
+  $Q^n$ is the $n$-fold weak product $K_2 \square \cdots \square K_2C$
+  where $K_2$ is complete graph on two vertices.  Another way of
+  seeing $Q^n$ is by the underlying undirected graph whose vertices
+  are are uniquely labeled by the set $\{0,1\}^n$ of $n$-tuples of
+  0/1.  Two such vertices are connected by an edge if and only if the
+  Hamming distance between the labels of the vertices is 1.
 \end{definition}
 Note that if $x,y \in V(Q^n)$ are two vertices then $d_{Q^n}(x,y) =
 d_H(\ell(x),\ell(y))$, the Hamming distance.
@@ -131,7 +132,7 @@ d_H(\ell(x),\ell(y))$, the Hamming distance.
 If $x,y \in V(Q^n)$ then $d_{Q^n}(x,y) = w(\ell(x) \oplus \ell(y))$, where $\ell(x)
 \oplus \ell(y)$ is the coordinatewise sum of the elements of $\ell(x)$ and $\ell(y)$
 taken modulo 2.  If $u \cdot v$ denotes the coordinatewise product of $u$
-and $v$, then we have $w(u \oplus v) = w(u) + w(v) - 2 w(u \cdot v)$.
+and $v$, then we have $w(u \oplus v) = w(u) + w(v) - 2 (u \cdot v)$.
 
 \begin{definition}[Automorphism Group]
   Let $G$ be a finite undirected graph.  An \emph{automorphism}, of
@@ -143,7 +144,7 @@ and $v$, then we have $w(u \oplus v) = w(u) + w(v) - 2 w(u \cdot v)$.
   $\phi$ such that $\phi(x) = y$, then $G$ is said to be \emph{vertex
     transitive}.
 \end{definition}
-\begin{definition}
+\begin{definition}[Permutation action on coordinates]
   If $\sigma \in \cS_n$ is a permutation of $\{1, \dots, n\}$ and $x \in
   T^n$ for some set $T$, then define $x^\sigma$ by $(x^\sigma)_i =
   x_{\sigma^{-1}(i)}$ for $i=1, \dots, n$.  Note that if $\sigma, \tau
@@ -219,13 +220,16 @@ all 1's is detecting.
 \end{theorem}
 \begin{proof}
   If the subset $S$ is resolving and $A$ is the constructed matrix it
-  is balanced detecting.  Namely, for every $u \ne v \in
-  Q^n$ with $w(u) = w(v)$ satsifies $A_i \cdot u \ne A_i \cdot v$ for
-  some $i$.  However, $w(A_i \oplus u) - w(A_i \oplus v) = w(A_i) +
-  w(u) - 2 w(A_i \cdot u) - (w(A_i) +
-  w(v) - 2 w(A_i \cdot v)) = 2(w(A_i \cdot u) - w(A_i \cdot v)) \ne
-  0$.  Thus $A_i$ resolves $(u,v)$.  But the vector $0$ resolves those
-  $(u,v)$ of the same weight.  Conversely, if $A$ is balanced
+  is balanced detecting.  Namely, Let $u \ne v \in
+  Q^n$ with $w(u) = w(v)$. If $A_i$ resolves $(u,v)$ then, by
+  definition of resolving we have
+  \begin{displaymath}
+    0 \ne w(A_i \oplus u) - w(A_i \oplus v) = w(A_i) + w(u) - 2 w(A_i
+    \cdot u) - (w(A_i) + w(v) - 2 w(A_i \cdot v)) = 2 A_i (v-u).
+  \end{displaymath}
+  Thus $A(u-v) \ne 0$.
+  But the vector $0$ resolves those
+  $(u,v)$ of the different weight.  Conversely, if $A$ is balanced
   detecting we use the same calculation to resolve all pairs $(u,v)$
   of distinct weights, and use $0$ to resolve pairs of the same weight.
 \end{proof}
@@ -245,7 +249,6 @@ all 1's is detecting.
 \end{proof}
 \section{Symmetry}
 \label{sec:symmetry}
-
 The detecting matrix version of the problem has a very large symmetry
 group. Using \emph{symmetry breaking} is essential for the
 calculation.
@@ -429,9 +432,10 @@ Pippenger, which we review below.
 
 By using entropy arguments about the entropy of certain random
 variables we can get tighter lower bounds.  First we
-recall an argument of Pippenger \cite{pippenger1977information}.
+recall an argument of Pippenger \cite{pippenger1977information} about
+the coin-weighing problem (Erd\H{o}s-Renyi Problem A).
 
-If $X$ is a random variable whose range, $R$, is finite, define
+If $X$ is a random variable whose range, $R$, is finite, define its
 \emph{binary entropy}
 \begin{displaymath}
   H(X) := - \sum_{x \in R} \Pr(X = x) \log_2 \Pr(X = x).
@@ -442,10 +446,11 @@ and $=0$ if and only if $X$ depends on $Y$.
 
 \begin{proposition}
   Let $A$ be an $m \times n$ 0/1 detecting matrix and
-  $X^{(d)}$ be a random variable satisfying
+  $X^{(d)}$ be a random variable whose values are in $[d]$, satisfying
   \begin{displaymath}
     \Pr(X^{(d))} = j) = \binom{d}{j} 2^{-d}, j=0, 1, \dots, d.
   \end{displaymath}
+Then we have
   \begin{equation}
     \label{eq:pippenger}
     m \ge \left \lceil \frac{n}{\max(H(X^{(d)}), d = 1, \dots n)}
@@ -453,18 +458,20 @@ and $=0$ if and only if $X$ depends on $Y$.
   \end{equation}
 \end{proposition}
 \begin{proof}
-  Let $Y \in [n]$ be a set valued random variable which is uniform
-  among all subsets of $[n]$.  If $D \subseteq [n]$, let $X^{(D)} := \#(Y
+  Let $Y$ be a set valued random variable which is uniform
+  among all subsets of $[n]$.  If $D \subseteq [n]$, let $U^{(D)} := \#(Y
   \cap D)$.  We have
   \begin{displaymath}
-    \Pr(X^{(D)} = j) = \binom{n}{j} 2^{-\#D}, j=0, \dots, \#D,
+    \Pr(U^{(D)} = j) = \binom{n}{j} 2^{-\#D}, j=0, \dots, \#D,
   \end{displaymath}
   and 0 otherwise.  If $D_1, \dots, D_m$ are detecting, then, by
   definition, knowledge of $D_1, \dots, D_m$ uniquely determines the
-  value of $Y$.  Thus $0 = H(Y | X^{(D_1)}, \dots, X^{(D_m)})$.
-  However $n = H(Y) = H(Y | X^{(D_1)}, \dots, X^{(D_m)}) +
-  H(X^{(D_1)}, \dots, X^{(D_m)}) - H(X^{(D_1)},
-  \dots, X^{(D_m)} | Y) \le \sum_{j=1}^m H(X^{(D_j)}).$
+  value of $Y$.  Thus $0 = H(Y | U^{(D_1)}, \dots, U^{(D_m)})$.
+  However $n = H(Y) = H(Y | U^{(D_1)}, \dots, U^{(D_m)}) +
+  H(U^{(D_1)}, \dots, U^{(D_m)}) - H(U^{(D_1)},
+  \dots, U^{(D_m)} | Y) \le \sum_{j=1}^m H(U^{(D_j)}).$
+  However, we also have the random variable $U^{(D)}$ has the same
+  distribution as the random variable $X^{(\#D)}$.
 \end{proof}
 \begin{proposition}
   Let $A$ be an $m \times n$ 0/1 balanced detecting matrix.

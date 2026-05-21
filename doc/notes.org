@@ -1,9 +1,20 @@
 #+Title: Metric Dimension
+#+Latex_header: \usepackage{amsthm}
+#+Latex_header: \newtheorem{theorem}{Theorem}
+#+Latex_header: \newtheorem{definition}{Definition}
+#+Latex_header: \newtheorem{notation}{Notation}
+#+Latex_header: \newtheorem{lemma}{Lemma}
+#+Latex_header: \newtheorem{proposition}{Proposition}
+#+Latex_header: \newtheorem{corollary}{Corollary}
 #+Latex_header: \DeclareMathOperator{\wt}{wt}
+#+Latex_header: \DeclareMathOperator{\Aut}{Aut}
 #+Latex_header: \newcommand{\RR}{\mathbb{R}}
-#+Latex_header: \DeclareMathOperator{\ker}{ker}
+#+Latex_header: \DeclareMathOperator{\Ker}{ker}
 #+Latex_header: \DeclareMathOperator{\Tr}{Tr}
+#+options: toc:nil
 #+bibliography: ~/BibFiles/graphs.bib
+#+bibliography: ~/BiBFiles/computing.bib
+#+bibliography: ~/BiBFiles/metric_dimension.bib
 #+cite_export: biblatex backend=bibtex,style=alphabetic,url=true
 
 * <2023-03-23 Thu> Introduction
@@ -59,19 +70,19 @@ find an element $u \in \mathbb{F}_2^n$, such that $\max_{v \in S}
 d(u,v)$ is minimized.  Call such a $u$ a *centroid* for $S$.
 
 Maximum is hard to deal with.  Use the fact that average is a lower
-bound to the maximum.  Suppose that $A_{i,j}$ is the $i$-th bit of the
+bound to the maximum.  Suppose that $A_{i,j}$ is the \(i\) -th bit of the
 $j$-th word in $S$.  Suppose that $x$ is the unknown centroid.
 
 Form
-$$
-\begin{split}
+\begin{displaymath}
+\begin{aligned}
 \sum_j \sum_i (x_i - A_{i,j})^2 & = \sum_i \sum_j (x_i + A_{i,j} -
 2 x_i A_{i,j}) \\
  & = \sum_{i,j} A_{i,j} + |S| \text{wt}(x) - 2 \sum_i (\sum_j
 A_{i,j}) x_i \\
 & = \sum_{i,j} A_{i,j} - 2\sum_i (\sum_j (A_{i,j} - 1/2) - x_i).
-\end{split}
-$$
+\end{aligned}
+\end{displaymath}
 
 ** Stabilizer by the hyperoctahedral group
 The hyperoctahedral group is the group of automorphisms of $Q_n$.
@@ -110,12 +121,17 @@ Proposition: We have $R_{0,u} = \{ x \in \mathbb{F}_2^n:  2 \wt(u
 \wedge x) \ne \wt(u)\}$. In particular, it includes all elements of
 $\mathbb{F}_2^n$ if $u$ has odd weight.
 
-Proof: Note that $\sum_{i=1}^n (-1)^{x_i} = \sum_{i=1}^n (1 - 2 * x_i)
+#+begin_proof
+Note that $\sum_{i=1}^n (-1)^{x_i} = \sum_{i=1}^n (1 - 2 * x_i)
 = n - 2 \wt(x)$.  We have
-$\wt(u \oplus x)  - \wt(x) = \sum_{i=1}^n ((u_i \oplus x_i) - x_i) =
-$\sum_{i, u_i=1} (1- 2 * x_i) = \wt(u) - 2 \wt(u \wedge x)$.  So if $\wt(u)$ is
-odd, this is always non-zero.
-
+\begin{displaymath}
+\begin{aligned}
+\wt(u \oplus x)  - \wt(x) & = \sum_{i=1}^n ((u_i \oplus x_i) - x_i) \\
+& = \sum_{i, u_i=1} (1- 2 * x_i) = \wt(u) - 2 \wt(u \wedge x).
+\end{aligned}
+\end{displaymath}
+So if $\wt(u)$ is odd, this is always non-zero.
+#+end_proof
 The equations to detect $(u,v)$ are similar (but not the same) as the
 original ones:
 
@@ -154,24 +170,34 @@ automorphism group of $Q^n$ has order $2^{2n} n!$
 
 * Some Proofs
 
-Lemma: We have $R_{u,v} = u + R_{0,u+v}$.
-Proof: By definition, $d(x,a) = \wt(x + a)$.  Thus, if $d(x,u) \ne
+#+begin_lemma
+We have $R_{u,v} = u + R_{0,u+v}$.
+#+end_lemma
+#+begin_proof
+By definition, $d(x,a) = \wt(x + a)$.  Thus, if $d(x,u) \ne
 d(x,v)$, we have $\wt(x+u) \ne \wt(x+v)$.  But $\wt(x+u) = d(x+u,0)$
 and $\wt(x+v) = d(x+u,u+v)$.
-
-Corollary: If $S \subseteq V(Q^n)$ is a resolving set, then so is $u +
+#+end_proof
+#+begin_corollary
+If $S \subseteq V(Q^n)$ is a resolving set, then so is $u +
 S$ for all $u \in V(Q^n)$.  Without loss of generality, we may assume
 that any resolving set contains 0.
-
-Lemma: If $e=(1, \dots, 1) \in V(Q^n)$, we have, for all $x \in
+#+end_corollary
+#+begin_lemma
+If $e=(1, \dots, 1) \in V(Q^n)$, we have, for all $x \in
 V(Q^n)$, $\wt(x+e) = n - \wt(x)$.
-
-Corollary: For all $x \in R_{u,v}$ we have $x+e \in R_{u,v}$.
-
-Definition: Denote by $\beta_n$ the metric dimension of $Q^n$.
-
-Lemma: For all $n$ we have $\beta_n \le \beta_{n+1}$.
-Proof:  Let $S$ be a minimum size resolving set for $Q^{n+1}$.  Let
+#+end_lemma
+#+begin_corollary
+For all $x \in R_{u,v}$ we have $x+e \in R_{u,v}$.
+#+end_corollary
+#+begin_definition
+Denote by $\beta_n$ the metric dimension of $Q^n$.
+#+end_definition
+#+begin_lemma
+For all \(n\) we have $\beta_n \le \beta_{n+1}$.
+#+end_lemma
+#+begin_proof
+Let $S$ be a minimum size resolving set for $Q^{n+1}$.  Let
 $\pi : V(Q^{n+1}) \rightarrow V(Q^n)$ denote the map which removes the
 last coordinate: $\pi((x_1, \dots, x_{n+1}) = (x_1, \dots, x_n)$, and
 $\psi: V(Q^n) \rightarrow V(Q^{n+1})$ the map that adds a 0 coordinate
@@ -181,13 +207,16 @@ last coordinate is 1, we may assume that the last coordinate of all
 the elements of $S$ are 0.  It is clear that if $x,y \in V(Q^n)$ that
 $d(x,y) = d(\psi(x), \psi(y))$.  However, by the assumption on $S$, we
 have, for all $u \in S$, $u = \psi(\pi(u))$.  Thus $\pi(S)$ is a
-resolving set for $Q^n$. QED.
-
-Lemma: For all $m,n$ we have $\beta_{m+n} \le \beta_m + \beta_n$.  In
+resolving set for $Q^n$.
+#+end_proof
+#+begin_lemma
+For all $m,n$ we have $\beta_{m+n} \le \beta_m + \beta_n$.  In
 particular, since $\beta_1 = 1$, we have $\beta_{n+1} \le \beta_n +
 1$.
+#+end_lemma
 
-Proof: Let $S$ be a resolving set for $Q^n$ and $T$ a resolving set
+#+begin_proof
+Let $S$ be a resolving set for $Q^n$ and $T$ a resolving set
 for $Q^m$.  Without loss of generality, we may assume that $0 \in S, 0
 \in T$.  Define two maps $\phi: V(Q^m) \rightarrow V(Q^{m+n})$, $\phi:
 V(Q^n) \rightarrow V(Q^{m+n})$ as follows $\phi((x_1, \dots, x_m)) =
@@ -197,8 +226,8 @@ is a resolving set for $Q^{n+m}$.  Define maps $\rho: V(Q^{n+m})
 \rightarrow V(Q^n)$ by $\rho((x_1, \dots, x_{m+n})) = (x_{m+1}, \dots,
 x_{m+n}))$ and $\sigma: V(Q^{n+m}) \rightarrow V(Q^m)$ by
 $\sigma((x_1, \dots, x_{m+n})) = (x_1, \dots, x_m)$.
-We show that for all $x\ne y \in
-V(Q^{m+n))$ there is an element of $U$ that resolves $(x,y)$. There
+We show that for all $x\ne y \in V(Q^{m+n})$
+there is an element of $U$ that resolves $(x,y)$. There
 are three cases.
 
 Note that for all $x,y$, $d(x,y) = d(\sigma(x), \sigma(y)) +
@@ -208,66 +237,79 @@ $\sigma \phi v = v, \rho \phi v = 0$.
 
 1) $\wt(\sigma(x)) = \wt(\sigma(y))$ and $\rho x \ne \rho y$.  Let $u
    \in S$ resolve  $(\rho(x),  \rho(y))$.  Then
-$$ \begin{aligned}
+\begin{displaymath}
+\begin{aligned}
    d(\psi(u), x) - d(\psi(u), y) &= d(\sigma \psi u, \sigma x) + d(\rho \psi u, \rho  x)
                                                      -(d(\sigma \psi u, \sigma y) + d(\rho \psi u, \rho x)) \\
                                                &= d(e, \sigma x)  + d(u, \rho x) - (d(e, \sigma y)  + d(u, \rho y)) \\
                                                & = d(u, \rho x) - d(u, \rho y)
-  \end{aligned}$$
+  \end{aligned}
+\end{displaymath}
 By hypothesis there is a $v \in T$ which resolves $(\rho x,  \rho y)$.
    
-2) $\wt(\rho(x)) = \wt(\rho(y))$ and $\sigma x \ne \sigma y$.  For $v \in T$
-$$ \begin{aligned}
+2) $\wt(\rho(x)) = \wt(\rho(y))$ and $\sigma x \ne \sigma y$.  For $v
+   \in T$
+\begin{displaymath}
+\begin{aligned}
    d(\phi(v), x) - d(\phi(v), y) &= d(\sigma \phi u, \sigma x) + d(\rho \phi u, \rho  x)
                                                      -(d(\sigma \phi u, \sigma y) + d(\rho \phi u, \rho x)) \\
                                                &= d(v, \sigma x)  + d(0, \rho x) - (d(v, \sigma y)  + d(0, \rho y)) \\
                                                & = d(v, \sigma x) - d(v, \sigma y)
-  \end{aligned}$$
+  \end{aligned}
+\end{displaymath}
 By hypothesis there is a $v \in T$ which resolves $(\sigma x,  \sigma y)$.
 3) In the remaining cases either $\wt \sigma x \ne \wt \sigma y$ or
    $\wt \rho x \ne \wt \rho y$.  I assert that either 0, or $\psi 0$
    resolve $(x,y)$.  Namely
-$$\begin{aligned}
+\begin{displaymath}
+\begin{aligned}
    d(0, x) - d(0, y) &= d(\sigma 0, \sigma x) + d(\rho 0, \rho  x)
                                                      -(d(\sigma 0, \sigma y) + d(\rho 0, \rho x)) \\
                                                &= d(0, \sigma x)  + d(0, \rho x) - (d(0, \sigma y)  + d(0, \rho y)) \\
                                                & = (\wt \sigma x - \wt \sigma y) + (\wt \rho x - \wt \rho y)
-  \end{aligned}$$
+  \end{aligned}
+\end{displaymath}
 and
-$$\begin{aligned}
+\begin{displaymath}
+\begin{aligned}
    d(\psi 0, x) - d(\psi 0, y) &= d(\sigma \psi 0, \sigma x) + d(\rho 0, \rho  x)
                                                      -(d(\sigma \psi 0, \sigma y) + d(\rho \psi 0, \rho x)) \\
                                                &= d(e, \sigma x)  + d(0, \rho x) - (d(e, \sigma y)  + d(0, \rho y)) \\
                                                &= -(\wt \sigma x - \wt \sigma y) + (\wt \rho x - \wt \rho y)
-   \end{aligned}$$
-
+\end{aligned}
+\end{displaymath}
+#end_proof
 * More efficient generation of hitting sets
 
 Since the resolving set $R_{u,v} = u + R_{0, u+v} = v + R_{0, u+v}$,
 we concentrate, first, on describing $R_{0,u}$.
 
-Lemma: The set $R_{0,u} = \{ x : 2\wt(x \wedge u) \ne \wt(u)\}$.  In
-particular, this means that if $\wt(u)$ is odd, then R_{0,u} =
-\mathbb{F}_2^n$.
-
-Proof: We first describe the complement of $R_{0,u}$.  By definition
+#+begin_lemma
+The set $R_{0,u} = \{ x : 2\wt(x \wedge u) \ne \wt(u)\}$.  In
+particular, this means that if $\wt(u)$ is odd, then
+$R_{0,u} = \mathbb{F}_2^n$.
+#+end_lemma
+#+begin_proof
+We first describe the complement of $R_{0,u}$.  By definition
 $x \not \in R_{0,u}$ if $\wt(x) = \wt(x + u)$.  However $x = x
 \wedge u + x \wedge \neg u$, where the two terms are disjoint.
 Similarly $x+u = \neg x \wedge u + x \wedge \neg u$.
 Thus $\wt(x) = \wt(x+u)$ if and only if $\wt(x \wedge u) = \wt(\neg x \wedge
 u)$. Here $\wedge$ is elementwise.  The latter is true if and only if
 $2 \wt(x \wedge u) = \wt(u)$.
-
+#+end_proof
 We know find the size of the orbits of $R_{0,u}$ under the action of
 the hyperoctahedral group.  To do that first, we find the order of the
 stabilizer.  It suffice to consider only those $u$ of the form $(1,
 \dots, 1, 0, \dots 0)$.  That is those in which $u_i = 1$ for $i=1,
 \dots, t$ for $t$ even, and $u_i = 0$ for $i=t+1, \dots, n$.
 
-Lemma: If $\wt(u), \wt(u')$ are even and $u \ne u'$ then $R_{0,u} \ne
+#+begin_lemma
+If $\wt(u), \wt(u')$ are even and $u \ne u'$ then $R_{0,u} \ne
 R_{0,u'}$.
-
-Proof: Since we may identify elements of $\mathbb{F}_2^n$ with subsets
+#+end_lemma
+#+begin_proof
+Since we may identify elements of $\mathbb{F}_2^n$ with subsets
 of $[n] := \{1, \dots, n\}$.  Without loss of generality we may assume
 that $\#U$ and $\#U'$ are both even, and that $\#U \ge \#U'$.
 Let $X_1$ be a subset of $U \cap U'$ of cardinality $\lfloor \#(U \cap
@@ -312,6 +354,7 @@ Add (a) + (1/2) (d): $\#U - \#U' = 2 z_3 - 2 z_2 +  y$
 
 Without loss of generality we may assume that $\#U \ge \#U'$.
 The kernel 
+#+end_proof
 * <2023-04-25 Tue> Finding resolvers
 
 Here's the problem:
@@ -403,7 +446,7 @@ soft $Y' \Leftrightarrow F(X)$
 The other SAT solver will have the initial "bare bones" problem with
 successive conflict clauses.
 
-Another aside: If $n$ is large it's probably better to use Hermite
+Another aside: If \(n\) is large it's probably better to use Hermite
 normal form of the putative $A$ matrix to find its kernel.  We then
 have a lattice which will contain all possible countexamples.  One
 could aggresively reduce this.
@@ -468,7 +511,7 @@ $\bigwedge_i x_i$.  Thus, $\neg F$ is equisatisfiable with $\bigvee_i
 that $F(S)$ is satisfiable (here $F(S)$ means the result of unit
 propation after assuming all the literals in $S$).  Can it happen that
 $\neg F(S)$ is satisfiable?  This would be equivalent to there exists
-and $i$ such that $\neg C_i(S)$ is satisfiable.
+and \(i\) such that $\neg C_i(S)$ is satisfiable.
 
 More details: suppose that $F(X,Y)$ is a formula, where the variables
 in $X$ and $Y$ are disjoint.  Suppose that $x_0$ is an assignment of the
@@ -494,33 +537,36 @@ by the $X$ variables.
 
 * <2023-05-02 Tue> The results
 
-Definition: If $G$ is an unidirected graph, let $d_G(x,y)$ denote the
+#+begin_definition
+If $G$ is an unidirected graph, let $d_G(x,y)$ denote the
 length of the shortest path in $G$ between $x$ and $y$.  A subset $S
 \subseteq V(G)$ is *resolving* if for every $x \ne y \in V(G)$ there
 is a $z \in S$ such that $d_G(x,z) \ne d_G(y,z)$.  The *metric
 dimension* of $G$ is the cardinality of the smallest resolving set.
-
-Definition: If $S$ is a set, the *Hamming Distance* between two
-$n$-tuples in $S^n$ is the number of positions in which they differ.
-
-Notation: If $n\ge 1$ is an integer, denote by $Q^n$ the *hypercube of
-dimension $n$*.  This is the undirected graph whose vertices are
-labeled with $n$-tuples of 0/1, with two vertices connected by an edge
+#+end_definition
+#+begin_definition
+If $S$ is a set, the *Hamming Distance* between two
+\(n\)-tuples in $S^n$ is the number of positions in which they differ.
+#+end_definition
+#+begin_notation
+If $n\ge 1$ is an integer, denote by $Q^n$ the *hypercube of
+dimension \(n\)*.  This is the undirected graph whose vertices are
+labeled with \(n\)-tuples of 0/1, with two vertices connected by an edge
 if the *Hamming distance* between their labels is 1.
-
+#+end_notation
 We are particularly interested in the metric dimension of the hypercube:
 $Q^n$.   Denote by $\oplus$ the operation on the set $\{0,1\}$ given
 by $0 \oplus 0 = 1 \oplus 1 = 0$, and $0 \oplus 1 = 1 \oplus 0 = 1$.
 We note that for $x,y \in \{0,1\}$ we have $(-1)^{x \oplus y} =
 (-1)^{x+y}$.  We also have $(-1)^x = 1 - 2x$.  We extend the $\oplus$
-operation to $n$ tuples coordinatewise.
-
-Notation: if $A$ is a 0/1 matrix, or $v$ a 0/1 vector, denote by $A'$
-(resp. $v'$) the matrix whose $(i,j)$ entry is $(-1)^{A_{i,j})$
-(resp. $i$-th entry is $(-1)^{v_i}$).
-Definition: An $m \times n$ matrix, $A$, with entries in $\{0,1\}$ is a
+operation to \(n\) tuples coordinatewise.
+#+begin_notation
+If $A$ is a 0/1 matrix, or $v$ a 0/1 vector, denote by $A'$
+(resp. $v'$) the matrix whose $(i,j)$ entry is $(-1)^{A_{i,j}}$
+(resp. \(i\) -th entry is $(-1)^{v_i}$).
+#+begin_definition: An $m \times n$ matrix, $A$, with entries in $\{0,1\}$ is a
 *sensing matrix* if $A'u' \ne A'v'$ for all $u \ne v \in \{0,1\}^n$.
-
+#+end_notation
 Note that if $u,v \in V(Q^n)$ then $\sum_i (-1)^{u_i} (-1)^{v_i} =
 \sum_i (1 - 2 (u_i \oplus v_i)) = n - 2 d_{Q^n} (u,v)$.
 
@@ -542,51 +588,62 @@ $x \ne 0$ whose coordinates are in $\{0,-1,1\}$, $e$ is the all 1's vector.
 Note: If the vectors, $x$ are restricted to those of the form
 $\phi(u) - \phi(v)$, then $e^T x = 0$.
 
-Lemma: A subset $S \subset V(Q^n)$ is a resolving set for $Q^n$ if and
+#+begin_lemma
+A subset $S \subset V(Q^n)$ is a resolving set for $Q^n$ if and
 only if the $m\times n$ matrix whose rows are the labels of $S$ is a
 sensing matrix.
-
-Lemma: Let $a \in \{0,1\}^n$, and $e = (1, \dots, 1)$.  A set $S
+#+end_lemma
+#+begin_lemma
+Let $a \in \{0,1\}^n$, and $e = (1, \dots, 1)$.  A set $S
 \subseteq V(Q^n)$ is resolving if and only if $a \oplus S$ is
 resolving, where $a + S := \{a + \ell(v) : v \in S\}$.  A set $S$ is
 resolving if and only if for every $x \in S$ the set $S' =
 S\backslash\{x\} \cup \{e + x\}$ is resolving.
-
-Definition: A sensing matrix is normalized if its first row is 0.
-
-Corollary: The metric dimension of $Q^n$ is $\ge m$ if and only if
+#+end_lemma
+#+begin_definition
+A sensing matrix is normalized if its first row is 0.
+#+end_definition
+#+begin_corollary
+The metric dimension of $Q^n$ is $\ge m$ if and only if
 there exists an $m \times n$ normalized sensing matrix.
-
-Definition: A 0/1 matrix, $A$ is *subsensing* if none of its rows is 0
+#+end_corollary
+#+begin_definition
+A 0/1 matrix, $A$ is *subsensing* if none of its rows is 0
 and $Ax \ne 0$ for all $x \in \{0,-1,1\}$ such that $e^T x = 0$.
-
-Corollary: The metric dimension of $Q^n$ is $\ge m$ if and only if
+#+end_definition
+#+begin_corollary
+The metric dimension of $Q^n$ is $\ge m$ if and only if
 there exists an $(m-1) \times n$ subsensing matrix.
-
-Proof: Let $A$ be a normalized sensing matrix.  
-
-Notation: If $A$ is a matrix and $S$ is a subset of its columns,
+#+end_corollary
+#+begin_proof
+Let $A$ be a normalized sensing matrix.  
+#+end_proof
+#+begin_notation
+If $A$ is a matrix and $S$ is a subset of its columns,
 denote by $A_S$ the sum of the columns indexed by $S$. 
-
-Proposition: An $m \times n$ 0/1 matrix $A$ is a subsensing matrix if
+#+end_notation
+#+begin_proposition
+An $m \times n$ 0/1 matrix $A$ is a subsensing matrix if
 and only if the the quantities $A_S$ for $S$ all subsets of column
 indices of cardinality $\lfloor n / 2 \rfloor$ are distinct.
-
-Corollary: An $m \times n$ subsensing matrix exists if and only if one
+#+end_proposition
+#+begin_corollary
+An $m \times n$ subsensing matrix exists if and only if one
 exists whose rows and columns are non zero and lexicographically
 strictly increasing with respect to row/column index.
-
-Proof: By the proposition, it is clear that permuting the rows and/or
+#+end_corollary
+#+begin_proof
+By the proposition, it is clear that permuting the rows and/or
 columns of a subsensing matrix does not affect the property of being
 subsensing.
-
+#+end_proof
 * <2023-05-03 Wed> Hamming Graphs
 Let $S$ be a finite set.  The *Hamming distance* on the set $S^n$ is
 defined by:
 $d((a_1, \dots, a_n), (b_1, \dots, b_n)) = \#\{1 \le i \le n: a_i \ne b_i\}$
 
-The $n$ th order Hamming graph over $S$ is a graph whose vertices are
-labeled by distinct $n$ tuples of elements of $S$, with an edge
+The \(n\) th order Hamming graph over $S$ is a graph whose vertices are
+labeled by distinct \(n\) tuples of elements of $S$, with an edge
 between two vertices when the Hamming distance between their labels is
 1.
 
@@ -594,45 +651,44 @@ We define a map from $\phi: S^n \rightarrow \{0,1\}^{S \times n}$, by
 a *one-hot* mapping, $s \mapsto v$ where $v_t = 0$ if $t\ne s$ and
 $v_s=1$.
 
-Lemma: If $s,t \in S^n$, then $2 H(s,t) = d_H(\phi(s), \phi(t))$.
-
+#+begin_lemma
+If $s,t \in S^n$, then $2 H(s,t) = d_H(\phi(s), \phi(t))$.
+#+end_lemma
 * <2023-05-05 Fri> Quantitative statements
 
-Definition: A *separating vector* of length $n$ is  a vector $x$  with
-coordinates in $\{0,-1,1\}$ and satisfying $\sum_{i=1}^n x_i = 0$, and
-with $\#\{ 1 \le i \le n : x_i = 1\} \ge 2$.
+#+begin_definition
+A *balanced vector* of length \(n\) is  a nonzero vector $x$  with
+coordinates in $\{0,-1,1\}$ and satisfying $\sum_{i=1}^n x_i = 0$.
+#+end_definition
+The number of balanced vectors of length $n$ is the coefficient of 1
+in the Laurent polynomial $(1 + x + x^{-1})^n$. This is also known as
+the *central trinomial coefficient*
+[cite:@enwiki:1254217359] whose generating function is
+\begin{displaymath}
+\frac{1}{\sqrt{(1+x)(1-3x)}}.
+\end{displaymath}
+This is discussed in [cite:@A002426].
+#+begin_lemma
+The number of separating vectors of length \(n\) is asymptotic to
+$\sqrt{\frac{3}{4\pi n}} 3^n$.
+#+end_lemma
+#+begin_quote
+From OEIS A002426:
+Central trinomial coefficients: largest coefficient of $(1 + x + x^2)^n$. 
 
-Lemma: The number of separating vectors of length $n$ is
-$(3^n - 1)/2 -2 \binom{n}{2}$.
-
-Proof: The number of separating vectors is
-$\sum_{j=2}^{\lfloor n/2 \rfloor} 2^j \binom{n}{n-2j,j,j}$.
-Namely, then number of separating vectors, $x$, with
-$\#\{1 \le i \le n : x_i = 1\}$ is $2^j \binom{n}{n-2j,j,j}$.
-However
-$\binom{n}{n-2j,j,j} = \binom{n}{2j} \binom{2j}{j}$.
-Let $F(X) = \sum_{j=0}^{\lfloor n/2 \rfloor} \binom{n}{2j} X^{j}$.
-and $G(X) = \sum_{j=0}^{n} \binom{2j}{j} (2X)^j$.
-Note that $2 F(X) = (1 + \sqrt{X})^n + (1 - \sqrt{X})^n$.
-
-#+begin_src text
-  From OEIS:
-
-  A002426		Central trinomial coefficients: largest coefficient of (1 + x + x^2)^n. 
-
- a(n) is asymptotic to d*3^n/sqrt(n) with d around 0.5.. - Benoit Cloitre, Nov 02 2002,
- d = sqrt(3/Pi)/2 = 0.4886025119... - Alec Mihailovs (alec(AT)mihailovs.com), Feb 24 2005
-#+end_src
-
+$a(n)$ is asymptotic to $d \cdot 3^n/\sqrt{n}$
+with $d$ around \(0.5...\) : Benoit Cloitre, Nov 02 2002,
+and \(d = \sqrt{3/\pi}/2 = 0.4886025119...\) : Alec Mihailovs (~alec@mihailovs.com~), Feb 24 2005.
+#+end_quote
 * <2023-05-12 Fri> Inclusion-Exclusion
-Suppose that we have a finite set $A$ of cardinality $n$, and a
+Suppose that we have a finite set $A$ of cardinality \(n\), and a
 collection of subsets $S_i \subseteq A$, each satisfying
 $|S_i|/|A| \ge \alpha > \frac 1 2$. We wish to give a lower bound to
 the a set $C$ of indices such that $\bigcap_{j \in C} S_i =
 \emptyset$.  Let $T_i = A \backslash S_i$.
 Let $\chi$ denote the characteristic function.
 $|S_i \cap S_j| = \sum_{x \in A} \chi_i(x) \chi_j(x) = \sum_x
-(\ch_i(x) - \alpha) \chi_j(x) + \alpha\sum_x \chi_j(x)$
+(\chi_i(x) - \alpha) \chi_j(x) + \alpha\sum_x \chi_j(x)$
 
 Lovasz Local Lemma?  The events are indexed by 0/1/-1 vectors summing
 to 0.  If we have a random 0/1 vector, the probability that dotting
@@ -745,12 +801,14 @@ p$U$ is a finite set, and $S_1, \dots, S_m \subseteq$.  If $T \subseteq
 \rightarrow A$, where $A$ is an additive abelian group, and $S
 \subseteq U$, denote by $x(S) = \sum_{a \in S} x(a)$.
 
+#+begin_proposition
 Proposition: Let $U$ be a finite set, $S_1, \dots, S_m \subseteq U$,
 and $x:U \rightarrow A$, where $A$ is an additive abelian group.  Then
 $x(U) = 0$ and $x(S_j) = 0$ for all $1 \le j \le m$ if and only if
 $x(B_m[U,T]) = 0$ for all $T \subseteq [m]$.
-
-Proof: The "only if" part is straightforward, since, for all $j$ we
+#+end_proposition
+#+begin_proof
+The "only if" part is straightforward, since, for all $j$ we
 have $S_j = \bigcup_{T \subset [m], j \in T} B_m[U,T]$, where the
 union is disjoint.  For the "if" part we prove the statement by
 induction on $m$.  If $m=1$, note that $x(U) = x(U \backslash S_1) +
@@ -759,7 +817,7 @@ x(S_1) = x(B_1[U,\emptyset]) + x(B_1[U,\{1\}])$. If $m > 1$, if $T
 We have $x(B_{m-1}[U,T]) = x(B_{m-1}[U,T] \cap S_m) + x(B_{m-1}[U,T]
 \backslash S_m)$. [This is what is wrong: it is not necessarily true
 that the first term on the right hand side is 0].
-
+#+end_proof
 Perhaps we can apply it to the case where the universe is $S_m$ and
 the subsets are $S_m \cap S_1, \dots, S_m \cap S_{m-1}$.
 
@@ -807,8 +865,9 @@ calculation, but now there are approximately $2^r$ cases.  Actually
 more.
 
 On a related note, one can calculate the lower bounds given by
-Pippenger as a sum of binomial coefficients, to, perhaps, get a
-stronger lower bound than the asymptotic analysis provides.
+Pippenger [cite:@pippenger1977information] as a sum of binomial
+coefficients, to, perhaps, get a stronger lower bound than the
+asymptotic analysis provides.
 
 Another question: empirically, I've noticed that only a fairly small
 set of balanced vectors is sufficient to prove that there is no $m
@@ -819,8 +878,8 @@ balanced vectors, so that a sufficient set corresponds to a vertex
 cover of that graph?  In particular, is there a relation $R(v,w)$ so
 that every set that resolves $v$ will also resolve $w$?  This would
 mean that if $Av \ne 0$ then $Aw \ne 0$.  Taking the contrapositive
-(which is easier to work with), if $Aw \eq 0$ then $A v \eq 0$?  In
-linear algebra terms, we have $\dim \ker([v]) + \dim \ker([w])$.
+(which is easier to work with), if $Aw = 0$ then $A v = 0$?  In
+linear algebra terms, we have $\dim \Ker([v]) + \dim \Ker([w])$.
 Actually, linear algebra is not really the correct thing.  In terms of
 sets we have the following: $v$ and $w$ correspond to pair of sets,
 $v_1, v_2$ and $w_1, w_2$.  Satisfying the following:
@@ -830,15 +889,16 @@ $v_1, v_2$ and $w_1, w_2$.  Satisfying the following:
 3) $v_1, v_2 \ne \emptyset$.
 
 Given such a $v$ is there a $w$ satisfying the following:
-
-$\forall s$ such that $\#(v_1 \cap s) = \#(v_2 \cap s)$
-is it true that $\#(w_1 \cap s) = \#(w_2 \cap s)$.
+\(\forall s$ such that $\#(v_1 \cap s) = \#(v_2 \cap s)$
+is it true that $\#(w_1 \cap s) = \#(w_2 \cap s)\)?
 
 We can try to calculate this.  Fix $v$ and then pose the calculation:
-
-$\exists (w_1, w_2), \phi(w_1, w_2) \& \psi(w_1, w_2, v_1, v_2)
-\forall s $\#(v_1\cap s) = \#(v_2 \cap s) \& \#(w_1 \cap s) = \#(w_2
-\cap s) $, where $\phi(w_1, w_2)$ encodes being balanced, and $\psi$
+\begin{displaymath}
+\exists (w_1, w_2), \phi(w_1, w_2) \& \psi(w_1, w_2, v_1, v_2)
+\forall s \#(v_1\cap s) = \#(v_2 \cap s) \& \#(w_1 \cap s) = \#(w_2
+\cap s),
+\end{displaymath}
+where $\phi(w_1, w_2)$ encodes being balanced, and $\psi$
 encodes being $w$ different from $v$.
 
 * <2023-07-21 Fri> Points for the talk
@@ -852,26 +912,26 @@ FInd an $m \times n$ 0/1 matrix so that the the sums of all subsets of
 columns of length $\lfloor n/2 \rfloor$ are distinct. We'll discuss
 how that comes about.
 + In the case of metric dimension, we've shown that to test if the
-  metric dimension of the $n$ dimensional hypercube is $\ge m$.  It
+  metric dimension of the \(n\) dimensional hypercube is $\ge m$.  It
   suffices to produce an $(m-1) \times n$ 0/1 matrix, $A$, all of whose
   rows are nonzero, such that $Ax \ne 0$ for all nonzero $x$ whose coordinates
   are 0/1/-1 and $e^T x$, where $e$ denotes the all 1's vector.  The
   *sensing matrix* in this case will be the matrix, $A'$, obtained by
   adjoining a row of 1's to the top of $A$.  In this case, every
-  $n$ dimensional 0/1 vector, $y$, is uniquely determined by $A' y$.
+  \(n\) dimensional 0/1 vector, $y$, is uniquely determined by $A' y$.
 + There is a closely related concept of a *separable matrix* which has
   applications in *group testing* and *cryptographic fingerprinting*.
   It's a 0/1 matrix with the property that the logical OR of all
   subsets of columns of length $\lfloor n/2 \rfloor$ are distinct.
 + The problem may be posed as a 2-level quantified formula:
-$\forall a , f(a) \exists x, (\neg g(x) \vee \neg phi(a,x))$,
+$\forall a , f(a) \exists x, (\neg g(x) \vee \neg \phi(a,x))$,
 where $f(a)$ is a predicate restricting $a$ values (this will be used
 in symmetry-breaking), $g(x)$ is a predicate on the $x$ values
 defining the allowed values, and $\phi(a,x)$ is a predicate which says
 when the $a$ values, corresponding to a putative matrix, do not
 resolve the $x$ values.  We solve this sort of problem by having two
 cooperating SAT solvers.  One, which we call the *resolver* contains
-$f(a)\wege \neg phi(a,x_1) \wedge \dots \wedge, \neg \phi(x,a_t)$, for some values
+$f(a)\wedge \neg phi(a,x_1) \wedge \dots \wedge, \neg \phi(x,a_t)$, for some values
 $x_1, \dots, x_t$.  At the beginning, $t=0$.  The resolver finds one,
 or more solutions.  If there are none, the problem is UNSAT,  If it
 finds solutions, it the passes them to the *conflictor* which has
@@ -987,10 +1047,10 @@ Question: Can we use group representations to systematically generated
 symmetry breaking constraints?  More specifically, we have the
 generalized Fourier expansion, where $g \in G$, and $G$ is the group
 in question, and $f$ is a complex valued function (or real valued):
-$f(g) = \sum_{\rho}  \langle \pho(g), A_\rho \rangle$,
+$f(g) = \sum_{\rho}  \langle \rho(g), A_\rho \rangle$,
 where $A_\rho = \frac{1}{|G|} \sum_{g \in G} \rho(g) f(g)$,
 and the $\rho$ that occur are representatives of each class of
-irreducible repersentations.  Here $\langle A, B \rangle := \Tr(A^*
+irreducible representations.  Here $\langle A, B \rangle := \Tr(A^*
 B)$, and $\rho$ is unitary.  We can truncate the above series to get a
 good approximation to $f(g)$.  For symmetry breaking which functions
 $f$ should we use?
@@ -1022,10 +1082,10 @@ there is a $z \in S$ such that $d(x,z) \ne d(y,z)$.
 The *metric dimension* of $S$ is the cardinality of the smallest
 resolving set in $S$.
 
-In Garey and Johnson ("Computers and Intractability") they mention
+In Garey and Johnson [cite:@garey2002computers] they mention
 that finding the metric dimension of a general graph is NP-complete.
 
-** Metric dimension of $n$-dimensional Euclidean space
+** Metric dimension of \(n\)-dimensional Euclidean space
 The metric dimension of $\RR^n$ under the Euclidean norm is $n+1$.  We
 can see this as follows: Let $H$ be an affine subspace of dimension
 $n-1$.  Then $H$ is of the form $\{ x \in \RR^n : \langle a,  x \rangle = b\}$, for
@@ -1035,7 +1095,7 @@ $H$, and thus cannot be resolved by them.  Namely, if $x \in H$, then
 \begin{displaymath}
 \begin{aligned}  ||x - (b+c) a||^2 & = ||x||^2 - 2(b+c) b + (b+c)^2 ||a||^2 
 \\ & = ||x||^2 +b^2 + 2bc + c^2 - 2bc - 2b^2
-\\ & = ||x||^2 - b^2 - c^2 $. 
+\\ & = ||x||^2 - b^2 - c^2 . 
 \end{aligned}
 \end{displaymath}
 Thus $(b+c)a$
@@ -1048,10 +1108,10 @@ an $a$ exists, since there are only $n-1$ such conditions.  Then we
 may take $H = \{x \in \RR^n : a^T x = - \langle x^{(1)}, a \rangle \}$.
 
 On the other hand, the $n+1$ points $e^{(i)}$, and $0$, where
-$e^{(i)}$ is the unit vector with 1 in the $i$-th coordinate and 0
+$e^{(i)}$ is the unit vector with 1 in the \(i\) -th coordinate and 0
 elsewhere, do constitute a metric basis.  Namely $||x - e^{(i)}||^2
 = ||x||^2 + 1 - 2 x_i$.  Thus, knowing $||x||^2 = ||x-0||^2$ and
-$||x-e^{(i)}||^2$ detemines $x_i$ for all $i$, and thus determines
+$||x-e^{(i)}||^2$ detemines $x_i$ for all \(i\), and thus determines
 $x$.
 * Minimality check
 In the above, we have used the fact that if $S$ is a resolving set for
@@ -1068,9 +1128,22 @@ Let $A$ denotes any 0/1 $k \times n$ matrix.  if $0 \ne x \in
 \{0,1,-1\}^n, e^T x = 0$ and $Ax = 0$.  Note that $x$ as the
 difference of two 0/1 vectors $u,v$ will then satisfy $w(u) = w(v)$.
 
+* Generalities about Metric Dimension
+There are a number of papers about computing the metric dimension of a
+graph. Many of them use linear or integer programming:
+[cite:@klavvzar2021some], [cite:@yero2017computing],
+[cite:@kratica2009computing], [cite:@mladenovic2012variable].
+
+For the hypercube, it is "Problem B" in [cite:@erdos1963two].
 * Bounds
-From a paper by Dankelmann, Morgan and Rivett-Carnac
-[cite:@dankelmann2023metric]. If an $n$ vertex
+For the problem of the hypercube, in [cite:@erdos1963two]  a lower
+bound is given which is asymptotically optimal. This is rederived in
+[cite:@pippenger1977information] using properties of entropy. For
+general bipartite graphs (of which the hypercube is an instance),
+lower bounds are given in a paper by Dankelmann, Morgan and Rivett-Carnac
+[cite:@dankelmann2023metric].
+
+If an \(n\) vertex
 graph is bipartite of diameter $D$, and metric dimension $k$ then
 \begin{displaymath}
 n \le
