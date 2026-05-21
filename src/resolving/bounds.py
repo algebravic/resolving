@@ -28,7 +28,7 @@ def binomial_distr(weight: int) -> np.ndarray:
 
 def entr(arg: float) -> float:
 
-    return arg * log(arg) if arg > 0 else 0.0
+    return - arg * log(arg) if arg > 0 else 0.0
 
 def binary_entropy(distr: np.ndarray) -> float:
     """
@@ -42,7 +42,7 @@ def binary_entropy(distr: np.ndarray) -> float:
     
     denom = distr.sum()
     num = distr.shape[0]
-    return - sum(map(entr, distr)) / (denom * log(2.0)) + log(denom) / log(2.0)
+    return sum(map(entr, distr)) / (denom * log(2.0)) + log(denom) / log(2.0)
 
 def binomial_entropy(weight) -> float:
     """
