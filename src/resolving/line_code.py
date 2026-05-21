@@ -22,7 +22,7 @@ matrix is feasible. Thus we may assume that the rows are
 in strictly increasing lexicographic order, and the columns
 are in lexicographic order (not necessarily strict).
 """
-from typing import Iterable, Callable, List, Tuple
+from typing import Iterable, Callable, List, Tuple, Dict
 from itertools import chain, product, combinations
 from random import randint
 from math import log, ceil
@@ -33,7 +33,7 @@ from pysmt.shortcuts import is_sat, get_model, get_unsat_core
 from pysmt.typing import INT, BVType
 from pysmt.fnode import FNode
 from pysmt.typing import _BVType
-from .smt import FUN, recursive_popcount, naive_popcount, transpose_matrix
+from .smt.smt_defs import FUN, recursive_popcount, naive_popcount, transpose_matrix
 import cvxpy as cp
 
 def line_code_sub(num: int, mnum: int, dval: int,
@@ -50,7 +50,7 @@ def line_code_sub(num: int, mnum: int, dval: int,
     avars = [Symbol(f'a_{num}_{ind}', BVType(num))
              for ind in range(mnum - 1)]
     yield from map(lambda _: pop_fun(_) >= dval, avars)
-    yield_from map(lambda _: pop_fun(_) <= num - dval, avars)
+    yield from map(lambda _: pop_fun(_) <= num - dval, avars)
     for ind, jind in combinations(range(mnum - 1), 2):
         wgt = pop_fun(BVXor(avars[ind], avars[jind]))
         yield wgt >= dval
@@ -66,7 +66,7 @@ def line_code_formula(num: int, mnum: int, dval: int,
                       pop_fun: FUN = recursive_popcount,
                       row_symm: bool = True,
                       col_symm: bool = True) -> Tuple[FNode,
-                          Dict[str, FNode]]
+                          Dict[str, FNode]]:
     """
     A formula for the line code problem
     """

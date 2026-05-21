@@ -6,8 +6,8 @@ import numpy as np
 from pysat.formula import CNF, IDPool
 from pysat.solvers import Solver
 from pysat.card import EncType, CardEnc
-from .symmbreak import snake_lex, double_lex
-from .util import makemat
+from .sat.symmbreak import snake_lex, double_lex
+from .sat.util import makemat
 
 def _pool_clone(pool:IDPool) -> IDPool:
     """

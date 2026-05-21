@@ -58,11 +58,11 @@ from pysat.solvers import Solver
 from pysat.card import CardEnc, EncType
 from pysat.examples.optux import OptUx
 from pysat.examples.musx import MUSX
-from .lex import lex_compare, Comparator, standard_lex
-from .logic import MODEL
-from .logic import set_equal, set_and
+from .sat.lex import lex_compare, Comparator, standard_lex
+from .sat.logic import MODEL
+from .sat.logic import set_equal, set_and
 from .bdd import not_equal
-from .symmbreak import double_lex, snake_lex
+from .sat.symmbreak import double_lex, snake_lex
 
 
 CLAUSE = List[int]

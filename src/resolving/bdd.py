@@ -8,7 +8,7 @@ will be known, since we know the cardinality.
 """
 from typing import List, Iterable
 from pysat.formula import IDPool
-from .logic import CLAUSE
+from .sat.logic import CLAUSE
 
 def not_equal_bdd(num: int, cardinality: int) -> List[List[int]]:
     """

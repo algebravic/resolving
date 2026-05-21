@@ -24,9 +24,9 @@ def lp_model(num: int, mdim: int, conflicts: List[Tuple[int,...]]):
     xvars = cp.Variable((mdim, dim), name = 'x')
     xxvars = cp.Variable((mdim * dim, mdim * dim), name = 'xx')
     objective = cp.sum(xvars)
-    limitsx = chain(*([xvars[_] >==0, xvars[_] <=1]
+    limitsx = chain(*([xvars[_] >=0, xvars[_] <=1]
         for _ in product(range(mdim), range(dim))))
-    limitsxx = chain(*([xxvars[_] >==0, xxvars[_] <=1]
+    limitsxx = chain(*([xxvars[_] >=0, xxvars[_] <=1]
         for _ in product(range(mdim * dim), range(mdim * dim))))
     symxx = (xxvars[_] == xxvars[_[1],_[0]]
         for _ in combinations(range(mdim * dim), 2))

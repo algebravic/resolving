@@ -7,9 +7,9 @@ from itertools import product
 import numpy as np
 from pysat.formula import CNF, IDPool
 from pysat.card import CardEnc, EncType
-from .logic import set_and
+from .sat.logic import set_and
 from .qbf import QBF
-from .symmbreak import double_lex, snake_lex, un_double_lex
+from .sat.symmbreak import double_lex, snake_lex, un_double_lex
 
 CLAUSE = List[int]
 FORMULA = Iterable[CLAUSE]
