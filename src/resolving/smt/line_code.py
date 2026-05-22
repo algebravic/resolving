@@ -33,7 +33,7 @@ from pysmt.shortcuts import is_sat, get_model, get_unsat_core
 from pysmt.typing import INT, BVType
 from pysmt.fnode import FNode
 from pysmt.typing import _BVType
-from .smt.smt_defs import FUN, recursive_popcount, naive_popcount, transpose_matrix
+from .smt_defs import FUN, recursive_popcount, naive_popcount, transpose_matrix
 import cvxpy as cp
 
 def line_code_sub(num: int, mnum: int, dval: int,
