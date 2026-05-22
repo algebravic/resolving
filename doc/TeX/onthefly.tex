@@ -1,0 +1,22 @@
+\section{Lazy Constraints}
+\label{sec:lazy}
+\begin{frame}{Implicit Hitting set}
+  \begin{itemize}
+  \item Hitting set formulation: $\binom{n}{2}$ sets, each with as
+    many as $n$ elements.
+  \item Solution: Generate as needed.
+  \item Use structure to reduce size.
+  \item Formulation: $\forall a, f(a), \exists x, g(x) \Rightarrow
+    \phi(a,x)$.
+  \item $a$: variables describing hitting set, $f(a)$ condition on $a$.
+  \item $x$: variables describing subsets, $g(x)$ condition on $x$.
+  \item $\phi(a,x)$: predicate stating that $a$ hits $x$.
+  \end{itemize}
+\end{frame}
+\begin{frame}{Ping Pong}
+  \begin{center}
+    \scalebox{0.5}{%
+      \input{pingpong} }
+  \end{center}
+\end{frame}
+

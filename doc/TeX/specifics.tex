@@ -1,0 +1,61 @@
+
+\section{Calculations}
+\label{sec:calc}
+
+\begin{frame}{Calculations}
+  \begin{itemize}
+  \item Performed on Apple M2.
+  \item Used {\tt Python} 3.11 with {\tt python-sat} package and
+    solver {\tt cadical}
+  \item Heavily dependent on good cardinality encoding.
+  \item Conflictor generates up to 10 counterexamples to give to
+    Resolver.
+  \item Confirms that $\beta_{10} = 7$ in under 5 seconds.
+  \item Confirms that $\beta_{11} = 8$ in 33689 seconds.
+  \item Max Sat with 3 levels symmetry breaking: 24317 seconds.
+  \item Along with $\beta_{13} \le 8$ implies $\beta_{13} = 8$.
+  \item Only needs to generate a small fraction of all $x$ vectors to
+    show UNSAT.
+  \end{itemize}
+\end{frame}
+\begin{frame}{Speed ups?}
+  \begin{itemize}
+  \item Heuristic: $\exists$ a balanced detecting matrix
+    $\Leftrightarrow$ $\exists$
+    one with all rows having weight $\lfloor n/2 \rfloor$.
+  \item Reason: such rows detect the most balanced $x$.
+  \item Proof?
+  \item Using this restriction: can show $7 \times 11$ is UNSAT in 717
+    seconds.
+  \end{itemize}
+\end{frame}
+\begin{frame}{Proofs}
+  \begin{itemize}
+  \item Why trust a long calculation that says UNSAT?
+  \item Verify the model.
+  \item Many SAT solvers can emit a {\tt DRUP} proof of UNSAT.
+  \item While usually long, it can be easily checked by small program.
+  \item Some SMT solvers are capable of producing a \emph{Skolem
+      function}: an explicit function $f(A)$ from matrices to vectors
+    such that $A f(A) = 0$ for all $A$.
+  \item So far have not been able to produce one for $6 \times 10$
+    problem.
+  \end{itemize}
+\end{frame}
+\begin{frame}{SMT solvers}
+  \begin{itemize}
+  \item Some SMT solvers can solve $\exists, \forall$ problems: {\tt
+      Z3}, {\tt boolector}, {\tt bitwuzla}, {\tt YicesQS}.
+  \item Encoded problem in SMT.
+  \item {\tt boolector}, {\tt bitwuzla} and {\tt YicesQS} can all show
+    the $6 \times 10$ problem is UNSAT in roughly 10 seconds: about
+    twice as slow as custom program.
+  \end{itemize}
+\end{frame}
+\begin{frame}{Improvements?}
+  \begin{itemize}
+  \item More symmetry breaking: Use group representations?
+  \item Better heuristics for generating useful counterexamples.
+  \item SMT: better encoding for Hamming weight.
+  \end{itemize}
+\end{frame}
