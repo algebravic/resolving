@@ -1,4 +1,4 @@
-"""
+r"""
 Use a ping-pong solver for the metric dimension problem.
 We will have two instances of SAT:
 
@@ -80,6 +80,7 @@ def ping_pong(dim: int, mdim: int,
               trace: int = 0,
               mverbose: int = 0,
               getcore: int = 0,
+              write_conflicts: str | None = None,
               get_conflicts: bool = False,
               solver_kwds: Dict | None = None) -> np.ndarray | None | List[CONFLICT]:
     """
@@ -166,6 +167,9 @@ def ping_pong(dim: int, mdim: int,
             verbose = verbose,
             times = times,
             rtimes = rtimes)
+    if write_conflicts is not None:
+        with open(write_conflicts, 'w') as wconf:
+            wconf.write('\n'.join(map(str, resolver._conflicts.keys())))
     if getcore:
         print(f"Cores statistics = {resolver.core_stats()}")
     if verbose > 0:

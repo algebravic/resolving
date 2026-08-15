@@ -12,7 +12,7 @@ from pysat.examples.rc2 import RC2, RC2Stratified
 from pysat.examples.hitman import Hitman
 from .metric import MetricDimension
 from .generate import symmetry_breakers
-from .timeit import Timer
+from ..timeit import Timer
 
 VECTOR = Tuple[int, ...]
 CLAUSE = List[int]
