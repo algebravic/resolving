@@ -12,10 +12,10 @@ exponential dependence on the parameter n.
 Finally, hypercube_model and inverse_hypercube_model
 construct a QDIMACS model as a QBF problem.
 """
-from .resolve import resolve_hypercube_maxsat, resolve_hypercube_hitman
-from .resolve import resolve_hypercube_sat
+from .misc.resolve import resolve_hypercube_maxsat, resolve_hypercube_hitman
+from .misc.resolve import resolve_hypercube_sat
 from .pingpong import ping_pong
-from .hypercube_qbf import hypercube_model, inverse_hypercube_model
+from .qbf.hypercube_qbf import hypercube_model, inverse_hypercube_model
 __all__ = ['resolve_hypercube_maxsat',
            'resolve_hypercube_sat',
            'resolve_hypercube_hitman',
