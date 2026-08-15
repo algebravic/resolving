@@ -12,13 +12,14 @@ from pysat.examples.optux import OptUx
 from pysat.examples.musx import MUSX
 from .sat.lex import lex_compare, Comparator, standard_lex
 from .sat.logic import MODEL, CLAUSE, FORMULA
-from .sat.logic import set_equal, set_and, set_xor
+from .sat.logic import set_equal, set_and, set_xor, card_equal, card_le
 from .bdd import not_equal
 from .sat.symmbreak import double_lex, snake_lex
 from .sat.util import get_prefix, extract_mat, getvec, makevec, makemat, makecomp
 from .maxtest import min_conflict
 from .schreier_sims import schreier_sims_cuts
 from .sat.gensymm import encode_implications
+from .bounds import multiset_row_sums
 from symmetry import row_snake_order, column_snake_order, row_wise
 from symmetry import reduce_impl
 from symmetry import lex_double
@@ -63,6 +64,7 @@ class Resolve:
                  breaker: str | Tuple[str, int, int] = 'double_lex',
                  xor_break: bool = False, # use xor symm break
                  maxweight: bool = False, # Only use maximum weights
+                 possible: bool = False, # restrict to possible row weights
                  firstweight: bool = False,
                  getcore: int = 0,
                  solver_kwds: dict | None = None):
@@ -88,6 +90,8 @@ class Resolve:
             self._weight_restriction()
         if alt_model:
             self._model1()
+        elif possible:
+            self._possible()
         else:
             self._model2(breaker)
         self._solve_name = solver
@@ -115,7 +119,7 @@ class Resolve:
         Append a clause to both the solver and to self._cnf
         """
         self._cnf.extend(form)
-        self._solve.append_formula(form)
+        self._solver.append_formula(form)
 
     @property
     def census(self):
@@ -295,14 +299,15 @@ class Resolve:
         Note: this must the last column because of lex
         ordering.
         """
-        self._cnf.extend([[self._avar[_, 0]] for _ in range(self._mdim)])
-        # all other columns cannot be all 1's
-        for ind in range(1, self._dim):
-            self._cnf.append([-self._avar[_, ind]
-                              for _ in range(1, self._mdim)])
+        # Make the first column all 0's
+        self._cnf.extend([[- self._avar[_, 0]] for _ in range(self._mdim)])
+        # # all other columns cannot be all 1's
+        # for ind in range(1, self._dim):
+        #     self._cnf.append([-self._avar[_, ind]
+        #                       for _ in range(1, self._mdim)])
         
-        for ind in range(self._mdim):
-            self._cnf.append([self._avar[ind, _] for _ in range(self._dim)])
+        # for ind in range(self._mdim):
+        #     self._cnf.append([self._avar[ind, _] for _ in range(self._dim)])
         
     def _weight_restriction(self):
         """
@@ -360,6 +365,82 @@ class Resolve:
                                           [self._avar[ind+1, jind]
                                            for jind in range(self._dim)]))
 
+    def _model3(self):
+        """
+        First model with symmetry breaking
+        """
+        # Non zero first row
+        # Everything is increasing so others are nonzero
+        # Create the column constraints
+        # Row -1 everything is equal
+        # E[k,i,j] = (A[:k+1,i] == A[:k+1,j]).all()
+        rvar = {_: self._pool.id(('R',) + _)
+                for _ in product(range(self._mdim),
+                                 range(self._dim - 1))}
+        # The first rows is always true
+        self._cnf.extend([[rvar[0,_]] for _ in range(self._dim - 1)])
+        # Everything in a region shift to the right
+        for ind, jind in product(range(self._mdim),
+                                 range(self._dim - 1)):
+            self._cnf.extend([[-rvar[ind, jind], -self._avar[ind, jind],
+                               self._avar[ind, jind + 1]]])
+        for ind, jind in product(range(self._mdim - 1),
+                                 range(self._dim - 1)):
+            self._cnf.extend([
+
+                [-rvar[ind + 1, jind], rvar[ind, jind]],
+                [-rvar[ind + 1, jind], - self._avar[ind, jind],
+                 self._avar[ind, jind + 1]],
+                [-rvar[ind + 1, jind], self._avar[ind, jind],
+                 - self._avar[ind, jind + 1]],
+                [rvar[ind + 1, jind], - rvar[ind, jind],
+                 self._avar[ind, jind],
+                 self._avar[ind, jind + 1]],
+                [rvar[ind + 1, jind], - rvar[ind, jind],
+                 - self._avar[ind, jind],
+                 - self._avar[ind, jind + 1]]])
+        # Lex increasing rows
+        # Calculate row equality
+        for ind in range(self._mdim - 1):
+            # enforce non-decreasing cardinalities
+            self._cnf.extend(card_le(self._pool,
+                                    [self._avar[ind, jind] for jind in range(self._dim)],
+                                    [self._avar[ind + 1, jind] for jind in range(self._dim)]))
+            # literal equivalent to equal cardinalities of successive rows
+            self._cnf.extend(card_equal(self._pool, self._pool.id(('RE', ind, 0)), self._pool.id(('RE', ind, 1)),
+                                    [self._avar[ind, jind] for jind in range(self._dim)],
+                                    [self._avar[ind + 1, jind] for jind in range(self._dim)]))
+            # If two rows have equal weight make them lex increasing                           
+            self._cnf.extend(([self._pool.id(('RE', ind, 0)), self._pool.id(('RE', ind, 1))] + _
+                               for _ in standard_lex(self._pool,
+                                                     [self._avar[ind, jind]
+                                                      for jind in range(self._dim)],
+                                                     [self._avar[ind+1, jind]
+                                                      for jind in range(self._dim)])))
+
+    def _possible(self):
+        # Assume that _model3 has been called
+        self._model3()
+        row_sums = list(multiset_row_sums(self._dim, self._mdim, halve = not self._firstweight))
+        print(f"Restricting to row sums: {row_sums}")
+        # Exactly one of them will be true
+        xvars = {_: self._pool.id(('X', _)) for _ in row_sums}
+        self._cnf.extend(CardEnc.equals(lits = xvars.values(),
+                                        bound = 1,
+                                        encoding = self._encoding,
+                                        vpool = self._pool))
+        for rows in row_sums:
+            xvar = xvars[rows]
+            for jind, rcard in enumerate(rows):
+                
+                self._cnf.extend([[- xvar] + _
+                                  for _ in CardEnc.equals(
+                                      lits = [self._avar[jind, kind]
+                                              for kind in range(self._dim)],
+                                      bound = rcard,
+                                      encoding = self._encoding,
+                                      vpool = self._pool)])
+                                  
     def _symmetry_break(self, breaker: str | Tuple[str, int, int] = 'double_lex'):
         """
           Use the indicated symmetry break
@@ -393,6 +474,7 @@ class Resolve:
         self._cnf.extend(encode_implications(self._pool,
                                              self._avar,
                                              impl))
+
     def _nonzero_rows(self):
 
         return [[self._avar[ind, jind] for jind in range(self._dim)]
