@@ -14,9 +14,10 @@ We have I(M; m) >= H(M) = n. But I(M;m) <= H(m) <= sum_i H(M_i).
 
 Note that without loss of generality, we may assume that d_i <= floor(n/2).
 """
-from typing import List
+from typing import List, Iterable, Tuple
 from functools import cache
-from math import ceil, log
+from itertools import chain
+from math import ceil, log, floor
 import numpy as np
 from sympy import binomial
 
@@ -67,15 +68,83 @@ def subset_distr(num: int, dval: int, sval: int) -> List[float]:
     return np.array([binomial(dval, _) * binomial(num - dval, sval - _)
             for _ in range(min(dval, sval) + 1)], dtype=np.float64)
 
-def entropy_list(dim: int) -> List[float]:
+def entropy_list(dim: int, halve: bool =  True) -> np.ndarray:
 
-    return [log(binomial(dim, sval)) / max([binary_entropy(subset_distr(dim, dval, sval))
-            for dval in range(1, (dim // 2) + 1)]) for sval in range(1, (dim // 2) + 1)]
+    dbound = dim // 2 if halve else dim - 1
+    lhs = np.array([log(binomial(dim, sval)) / log(2) for sval in range(1, (dim // 2) + 1)])
+    rhs = np.array([[binary_entropy(subset_distr(dim, dval, sval))
+                     for sval in range(1, (dim // 2) + 1)]
+                    for dval in range(1, dbound + 1)])
+    return rhs / lhs.reshape((1, -1))
 
 def improved_bound(dim: int) -> float:
+    # The matrix is indexed by (s,d) we must minimize over d
+    return 1 + ceil(1 / entropy_list(dim).max(axis=0).min())
+    # metric dimension = 1 + # rows in minimal balanced detecting
 
-    entropies = entropy_list(dim)
-    return ceil(max(entropies) / log(2))
+def violated_sub(arr: np.ndarray, rhs: np.ndarray, mval: int):
+    """
+    Given an d x s array A, with all positive entries, and a target sum v,
+    find all nonnegative integer vectors, u, so that
+    u^T A >= rhs, and sum(u) = v.
+
+    A is d x s, rhs is an s-vector
+
+    If the last rows has multiplicity j, then remaining rows
+    must have multiplicity (m-j). The best that they can do
+    is to have (m-j) * the max in each column be the remaining
+    contribution (it could be worse)
+    """
+    # Look for the contributions of the max
+    # Assume the rows are monotone non-decreasing
+    dval, sval = arr.shape
+    if dval == 0 or mval < 0:
+        return
+    if dval == 1:
+        # we must have j * row[i] >= rhs[i], or j >= rhs[i]/row[i]
+        yield from ((_,) for _ in range(max(0, ceil((rhs / arr[0]).max())), mval + 1))
+        return
+    # There probably is a better way of pruning
+    # For each row can find the lower bound to what's necessary. If the sum of the lower bounds is > m
+    # Then prune
+
+    # Find all possible multiplicites for d
+    # if multiplicity if j then we must have (m-j) * A[:-1].max(axis=0) + j * A[-1] > rhs
+    # Or rhs - m * A[:-1].max(axis=0) < j * (A[-1] - A[:-1].max(axis=0))
+    # rest = arr[:-1].max(axis=0) if dval > 1 else np.zeros(sval)
+    # rest is (d-1) x s
+    # jlow = max(0, ceil((rhs  / arr[-1]).max()))
+    # jlow = max(0, 1 + floor(((rhs - mval * rest) / (arr[-1] - rest)).max()))
+    jlow = 0
+    for ind in range(jlow, mval + 1):
+        # Try the multiplicity
+        newrhs = rhs - ind * arr[-1]
+        # By induction violated_sub will return all contintuations with the current ind value
+        yield from (_ + (ind,) for _ in violated_sub(arr[:-1], newrhs, mval - ind))
+
+def violated(arr: np.ndarray, mval: int):
+
+    yield from violated_sub(arr, np.ones(arr.shape[1]), mval)
+
+def possible_row_sums(dim: int, mval: int, halve: bool = True):
+    elist = entropy_list(dim, halve = halve)
+    yield from (_ for _ in violated(elist, mval)
+                if (np.array(_) @ elist >= 1).all())
+
+def multiset_row_sums(dim: int, mval: int, halve: bool = True) -> Iterable[Tuple[int,...]]:
+
+    def _multiset(arg: Tuple[int,...]) -> Tuple[int,...]:
+
+        return tuple(chain(*(_[1] * (_[0],)
+                             for _ in enumerate(arg, start=1))))
+    return map(_multiset, possible_row_sums(dim, mval, halve = halve))
+
+def tuple_count(dim: int, mval: int) -> int:
+
+    """
+        The number of nonegative d tuples that sum to m.
+    """
+    return binomial(dim + mval - 1, dim - 1)
 
 def num_pairs(num: int, subw: int) -> int:
 
@@ -113,10 +182,26 @@ def unresolved_table(num: int) -> List[int]:
     """
     return [unresolved(num, _) for _ in range((num // 2) + 1)]
 
+def central_trinomial(num: int) -> int:
+    """
+    The coefficient of 1 in (1 + x + 1/x)^n.
+    Recurrence: (n+1)T[n+1] = (2n+1) T[n] + 3n T[n-1]
+    T[0] = T[1] = 1
+    """
+
+    return sum((binomial(num, 2 * knum) * binomial(2 * knum, knum)
+                for knum in range(1, num // 2 + 1)))
+
 def balanced(num: int) -> int:
     """
     The number of nonzero vectors with coordinates in 0/1/-1
-    whose sum of coordinates is 0.
+    whose sum of coordinates is 0, where a vector and its negative
+    are identified. If the n-th value if U[n], then
+    U[n] = (T[n] - 1)/2, so
+    (2n+2) U[n+1] + (n+1) = (2n+2) U[n] + (2n+1) + 6n U[n-1] + 3n
+    or
+    (n+1) U[n+1] = (n+1) U[n] + 3n U[n-1] + 2n
+    And U[0] = U[1] = 0.
     """
 
     return sum(binomial(num, knum)
