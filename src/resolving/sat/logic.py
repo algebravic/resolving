@@ -2,6 +2,7 @@
 Various utilities for generating CNF
 """
 from typing import Iterable, List, Tuple
+from itertools import chain
 from pysat.formula import IDPool
 from pysat.card import CardEnc, EncType
 
@@ -68,6 +69,56 @@ def sum_not_zero(pool: IDPool, pos: List[int], neg: List[int],
                           encoding = encoding,
                           vpool = pool).clauses
     yield from implies(pool, gt0, gt1)
+
+def card_le(pool: IDPool, lits1: List[int], lits2: List[int],
+            encode: str = 'totalizer') -> Iterable[CLAUSE]:
+    
+    encoding = getattr(EncType, encode,
+                       EncType.totalizer)
+    biglits = lits1 + [- _ for _ in lits2]
+    nval = len(lits2)
+    yield from CardEnc.atmost(lits = biglits,
+                              bound = nval,
+                              encoding = encoding,
+                              vpool = pool)
+
+def card_equal(pool: IDPool, lit1: int, lit2: int, lits1: List[int], lits2: List[int],
+               encode: str = 'totalizer') -> Iterable[CLAUSE]:
+    """
+    Generate clauses such that
+    lit1 => Card(lits1) <= Card(lits2) - 1
+    lit2 => Card(lits1) >= Card(lits2) + 1
+    and lit1, lit2 can't both be True
+    Then if lit1 and lit2 are both False we must have Card(lits1) = Card(lits2)
+    by the law of the excluded middle
+    We assume that the variables in all three are disjoint
+    We can encode Card(lits1) == Card(lits2)
+    as Card(lits1 + (neg lits2)) == len(lits2)
+
+    Note that Card(lits) == n is really implemented as
+    (Card(lits) <= n) AND (Card(lits) >= n)
+
+    So we want
+
+    [neg lit] + _ for _ in clauses of both of the above.
+    The negation of Card(lits) <= n is Card(lits) >= n+1
+    The negation of Card(lits) >= n is Card(lits) <= n-1
+    """
+    encoding = getattr(EncType, encode,
+                       EncType.totalizer)
+    nval = len(lits2)
+    biglits = lits1 + [- _ for _ in lits2]
+    le_clauses = CardEnc.atmost(lits = biglits,
+                                bound = nval - 1,
+                                encoding = encoding,
+                                vpool = pool).clauses
+    ge_clauses = CardEnc.atleast(lits = biglits,
+                                 bound = nval + 1,
+                                 encoding = encoding,
+                                 vpool = pool).clauses
+    yield from ([- lit1] + _ for _ in le_clauses)
+    yield from ([- lit2] + _ for _ in ge_clauses)
+    yield [- lit1, -lit2]
     
 def set_xor(lit: int, lit1: int, lit2:int) -> Iterable[CLAUSE]:
     """
