@@ -21,7 +21,16 @@ dependencies = [
     "symmetry",
     "pycddlib>=3.0.2,<4",
     "pyscipopt>=6.2.1",
+    "multiset>=3.2.0",
+    "jax>=0.10.2",
+    "jaxopt>=0.8.5",
 ]
+
+[project.scripts]
+bdcover = "covering.bdcover:main"
+bdsolve = "covering.bdsolve:main"
+bdmaxsat = "covering.bdmaxsat:main"
+bdls = "covering.bdls:main"
 
 [dependency-groups]
 test = ["pytest>=7.4.0"]
@@ -33,5 +42,5 @@ default-groups = ["test"]
 symmetry = { git = "https://github.com/algebravic/symmetry.git" }
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.11.13,<0.13"]
+build-backend = "uv_build"

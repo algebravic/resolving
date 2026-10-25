@@ -18,3 +18,4 @@
 /data/
 /doc/ltximg/
 poetry.lock
+/.lake
