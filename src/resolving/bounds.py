@@ -19,7 +19,7 @@ from functools import cache
 from itertools import chain
 from math import ceil, log, floor
 import numpy as np
-from sympy import binomial
+from sympy import binomial, factorial
 
 def binomial_distr(weight: int) -> np.ndarray:
     """
@@ -45,6 +45,9 @@ def binary_entropy(distr: np.ndarray) -> float:
     num = distr.shape[0]
     return sum(map(entr, distr)) / (denom * log(2.0)) + log(denom) / log(2.0)
 
+def int_entropy(arg: List[int]) -> float:
+    return binary_entropy(np.array(arg, dtype=np.float64))
+
 def binomial_entropy(weight) -> float:
     """
     Entropy of binomial distribution.
@@ -68,6 +71,26 @@ def subset_distr(num: int, dval: int, sval: int) -> List[float]:
     return np.array([binomial(dval, _) * binomial(num - dval, sval - _)
             for _ in range(min(dval, sval) + 1)], dtype=np.float64)
 
+def distr_subsets(parts: List[int], sval: int) -> Iterable[int]:
+    dim = sum(parts)
+    if len(parts) == 1:
+        yield binomial(parts[0], sval)
+    elif sval <= dim and sval >= 0:
+        # ind = # sampled from parts[0]. Need 0 <= ind <= parts[0] and
+        # 0 <= sval - ind <= dim - parts[0], i.e.
+        # max(0, parts[0] + sval - dim) <= ind <= min(sval, parts[0]).
+        # (Previous version had two bugs: the loop bound was range(max(...))
+        #  instead of range(lo, hi + 1), and the multiplicity used
+        #  binomial(sval, ind) instead of binomial(parts[0], ind) -- both
+        #  confirmed wrong by direct test against known multivariate
+        #  hypergeometric totals, e.g. parts=[3,3], sval=2 must sum to
+        #  binomial(6,2)=15 via [3,9,3]; the old code returned [3,6].)
+        lo = max(0, parts[0] + sval - dim)
+        hi = min(sval, parts[0])
+        for ind in range(lo, hi + 1):
+            mult = binomial(parts[0], ind)
+            yield from (mult * _ for _ in distr_subsets(parts[1:], sval - ind))
+
 def entropy_list(dim: int, halve: bool =  True) -> np.ndarray:
 
     dbound = dim // 2 if halve else dim - 1
@@ -78,8 +101,8 @@ def entropy_list(dim: int, halve: bool =  True) -> np.ndarray:
     return rhs / lhs.reshape((1, -1))
 
 def improved_bound(dim: int) -> float:
-    # The matrix is indexed by (s,d) we must minimize over d
-    return 1 + ceil(1 / entropy_list(dim).max(axis=0).min())
+    # The matrix is indexed by (d,s) we must minimize over d
+    return 1 + ceil((1 / entropy_list(dim)).min(axis=0).max())
     # metric dimension = 1 + # rows in minimal balanced detecting
 
 def violated_sub(arr: np.ndarray, rhs: np.ndarray, mval: int):
@@ -89,6 +112,8 @@ def violated_sub(arr: np.ndarray, rhs: np.ndarray, mval: int):
     u^T A >= rhs, and sum(u) = v.
 
     A is d x s, rhs is an s-vector
+
+    Base case: d=1. the u is a vector of size 1, which is pinned down to m
 
     If the last rows has multiplicity j, then remaining rows
     must have multiplicity (m-j). The best that they can do
@@ -102,7 +127,9 @@ def violated_sub(arr: np.ndarray, rhs: np.ndarray, mval: int):
         return
     if dval == 1:
         # we must have j * row[i] >= rhs[i], or j >= rhs[i]/row[i]
-        yield from ((_,) for _ in range(max(0, ceil((rhs / arr[0]).max())), mval + 1))
+        # yield from ((_,) for _ in range(max(0, ceil((rhs / arr[0]).max())), mval + 1))
+        if (mval >=  (rhs / arr[0])).all():
+            yield (mval, )
         return
     # There probably is a better way of pruning
     # For each row can find the lower bound to what's necessary. If the sum of the lower bounds is > m
@@ -128,15 +155,14 @@ def violated(arr: np.ndarray, mval: int):
 
 def possible_row_sums(dim: int, mval: int, halve: bool = True):
     elist = entropy_list(dim, halve = halve)
-    yield from (_ for _ in violated(elist, mval)
-                if (np.array(_) @ elist >= 1).all())
+    yield from ((np.array(_) @ elist, _) for _ in violated(elist, mval))
 
 def multiset_row_sums(dim: int, mval: int, halve: bool = True) -> Iterable[Tuple[int,...]]:
 
     def _multiset(arg: Tuple[int,...]) -> Tuple[int,...]:
 
         return tuple(chain(*(_[1] * (_[0],)
-                             for _ in enumerate(arg, start=1))))
+                             for _ in enumerate(arg[1], start=1))))
     return map(_multiset, possible_row_sums(dim, mval, halve = halve))
 
 def tuple_count(dim: int, mval: int) -> int:
@@ -231,6 +257,28 @@ def naive_bounds(num: int) -> int:
         for jind in range(1, num // 2 + 1))
     return max(lbounds)
 
+def better_naive_bounds(num: int) -> int:
+    """
+    By the pigeon hole principle all sums of j columns must be
+    distinct. Without loss of generality we may assume that we can
+    restrict to the case j = n/2. In particular, all columns
+    must be distinct. So we must have, for M = 2^m,
+
+    M(M-1)...(M-j+1) >= binomial(n,j),
+    or binomial(M,j)j! >= binomial(n,j)
+    """
+    # Start with naive bound
+    start = naive_bounds(num)
+    half = num // 2
+    fact = factorial(half)
+    lower = binomial(num, half)
+    howmany = 2 ** start
+    while True:
+        if binomial(howmany, half) * fact >= lower:
+            return start
+        start += 1
+        howmany *= 2
+    
 def bipartite_rhs(diam: int, dim: int) -> int:
     """
       upper = (D-3-k)/3, where k=0,1,-1 (3)
