@@ -2,6 +2,7 @@
 The Resolver.
 """
 from typing import Iterable, List, Tuple, Dict
+from enum import Enum
 from itertools import product, islice, combinations
 from collections import Counter
 import numpy as np
@@ -19,7 +20,7 @@ from .sat.util import get_prefix, extract_mat, getvec, makevec, makemat, makecom
 from .maxtest import min_conflict
 from .schreier_sims import schreier_sims_cuts
 from .sat.gensymm import encode_implications
-from .bounds import multiset_row_sums
+from .bounds import multiset_row_sums, tuple_count
 from symmetry import row_snake_order, column_snake_order, row_wise
 from symmetry import reduce_impl
 from symmetry import lex_double
@@ -29,15 +30,21 @@ from symmetry import make_implications
 CONFLICT = Tuple[int,...]
 CADICAL = 'Cadical195'
 
-def xor_comp(pool: IDPool, rowl: np.ndarray, rowr: np.ndarray) -> Iterable[CLAUSE]:
+def xor_comp(pool: IDPool, rowl: List[List[int]], rowr: List[List[int]]) -> Iterable[CLAUSE]:
     """
     Generate clauses for A < A XOR B
     """
-    dim = rowl.shape[0]
+    dim = len(rowl)
     values = [pool.id() for _ in range(dim)]
     for ind, val in enumerate(values):
             yield from set_xor(val, int(rowl[ind]), int(rowr[ind]))
     yield from standard_lex(pool, list(map(int, rowl)), values)
+
+class ModelChoice(Enum):
+
+    DOUBLE_SORTED=0
+    REGION=1
+    
         
 class Resolve:
     """
@@ -84,6 +91,9 @@ class Resolve:
         self._nozero = nozero
         self._duplicates = 0
         self._firstweight = firstweight
+        self._solve_name = solver
+        if solver_kwds is None:
+            solver_kwds = {}
         if firstweight:
             self._setfirst()
         else:
@@ -94,9 +104,6 @@ class Resolve:
             self._possible()
         else:
             self._model2(breaker)
-        self._solve_name = solver
-        if solver_kwds is None:
-            solver_kwds = {}
         self._solve = Solver(name = solver,
                              bootstrap_with = self._cnf,
                              use_timer = True, **solver_kwds)
@@ -119,7 +126,7 @@ class Resolve:
         Append a clause to both the solver and to self._cnf
         """
         self._cnf.extend(form)
-        self._solver.append_formula(form)
+        self._solve.append_formula(form)
 
     @property
     def census(self):
@@ -351,9 +358,9 @@ class Resolve:
                                        self._avar[kind, ind],
                                        self._avar[kind, ind + 1]))
             # E[k-1,i,j] & A[k,i] -> A[k,i+1]
-            # Shift all 1's in a sector to the right
+            # Shift all 1's in a sector to the left
             self._cnf.append([-evar[jind, ind] for jind in range(kind)]
-                             + [-self._avar[kind, ind], self._avar[kind, ind+1]])
+                             + [- self._avar[kind, ind], self._avar[kind, ind+1]])
         # Distinct columns
         self._cnf.extend([[-evar[jind,ind] for jind in range(self._mdim)]
                            for ind in range(self._dim-1)])
@@ -363,11 +370,16 @@ class Resolve:
                                           [self._avar[ind, jind]
                                            for jind in range(self._dim)],
                                           [self._avar[ind+1, jind]
-                                           for jind in range(self._dim)]))
+                                           for jind in range(self._dim)],
+                                          strict = True))
 
     def _model3(self):
         """
         First model with symmetry breaking
+        The variable R[i,j] = True <==>
+        column j and j+1 in row i are in the same region.
+        This means that the column [A[k,j] for k in range(i)] and [A[k,j+1] for k in range(i)]
+        are equal.
         """
         # Non zero first row
         # Everything is increasing so others are nonzero
@@ -379,10 +391,11 @@ class Resolve:
                                  range(self._dim - 1))}
         # The first rows is always true
         self._cnf.extend([[rvar[0,_]] for _ in range(self._dim - 1)])
-        # Everything in a region shift to the right
+        # Shift all 1's to the right
         for ind, jind in product(range(self._mdim),
                                  range(self._dim - 1)):
-            self._cnf.extend([[-rvar[ind, jind], -self._avar[ind, jind],
+            self._cnf.extend([[-rvar[ind, jind],
+                               - self._avar[ind, jind],
                                self._avar[ind, jind + 1]]])
         for ind, jind in product(range(self._mdim - 1),
                                  range(self._dim - 1)):
@@ -399,7 +412,18 @@ class Resolve:
                 [rvar[ind + 1, jind], - rvar[ind, jind],
                  - self._avar[ind, jind],
                  - self._avar[ind, jind + 1]]])
+        # Since columns must be distinct, we want rval[mdim -1][jind] for be True for all jind
+        for jind in range(self._dim - 1):
+            self._cnf.extend([
+                [- rvar[self._mdim - 1, jind],
+                 self._avar[self._mdim - 1, jind],
+                 self._avar[self._mdim - 1, jind + 1]],
+                [- rvar[self._mdim - 1, jind],
+                 - self._avar[self._mdim - 1, jind],
+                 - self._avar[self._mdim - 1, jind + 1]]
+                ])
         # Lex increasing rows
+                 
         # Calculate row equality
         for ind in range(self._mdim - 1):
             # enforce non-decreasing cardinalities
@@ -422,24 +446,32 @@ class Resolve:
         # Assume that _model3 has been called
         self._model3()
         row_sums = list(multiset_row_sums(self._dim, self._mdim, halve = not self._firstweight))
-        print(f"Restricting to row sums: {row_sums}")
+        if self._verbose > 1:
+            print(f"Restricting to row sums: {'\n'.join(map(str,row_sums))}")
+        elif self._verbose == 1:
+            tot_sums = tuple_count(self._mdim, self._dim - 1 if self._firstweight
+                                   else self._dim // 2)
+            print(f"Restricted to considering {len(row_sums)} out of {tot_sums} row sums.")
         # Exactly one of them will be true
         xvars = {_: self._pool.id(('X', _)) for _ in row_sums}
-        self._cnf.extend(CardEnc.equals(lits = xvars.values(),
-                                        bound = 1,
-                                        encoding = self._encoding,
-                                        vpool = self._pool))
-        for rows in row_sums:
-            xvar = xvars[rows]
-            for jind, rcard in enumerate(rows):
+        if len(xvars) == 0:
+            self._cnf.extend([[self._avar[0,0]],[- self._avar[0,0]]]) # Make UNSAT
+        else:
+            self._cnf.extend(CardEnc.equals(lits = xvars.values(),
+                                            bound = 1,
+                                            encoding = self._encoding,
+                                            vpool = self._pool))
+            for rows in row_sums:
+                xvar = xvars[rows]
+                for jind, rcard in enumerate(rows):
                 
-                self._cnf.extend([[- xvar] + _
-                                  for _ in CardEnc.equals(
-                                      lits = [self._avar[jind, kind]
-                                              for kind in range(self._dim)],
-                                      bound = rcard,
-                                      encoding = self._encoding,
-                                      vpool = self._pool)])
+                    self._cnf.extend([[- xvar] + _
+                                    for _ in CardEnc.equals(
+                                        lits = [self._avar[jind, kind]
+                                                for kind in range(self._dim)],
+                                        bound = rcard,
+                                        encoding = self._encoding,
+                                        vpool = self._pool)])
                                   
     def _symmetry_break(self, breaker: str | Tuple[str, int, int] = 'double_lex'):
         """
@@ -482,6 +514,8 @@ class Resolve:
 
     def _break_xor(self):
         " Only valid for rowwise order "
+        amat = [[self._avar[ind, jind] for jind in range(self._dim)]
+                for ind in range(self._mdim)]
         for ind in range(1, self._mdim):
             self._cnf.extend(list(xor_comp(self._pool,
                                            amat[0], amat[ind])))
