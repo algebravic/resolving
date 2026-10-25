@@ -1,0 +1,171 @@
+interfaces = []
+exclude = [
+    "**/*__pycache__",
+    "**/*egg-info",
+    "**/docs",
+    "**/tests",
+    "**/venv",
+]
+source_roots = [
+    ".", "src",
+]
+
+[[modules ]]
+path = "src.resolving"
+depends_on = ["src.resolving.hypercube_qbf", "src.resolving.resolve", "src.resolving.pingpong"]
+
+[[modules ]]
+path = "src.resolving.check"
+depends_on = ["src.resolving.generate"]
+
+[[modules ]]
+path = "src.resolving.separate"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.metric"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.sat"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.sat.symmetry"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.graphs"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.mpingpong"
+depends_on = ["src.resolving.sat.logic", "src.resolving.sat.lex", "src.resolving.sat.symmbreak", "src.resolving.bdd"]
+
+[[modules ]]
+path = "src.resolving.hypergraph"
+depends_on = ["src.resolving.graphs"]
+
+[[modules ]]
+path = "src.resolving.resolver"
+depends_on = ["src.resolving.maxtest", "src.resolving.sat.util", "src.resolving.sat.symmbreak", "src.resolving.bdd", "src.resolving.sat.lex", "src.resolving.schreier_sims", "src.resolving.sat.logic", "src.resolving.sat.gensymm"]
+
+[[modules ]]
+path = "src.resolving.lpcheck"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.sat.gensymm"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.bounds"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.greedy"
+depends_on = ["src.resolving.generate", "src.resolving.check"]
+
+[[modules ]]
+path = "src.resolving.polyhedron"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.smt.smt_defs"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.hypercube"
+depends_on = ["src.resolving.generate"]
+
+[[modules ]]
+path = "src.resolving.maxent"
+depends_on = ["src.resolving.nputil"]
+
+[[modules ]]
+path = "src.resolving.line_code"
+depends_on = ["src.resolving.smt.smt_defs"]
+
+[[modules ]]
+path = "src.resolving.conflictor"
+depends_on = ["src.resolving.bdd", "src.resolving.maxtest", "src.resolving.sat.logic", "src.resolving.sat.util", "src.resolving.sat.symmbreak", "src.resolving.sat.lex"]
+
+[[modules ]]
+path = "src.resolving.sat.symmbreak"
+depends_on = ["src.resolving.sat.lex", "src.resolving.sat.logic"]
+
+[[modules ]]
+path = "src.resolving.smt.smt_solvers"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.smt"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.sat.lex"
+depends_on = ["src.resolving.sat.logic"]
+
+[[modules ]]
+path = "src.resolving.certificates"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.resolve"
+depends_on = ["src.resolving.timeit", "src.resolving.generate", "src.resolving.metric"]
+
+[[modules ]]
+path = "src.resolving.schreier_sims"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.partitions"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.timeit"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.pingpong"
+depends_on = ["src.resolving.conflictor", "src.resolving.resolver"]
+
+[[modules ]]
+path = "src.resolving.sat.util"
+depends_on = ["src.resolving.sat.logic"]
+
+[[modules ]]
+path = "src.resolving.maxtest"
+depends_on = ["src.resolving.sat.symmbreak", "src.resolving.sat.util"]
+
+[[modules ]]
+path = "src.resolving.generate"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.bdd"
+depends_on = ["src.resolving.sat.logic"]
+
+[[modules ]]
+path = "src.resolving.nputil"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.sat.logic"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.polytope"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.smt.z3_solve"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.qbf"
+depends_on = []
+
+[[modules ]]
+path = "src.resolving.hypercube_qbf"
+depends_on = ["src.resolving.sat.logic", "src.resolving.qbf", "src.resolving.sat.symmbreak"]
